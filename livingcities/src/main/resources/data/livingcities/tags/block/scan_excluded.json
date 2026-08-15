@@ -1,0 +1,12 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:barrier",
+    "minecraft:structure_void",
+    "minecraft:light",
+    "minecraft:moving_piston",
+    "minecraft:end_portal",
+    "minecraft:end_gateway",
+    "minecraft:nether_portal"
+  ]
+}
