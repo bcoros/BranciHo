@@ -49,6 +49,15 @@ public final class FloorAnalyzer {
     /** A cell needs walls in three of four directions before the fallback estimator calls it indoors. */
     private static final int RAY_MIN_SEALED_DIRECTIONS = 3;
 
+    /**
+     * How much a furniture-occupied cell counts toward usable floor area.
+     *
+     * <p>Below 1.0 because a room packed wall-to-wall with desks really does hold fewer
+     * people than an empty one, and above 0 because furnishing a build must never be a
+     * penalty for a mod that exists to make player decoration meaningful.
+     */
+    private static final float FURNISHED_CELL_WEIGHT = 0.75F;
+
     // 4-connected, never 8. Diagonal connectivity leaks straight through the corner where two walls
     // meet at 45 degrees, which is one of the most common shapes in player builds.
     private static final int[] NEIGHBOUR_DX = {-1, 1, 0, 0};
@@ -327,7 +336,7 @@ public final class FloorAnalyzer {
                 fillCount += Long.bitCount(value);
             }
             storey.usable = enclosed;
-            storey.usableCells = fillCount;
+            storey.usableCells = fillCount + addFurnishedCells(floorY, enclosed);
             measure(floorY, storey);
 
             if (passes(storey)) {
@@ -355,6 +364,61 @@ public final class FloorAnalyzer {
 
             storey.outcome = coveredStand < cfg.minCoverageFraction() ? Outcome.OPEN_AIR : Outcome.REJECTED;
             return storey;
+        }
+
+        /**
+         * Give back the floor area that furniture is standing on.
+         *
+         * <p>A desk, bed or machine blocks its own cell's head clearance, so without this the cell
+         * drops straight out of the usable set and <em>furnishing a building shrinks it</em>. That is
+         * precisely backwards for a mod whose entire premise is that players decorate their own
+         * builds, and the brief is explicit that furniture may be an optional bonus but must never be
+         * a requirement.
+         *
+         * <p>A furnished cell only counts when it is enclosed and touches usable floor, which is what
+         * separates "a desk in an office" from "a fence post in a field". The cells are added to the
+         * usable bitset as well as the count, so a row of desks cannot split one room into two and
+         * trip the smallest-room rejection.
+         *
+         * <p>Weighted below a clear cell because a floor packed wall-to-wall with furniture genuinely
+         * does hold fewer people than an empty one of the same size.
+         *
+         * @return the weighted number of cells to add
+         */
+        private int addFurnishedCells(int floorY, long[] enclosed) {
+            int furnished = 0;
+            for (int z = 0; z < sizeZ; z++) {
+                for (int x = 0; x < sizeX; x++) {
+                    final int cell = z * sizeX + x;
+                    if (!getBit(footprint, cell) || getBit(outside, cell) || getBit(enclosed, cell)) {
+                        continue;
+                    }
+                    final BlockProfile profile = profiles[cells[snap.columnBase(x, z) + floorY] & 0xFFFF];
+                    if (!profile.furnishing()) {
+                        continue;
+                    }
+                    if (!touchesUsable(enclosed, x, z)) {
+                        continue;
+                    }
+                    setBit(enclosed, cell);
+                    furnished++;
+                }
+            }
+            return Math.round(furnished * FURNISHED_CELL_WEIGHT);
+        }
+
+        private boolean touchesUsable(long[] enclosed, int x, int z) {
+            for (int d = 0; d < NEIGHBOUR_DX.length; d++) {
+                final int nx = x + NEIGHBOUR_DX[d];
+                final int nz = z + NEIGHBOUR_DZ[d];
+                if (nx < 0 || nz < 0 || nx >= sizeX || nz >= sizeZ) {
+                    continue;
+                }
+                if (getBit(enclosed, nz * sizeX + nx)) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         private boolean passes(Storey storey) {

@@ -865,14 +865,14 @@ Your mixed-use section already asks for per-floor uses, so this is agreement rat
 
 Stated plainly. Several of these are things the design called for and the code does not yet do.
 
-**Being written right now**
+**Resolved since this document was drafted**
 
-1. **The building registration flow just landed and is uncommitted.** `BuildingActions`, `AssignBuildingPayload`, `SetFloorZonePayload`, `RescanBuildingPayload`, `BuildingDetailPayload` and `BuildingPanelScreen` are on disk but not in git. Everything in §19 B–D depends on them.
-2. **The NPC spawn director does not exist.** `CitizenEntity` is registered, has attributes, a renderer, four skin variants and `noSave()` — and nothing ever spawns one. `LivingCitiesServerEvents.onServerTick` carries the placeholder comment. **Cities are currently silent and empty on the ground**, however large their virtual population.
+1. ~~The building registration flow is uncommitted.~~ **Resolved.** `BuildingActions`, the four payloads and `BuildingPanelScreen` are committed, registered and compiling; §19 B–D work.
+2. ~~The NPC spawn director does not exist.~~ **Resolved.** `CitizenSpawnDirector` is implemented and wired into `onServerTick`, with `CrowdBudget`, `CitizenActivity` and `StreetSpawnFinder` behind it. What is still missing is *routing*: citizens wander near where they spawn rather than commuting between buildings, because `PedestrianNetwork` is an empty seam.
 
 **Measurement gaps**
 
-3. **Furnishing currently *reduces* capacity — a direct violation of your spec.** `BlockProfile.furnishing()` exists and is documented as the guard against exactly this, and `FloorAnalyzer` never calls it. A chair or desk blocks its own cell's head clearance, so that column drops out of the floor's usable set. Your spec says furniture must be an optional bonus, never a requirement; today a heavily furnished apartment measures a few percent small. **Fix:** count `furnishing()` cells that are enclosed, roofed and 4-adjacent to a usable cell, weighted 0.75. This is the highest-priority correctness item in the mod.
+3. ~~Furnishing reduces capacity.~~ **Resolved.** `FloorAnalyzer.addFurnishedCells` now returns furniture-occupied cells to the usable set at weight 0.75 when they are enclosed and touch usable floor, and adds them to the bitset so a row of desks cannot split one room in two. Original text: **furnishing currently *reduces* capacity — a direct violation of your spec.** `BlockProfile.furnishing()` exists and is documented as the guard against exactly this, and `FloorAnalyzer` never calls it. A chair or desk blocks its own cell's head clearance, so that column drops out of the floor's usable set. Your spec says furniture must be an optional bonus, never a requirement; today a heavily furnished apartment measures a few percent small. **Fix:** count `furnishing()` cells that are enclosed, roofed and 4-adjacent to a usable cell, weighted 0.75. This is the highest-priority correctness item in the mod.
 4. **No open-plan factor and no per-building capacity cap.** The design specified `openPlanFactor` (discounting undivided floor plates for residential use) and `MAX_CAPACITY_PER_BUILDING = 8000`. Neither is in the code. A 96×96 hollow shell with a roof measures as one enormous residential floor.
 5. **No `EnclosureMode` override.** A deliberately open market hall, covered plaza or car park will measure low, and the player has no lever to say "count the whole footprint".
 6. **No chunk tickets.** `BuildingScanTask` checks `level.isLoaded` and fails with `scan_chunks_unloaded` if a chunk goes away mid-scan. Fine when the player is standing there (the normal case); wrong at the render-distance edge.
