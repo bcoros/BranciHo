@@ -1,8 +1,10 @@
 package com.branciho.livingcities.city;
 
 import com.branciho.livingcities.LivingCities;
+import com.branciho.livingcities.building.Building;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -41,8 +43,19 @@ public final class CityRegistry extends SavedData {
 
     private final Map<UUID, City> cities = new HashMap<>();
 
+    private final Map<UUID, Building> buildings = new HashMap<>();
+
     /** dimension -> (chunk key -> owning city id). Rebuilt from the cities on load. */
     private final Map<ResourceKey<Level>, Long2ObjectMap<UUID>> chunkIndex = new HashMap<>();
+
+    /**
+     * chunk key -> buildings whose footprint touches that chunk. Rebuilt on load.
+     *
+     * <p>Answering "which building is this position inside?" by scanning every building would be
+     * O(buildings) on a hot path. Bucketing by chunk makes it O(buildings in one chunk), which is a
+     * handful even in a dense downtown.
+     */
+    private final Map<ResourceKey<Level>, Long2ObjectMap<List<UUID>>> buildingChunkIndex = new HashMap<>();
 
     public static final SavedData.Factory<CityRegistry> FACTORY =
             new SavedData.Factory<>(CityRegistry::new, CityRegistry::load, null);
@@ -141,6 +154,124 @@ public final class CityRegistry extends SavedData {
         setDirty();
     }
 
+    // ------------------------------------------------------------------ buildings
+
+    public Collection<Building> buildings() {
+        return buildings.values();
+    }
+
+    public @Nullable Building building(UUID buildingId) {
+        return buildings.get(buildingId);
+    }
+
+    public List<Building> buildingsOf(City city) {
+        List<Building> result = new ArrayList<>(city.buildingIds().size());
+        for (UUID buildingId : city.buildingIds()) {
+            Building building = buildings.get(buildingId);
+            if (building != null) {
+                result.add(building);
+            }
+        }
+        return result;
+    }
+
+    public void addBuilding(City city, Building building) {
+        buildings.put(building.id(), building);
+        city.buildingIds().add(building.id());
+        indexBuilding(city.dimension(), building);
+        setDirty();
+    }
+
+    public void removeBuilding(UUID buildingId) {
+        Building removed = buildings.remove(buildingId);
+        if (removed == null) {
+            return;
+        }
+        City city = cities.get(removed.cityId());
+        if (city != null) {
+            city.buildingIds().remove(buildingId);
+            Long2ObjectMap<List<UUID>> index = buildingChunkIndex.get(city.dimension());
+            if (index != null) {
+                for (ChunkPos chunk : removed.occupiedChunks()) {
+                    List<UUID> bucket = index.get(chunk.toLong());
+                    if (bucket != null) {
+                        bucket.remove(buildingId);
+                    }
+                }
+            }
+        }
+        setDirty();
+    }
+
+    /** The building containing this position, if any. */
+    public @Nullable Building buildingAt(ResourceKey<Level> dimension, BlockPos pos) {
+        for (Building building : buildingsInChunk(dimension, new ChunkPos(pos))) {
+            if (building.contains(pos)) {
+                return building;
+            }
+        }
+        return null;
+    }
+
+    public List<Building> buildingsInChunk(ResourceKey<Level> dimension, ChunkPos chunk) {
+        Long2ObjectMap<List<UUID>> index = buildingChunkIndex.get(dimension);
+        if (index == null) {
+            return List.of();
+        }
+        List<UUID> bucket = index.get(chunk.toLong());
+        if (bucket == null || bucket.isEmpty()) {
+            return List.of();
+        }
+        List<Building> result = new ArrayList<>(bucket.size());
+        for (UUID buildingId : bucket) {
+            Building building = buildings.get(buildingId);
+            if (building != null) {
+                result.add(building);
+            }
+        }
+        return result;
+    }
+
+    /** Any registered building overlapping these bounds, so two builds cannot claim the same blocks. */
+    public @Nullable Building findOverlap(ResourceKey<Level> dimension, Building candidate) {
+        for (ChunkPos chunk : candidate.occupiedChunks()) {
+            for (Building existing : buildingsInChunk(dimension, chunk)) {
+                if (!existing.id().equals(candidate.id()) && existing.intersects(candidate)) {
+                    return existing;
+                }
+            }
+        }
+        return null;
+    }
+
+    /** Mark every building overlapping a changed position as needing a rescan. */
+    public void markDirtyAt(ResourceKey<Level> dimension, BlockPos pos) {
+        for (Building building : buildingsInChunk(dimension, new ChunkPos(pos))) {
+            if (building.contains(pos)) {
+                building.markDirty();
+                setDirty();
+            }
+        }
+    }
+
+    private void indexBuilding(ResourceKey<Level> dimension, Building building) {
+        Long2ObjectMap<List<UUID>> index =
+                buildingChunkIndex.computeIfAbsent(dimension, key -> new Long2ObjectOpenHashMap<>());
+        for (ChunkPos chunk : building.occupiedChunks()) {
+            index.computeIfAbsent(chunk.toLong(), key -> new ArrayList<>()).add(building.id());
+        }
+    }
+
+    private void rebuildBuildingIndex() {
+        buildingChunkIndex.clear();
+        for (Building building : buildings.values()) {
+            City city = cities.get(building.cityId());
+            if (city != null) {
+                indexBuilding(city.dimension(), building);
+            }
+        }
+    }
+
     private void rebuildChunkIndex() {
         chunkIndex.clear();
         for (City city : cities.values()) {
@@ -161,6 +292,12 @@ public final class CityRegistry extends SavedData {
             list.add(city.save());
         }
         tag.put("Cities", list);
+
+        ListTag buildingList = new ListTag();
+        for (Building building : buildings.values()) {
+            buildingList.add(building.save());
+        }
+        tag.put("Buildings", buildingList);
         return tag;
     }
 
@@ -179,8 +316,20 @@ public final class CityRegistry extends SavedData {
                 LivingCities.LOGGER.error("Skipping unreadable city at index {}", i, e);
             }
         }
+        ListTag buildingList = tag.getList("Buildings", Tag.TAG_COMPOUND);
+        for (int i = 0; i < buildingList.size(); i++) {
+            try {
+                Building building = Building.load(buildingList.getCompound(i));
+                registry.buildings.put(building.id(), building);
+            } catch (RuntimeException e) {
+                LivingCities.LOGGER.error("Skipping unreadable building at index {}", i, e);
+            }
+        }
+
         registry.rebuildChunkIndex();
-        LivingCities.LOGGER.info("Loaded {} cities (schema v{})", registry.cities.size(), version);
+        registry.rebuildBuildingIndex();
+        LivingCities.LOGGER.info("Loaded {} cities and {} buildings (schema v{})",
+                registry.cities.size(), registry.buildings.size(), version);
         return registry;
     }
 
