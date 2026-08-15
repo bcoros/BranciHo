@@ -2,7 +2,8 @@ package com.branciho.livingcities.blockentity;
 
 import com.branciho.livingcities.block.CoalGeneratorBlock;
 import com.branciho.livingcities.config.LivingCitiesConfig;
-import com.branciho.livingcities.power.PowerGrid;
+import com.branciho.livingcities.utility.UtilityGrid;
+import com.branciho.livingcities.utility.UtilityKind;
 import com.branciho.livingcities.registry.ModBlockEntities;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
@@ -46,7 +47,7 @@ public class CoalGeneratorBlockEntity extends BlockEntity {
             setLit(false);
             // The grid's generation figure was computed while this was still burning.
             if (level instanceof ServerLevel serverLevel) {
-                PowerGrid.get(serverLevel.getServer()).markDirty(serverLevel.dimension());
+                UtilityGrid.get(serverLevel.getServer()).markDirty(UtilityKind.POWER, serverLevel.dimension());
             }
         }
         setChanged();
@@ -81,7 +82,7 @@ public class CoalGeneratorBlockEntity extends BlockEntity {
         setLit(true);
         setChanged();
         if (level instanceof ServerLevel serverLevel) {
-            PowerGrid.get(serverLevel.getServer()).markDirty(serverLevel.dimension());
+            UtilityGrid.get(serverLevel.getServer()).markDirty(UtilityKind.POWER, serverLevel.dimension());
         }
         reportStatus(player);
         return true;

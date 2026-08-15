@@ -55,6 +55,11 @@ public final class Building {
     /** 0..1: how much of this building's electrical demand its grid actually meets. */
     private float powerSatisfaction;
 
+    private int waterDemand;
+
+    /** 0..1: how much of this building's water demand its network actually meets. */
+    private float waterSatisfaction;
+
     public Building(UUID id, UUID cityId, String name, BlockPos min, BlockPos max) {
         this.id = id;
         this.cityId = cityId;
@@ -316,6 +321,26 @@ public final class Building {
     /** True when the grid meets essentially all of this building's demand. */
     public boolean isPowered() {
         return powerSatisfaction >= 0.99F;
+    }
+
+    public int waterDemand() {
+        return waterDemand;
+    }
+
+    public void setWaterDemand(int waterDemand) {
+        this.waterDemand = Math.max(0, waterDemand);
+    }
+
+    public float waterSatisfaction() {
+        return waterSatisfaction;
+    }
+
+    public void setWaterSatisfaction(float waterSatisfaction) {
+        this.waterSatisfaction = Math.clamp(waterSatisfaction, 0.0F, 1.0F);
+    }
+
+    public boolean hasWater() {
+        return waterSatisfaction >= 0.99F;
     }
 
     /** Centre of the building, used for "which substation reaches this". */

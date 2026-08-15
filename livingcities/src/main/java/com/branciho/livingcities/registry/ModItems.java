@@ -45,6 +45,24 @@ public final class ModItems {
     public static final DeferredItem<BlockItem> COAL_GENERATOR_ITEM =
             ITEMS.registerSimpleBlockItem("coal_generator", ModBlocks.COAL_GENERATOR);
 
+    public static final DeferredItem<BlockItem> TRANSFORMER_ITEM =
+            ITEMS.registerSimpleBlockItem("transformer", ModBlocks.TRANSFORMER);
+
+    public static final DeferredItem<BlockItem> WIND_TURBINE_ITEM =
+            ITEMS.registerSimpleBlockItem("wind_turbine", ModBlocks.WIND_TURBINE);
+
+    public static final DeferredItem<BlockItem> WATER_PIPE_ITEM =
+            ITEMS.registerSimpleBlockItem("water_pipe", ModBlocks.WATER_PIPE);
+
+    public static final DeferredItem<BlockItem> WATER_PUMP_ITEM =
+            ITEMS.registerSimpleBlockItem("water_pump", ModBlocks.WATER_PUMP);
+
+    public static final DeferredItem<BlockItem> WATER_TOWER_ITEM =
+            ITEMS.registerSimpleBlockItem("water_tower", ModBlocks.WATER_TOWER);
+
+    public static final DeferredItem<BlockItem> PUMPING_STATION_ITEM =
+            ITEMS.registerSimpleBlockItem("pumping_station", ModBlocks.PUMPING_STATION);
+
     public static void register(IEventBus bus) {
         ITEMS.register(bus);
     }

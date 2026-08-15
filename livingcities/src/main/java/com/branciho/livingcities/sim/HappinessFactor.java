@@ -14,22 +14,25 @@ package com.branciho.livingcities.sim;
 public enum HappinessFactor {
 
     /** Is there somewhere to live? Homelessness is the harshest single input. */
-    HOUSING("housing", 0.22D),
+    HOUSING("housing", 0.20D),
 
     /** Can working-age residents find work? */
-    EMPLOYMENT("employment", 0.18D),
+    EMPLOYMENT("employment", 0.16D),
 
     /** How much of what the city produces does the city take? */
-    TAXES("taxes", 0.17D),
+    TAXES("taxes", 0.15D),
 
     /** Parks, government, entertainment - floor area that exists for residents rather than profit. */
-    SERVICES("services", 0.16D),
+    SERVICES("services", 0.14D),
 
     /** Is the treasury solvent? People notice when the city stops paying its bills. */
-    FINANCES("finances", 0.12D),
+    FINANCES("finances", 0.11D),
 
     /** Are the lights on? Nothing sours a city faster than a grid that cannot meet demand. */
-    POWER("power", 0.15D);
+    POWER("power", 0.13D),
+
+    /** Is there running water? Weighted just above power: people tolerate a blackout better. */
+    WATER("water", 0.11D);
 
     private final String id;
     private final double weight;

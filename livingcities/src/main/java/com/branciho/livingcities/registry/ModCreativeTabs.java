@@ -31,6 +31,12 @@ public final class ModCreativeTabs {
                 output.accept(ModItems.SUBSTATION_ITEM.get());
                 output.accept(ModItems.SOLAR_PANEL_ITEM.get());
                 output.accept(ModItems.COAL_GENERATOR_ITEM.get());
+                output.accept(ModItems.WIND_TURBINE_ITEM.get());
+                output.accept(ModItems.TRANSFORMER_ITEM.get());
+                output.accept(ModItems.WATER_PIPE_ITEM.get());
+                output.accept(ModItems.WATER_PUMP_ITEM.get());
+                output.accept(ModItems.WATER_TOWER_ITEM.get());
+                output.accept(ModItems.PUMPING_STATION_ITEM.get());
             })
             .build());
 

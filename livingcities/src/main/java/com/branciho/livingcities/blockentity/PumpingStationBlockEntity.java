@@ -9,16 +9,11 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 
-/**
- * Registers its substation with the grid index while its chunk is loaded.
- *
- * <p>Doing this from the block entity lifecycle rather than from a saved list is what lets the index
- * rebuild itself after a restart without ever disagreeing with the blocks that actually exist.
- */
-public class SubstationBlockEntity extends BlockEntity {
+/** Registers its pumping station with the water index while its chunk is loaded. */
+public class PumpingStationBlockEntity extends BlockEntity {
 
-    public SubstationBlockEntity(BlockPos pos, BlockState state) {
-        super(ModBlockEntities.SUBSTATION.get(), pos, state);
+    public PumpingStationBlockEntity(BlockPos pos, BlockState state) {
+        super(ModBlockEntities.PUMPING_STATION.get(), pos, state);
     }
 
     @Override
@@ -26,8 +21,8 @@ public class SubstationBlockEntity extends BlockEntity {
         super.onLoad();
         if (level instanceof ServerLevel serverLevel) {
             DistributorIndex.get(serverLevel.getServer())
-                    .add(UtilityKind.POWER, serverLevel.dimension(), worldPosition);
-            UtilityGrid.get(serverLevel.getServer()).markDirty(UtilityKind.POWER, serverLevel.dimension());
+                    .add(UtilityKind.WATER, serverLevel.dimension(), worldPosition);
+            UtilityGrid.get(serverLevel.getServer()).markDirty(UtilityKind.WATER, serverLevel.dimension());
         }
     }
 
@@ -35,8 +30,8 @@ public class SubstationBlockEntity extends BlockEntity {
     public void setRemoved() {
         if (level instanceof ServerLevel serverLevel) {
             DistributorIndex.get(serverLevel.getServer())
-                    .remove(UtilityKind.POWER, serverLevel.dimension(), worldPosition);
-            UtilityGrid.get(serverLevel.getServer()).markDirty(UtilityKind.POWER, serverLevel.dimension());
+                    .remove(UtilityKind.WATER, serverLevel.dimension(), worldPosition);
+            UtilityGrid.get(serverLevel.getServer()).markDirty(UtilityKind.WATER, serverLevel.dimension());
         }
         super.setRemoved();
     }

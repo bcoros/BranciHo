@@ -1,12 +1,12 @@
 package com.branciho.livingcities.block;
 
-import com.branciho.livingcities.blockentity.SubstationBlockEntity;
+import com.branciho.livingcities.blockentity.PumpingStationBlockEntity;
 import com.branciho.livingcities.config.LivingCitiesConfig;
 import com.branciho.livingcities.utility.UtilityComponent;
-import com.branciho.livingcities.utility.UtilityRole;
-import com.branciho.livingcities.utility.UtilityKind;
 import com.branciho.livingcities.utility.UtilityGrid;
+import com.branciho.livingcities.utility.UtilityKind;
 import com.branciho.livingcities.utility.UtilityNetwork;
+import com.branciho.livingcities.utility.UtilityRole;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
@@ -23,20 +23,17 @@ import net.minecraft.world.phys.BlockHitResult;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * The point where the grid meets the city.
+ * Where the water network meets the city, mirroring what a substation does for power.
  *
- * <p>Buildings are powered by being within a substation's radius, not by having a cable run to them.
- * The brief is explicit that nobody should be wiring every apartment in a tower individually, so the
- * player's job is to get power <em>to the district</em> and the substation handles the last step.
- *
- * <p>Right-clicking reports the grid's supply and demand, which is the only diagnostic that matters
- * when the lights are off and it is not obvious why.
+ * <p>Buildings are served by sitting inside its radius, not by having a pipe run to each one. Right
+ * clicking reports supply and demand, which is the only diagnostic that matters when a district is
+ * dry and the reason is not obvious.
  */
-public class SubstationBlock extends Block implements EntityBlock, UtilityComponent {
+public class PumpingStationBlock extends Block implements EntityBlock, UtilityComponent {
 
-    public static final MapCodec<SubstationBlock> CODEC = simpleCodec(SubstationBlock::new);
+    public static final MapCodec<PumpingStationBlock> CODEC = simpleCodec(PumpingStationBlock::new);
 
-    public SubstationBlock(Properties properties) {
+    public PumpingStationBlock(Properties properties) {
         super(properties);
     }
 
@@ -47,12 +44,12 @@ public class SubstationBlock extends Block implements EntityBlock, UtilityCompon
 
     @Override
     public @Nullable BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
-        return new SubstationBlockEntity(pos, state);
+        return new PumpingStationBlockEntity(pos, state);
     }
 
     @Override
     public UtilityKind utilityKind() {
-        return UtilityKind.POWER;
+        return UtilityKind.WATER;
     }
 
     @Override
@@ -62,19 +59,13 @@ public class SubstationBlock extends Block implements EntityBlock, UtilityCompon
 
     @Override
     public int coverageRadius() {
-        return LivingCitiesConfig.SERVER.substationRadius.get();
+        return LivingCitiesConfig.SERVER.pumpingStationRadius.get();
     }
 
-    /**
-     * A substation carries a modest load by itself.
-     *
-     * <p>Requiring a transformer before anything at all works would make a first grid fail for a
-     * reason nothing on screen explains. A small district works out of the box; a city needs
-     * transformers, which is where the planning starts.
-     */
+    /** Enough on its own for a small district; a city needs water towers behind it. */
     @Override
     public int throughput() {
-        return LivingCitiesConfig.SERVER.substationThroughputKw.get();
+        return LivingCitiesConfig.SERVER.pumpingStationThroughput.get();
     }
 
     @Override
@@ -85,13 +76,13 @@ public class SubstationBlock extends Block implements EntityBlock, UtilityCompon
         }
         if (level instanceof ServerLevel serverLevel) {
             UtilityNetwork network = UtilityGrid.get(serverLevel.getServer())
-                    .networkCovering(UtilityKind.POWER, serverLevel, pos);
+                    .networkCovering(UtilityKind.WATER, serverLevel, pos);
             if (network == null) {
-                player.displayClientMessage(Component.translatable("message.livingcities.grid_pending")
+                player.displayClientMessage(Component.translatable("message.livingcities.water_pending")
                         .withStyle(ChatFormatting.GRAY), false);
             } else {
-                ChatFormatting colour = network.isOverloaded() ? ChatFormatting.RED : ChatFormatting.GREEN;
-                player.displayClientMessage(Component.translatable("message.livingcities.grid_status",
+                ChatFormatting colour = network.isOverloaded() ? ChatFormatting.RED : ChatFormatting.AQUA;
+                player.displayClientMessage(Component.translatable("message.livingcities.water_status",
                         network.deliverable(), network.demand(),
                         Math.round(network.satisfaction() * 100.0F)).withStyle(colour), false);
             }

@@ -74,7 +74,19 @@ public final class LivingCitiesConfig {
         public final ModConfigSpec.IntValue solarPanelKw;
         public final ModConfigSpec.IntValue coalGeneratorKw;
         public final ModConfigSpec.IntValue substationRadius;
+        public final ModConfigSpec.IntValue windTurbineKw;
+        public final ModConfigSpec.IntValue transformerThroughputKw;
+        public final ModConfigSpec.IntValue substationThroughputKw;
         public final ModConfigSpec.BooleanValue powerRequired;
+
+        // --- water ---
+        public final ModConfigSpec.DoubleValue waterPerResident;
+        public final ModConfigSpec.DoubleValue waterPerJob;
+        public final ModConfigSpec.IntValue waterPumpOutput;
+        public final ModConfigSpec.IntValue waterTowerThroughput;
+        public final ModConfigSpec.IntValue pumpingStationThroughput;
+        public final ModConfigSpec.IntValue pumpingStationRadius;
+        public final ModConfigSpec.BooleanValue waterRequired;
 
         // --- creative / admin ---
         public final ModConfigSpec.BooleanValue creativeBypassesCost;
@@ -166,10 +178,48 @@ public final class LivingCitiesConfig {
                             "This is the 'do not wire every apartment' radius; raising it makes",
                             "districts easier to cover and the grid less of a planning problem.")
                     .defineInRange("substationRadius", 48, 8, 256);
+            windTurbineKw = builder
+                    .comment("Peak output of one wind turbine, in kilowatts. Reached at high altitude;",
+                            "a turbine at the minimum useful height makes about a third of this.")
+                    .defineInRange("windTurbineKw", 30, 0, 100_000);
+            transformerThroughputKw = builder
+                    .comment("How much power one transformer lets a grid carry, in kilowatts.",
+                            "A grid delivers the lesser of what it generates and what it can carry.")
+                    .defineInRange("transformerThroughputKw", 400, 1, 1_000_000);
+            substationThroughputKw = builder
+                    .comment("Power a substation carries without any transformer behind it.",
+                            "Enough for a first district, so a starter grid works before the player",
+                            "has met the concept of a transformer.")
+                    .defineInRange("substationThroughputKw", 150, 0, 1_000_000);
             powerRequired = builder
                     .comment("Whether buildings actually suffer without electricity.",
                             "Turn off to keep the grid as decoration while still simulating a city.")
                     .define("powerRequired", true);
+            builder.pop();
+
+            builder.push("water");
+            waterPerResident = builder
+                    .comment("Water demand per unit of housing capacity, in cubic metres per day.")
+                    .defineInRange("waterPerResident", 0.8D, 0.0D, 100.0D);
+            waterPerJob = builder
+                    .comment("Water demand per job. Workplaces use less per head than homes do.")
+                    .defineInRange("waterPerJob", 0.4D, 0.0D, 100.0D);
+            waterPumpOutput = builder
+                    .comment("Output of one water pump sitting in plenty of water.",
+                            "A pump on dry land produces nothing; output scales with the sources near it.")
+                    .defineInRange("waterPumpOutput", 900, 0, 1_000_000);
+            waterTowerThroughput = builder
+                    .comment("How much water one tower lets a network push.")
+                    .defineInRange("waterTowerThroughput", 1_200, 1, 1_000_000);
+            pumpingStationThroughput = builder
+                    .comment("Water a pumping station pushes without any tower behind it.")
+                    .defineInRange("pumpingStationThroughput", 500, 0, 1_000_000);
+            pumpingStationRadius = builder
+                    .comment("How far a pumping station serves buildings, in blocks.")
+                    .defineInRange("pumpingStationRadius", 48, 8, 256);
+            waterRequired = builder
+                    .comment("Whether buildings actually suffer without running water.")
+                    .define("waterRequired", true);
             builder.pop();
 
             builder.push("creative");

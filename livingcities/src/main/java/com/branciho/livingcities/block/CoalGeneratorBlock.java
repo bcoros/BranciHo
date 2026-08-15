@@ -1,8 +1,9 @@
 package com.branciho.livingcities.block;
 
 import com.branciho.livingcities.blockentity.CoalGeneratorBlockEntity;
-import com.branciho.livingcities.power.PowerComponent;
-import com.branciho.livingcities.power.PowerRole;
+import com.branciho.livingcities.utility.UtilityComponent;
+import com.branciho.livingcities.utility.UtilityKind;
+import com.branciho.livingcities.utility.UtilityRole;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
@@ -32,7 +33,7 @@ import org.jetbrains.annotations.Nullable;
  * lot of surface for an alpha, and right-clicking a generator with a stack of coal is a reasonable way
  * to load it in the meantime.
  */
-public class CoalGeneratorBlock extends Block implements EntityBlock, PowerComponent {
+public class CoalGeneratorBlock extends Block implements EntityBlock, UtilityComponent {
 
     public static final MapCodec<CoalGeneratorBlock> CODEC = simpleCodec(CoalGeneratorBlock::new);
 
@@ -73,12 +74,17 @@ public class CoalGeneratorBlock extends Block implements EntityBlock, PowerCompo
     }
 
     @Override
-    public PowerRole powerRole() {
-        return PowerRole.GENERATOR;
+    public UtilityKind utilityKind() {
+        return UtilityKind.POWER;
     }
 
     @Override
-    public int generationKw(ServerLevel level, BlockPos pos, BlockState state) {
+    public UtilityRole utilityRole() {
+        return UtilityRole.PRODUCER;
+    }
+
+    @Override
+    public int output(ServerLevel level, BlockPos pos, BlockState state) {
         return level.getBlockEntity(pos) instanceof CoalGeneratorBlockEntity generator
                 ? generator.currentOutputKw()
                 : 0;

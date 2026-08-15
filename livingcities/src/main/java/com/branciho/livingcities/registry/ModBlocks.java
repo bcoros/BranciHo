@@ -9,6 +9,12 @@ import com.branciho.livingcities.block.SolarPanelBlock;
 import com.branciho.livingcities.block.SubstationBlock;
 import com.branciho.livingcities.block.TransmissionPylonBlock;
 import com.branciho.livingcities.block.PathNodeBlock;
+import com.branciho.livingcities.block.PumpingStationBlock;
+import com.branciho.livingcities.block.TransformerBlock;
+import com.branciho.livingcities.block.WaterPipeBlock;
+import com.branciho.livingcities.block.WaterPumpBlock;
+import com.branciho.livingcities.block.WaterTowerBlock;
+import com.branciho.livingcities.block.WindTurbineBlock;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.material.MapColor;
@@ -105,6 +111,62 @@ public final class ModBlocks {
                     .requiresCorrectToolForDrops()
                     // Lit only when actually burning, so a running plant reads at a glance.
                     .lightLevel(state -> state.getValue(CoalGeneratorBlock.LIT) ? 13 : 0));
+
+    public static final DeferredBlock<TransformerBlock> TRANSFORMER = BLOCKS.registerBlock(
+            "transformer",
+            TransformerBlock::new,
+            BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_GRAY)
+                    .strength(3.0F)
+                    .sound(SoundType.METAL)
+                    .requiresCorrectToolForDrops());
+
+    public static final DeferredBlock<WindTurbineBlock> WIND_TURBINE = BLOCKS.registerBlock(
+            "wind_turbine",
+            WindTurbineBlock::new,
+            BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.SNOW)
+                    .strength(2.5F)
+                    .sound(SoundType.METAL)
+                    .requiresCorrectToolForDrops());
+
+    // --- water infrastructure ------------------------------------------------------
+
+    public static final DeferredBlock<WaterPipeBlock> WATER_PIPE = BLOCKS.registerBlock(
+            "water_pipe",
+            WaterPipeBlock::new,
+            BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_LIGHT_BLUE)
+                    .strength(1.0F)
+                    .sound(SoundType.COPPER)
+                    .noOcclusion());
+
+    public static final DeferredBlock<WaterPumpBlock> WATER_PUMP = BLOCKS.registerBlock(
+            "water_pump",
+            WaterPumpBlock::new,
+            BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_BLUE)
+                    .strength(3.0F)
+                    .sound(SoundType.METAL)
+                    .requiresCorrectToolForDrops());
+
+    public static final DeferredBlock<WaterTowerBlock> WATER_TOWER = BLOCKS.registerBlock(
+            "water_tower",
+            WaterTowerBlock::new,
+            BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_LIGHT_BLUE)
+                    .strength(3.0F)
+                    .sound(SoundType.METAL)
+                    .requiresCorrectToolForDrops());
+
+    public static final DeferredBlock<PumpingStationBlock> PUMPING_STATION = BLOCKS.registerBlock(
+            "pumping_station",
+            PumpingStationBlock::new,
+            BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_CYAN)
+                    .strength(3.5F)
+                    .sound(SoundType.METAL)
+                    .requiresCorrectToolForDrops());
 
     public static void register(IEventBus bus) {
         BLOCKS.register(bus);

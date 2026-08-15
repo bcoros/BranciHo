@@ -1,8 +1,9 @@
 package com.branciho.livingcities.block;
 
 import com.branciho.livingcities.config.LivingCitiesConfig;
-import com.branciho.livingcities.power.PowerComponent;
-import com.branciho.livingcities.power.PowerRole;
+import com.branciho.livingcities.utility.UtilityComponent;
+import com.branciho.livingcities.utility.UtilityKind;
+import com.branciho.livingcities.utility.UtilityRole;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
@@ -18,7 +19,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  * <p>Cheap, clean and useless at night, which is the trade the player is meant to feel: an array big
  * enough to run a city by day leaves it dark at 3am unless something else covers the gap.
  */
-public class SolarPanelBlock extends Block implements PowerComponent {
+public class SolarPanelBlock extends Block implements UtilityComponent {
 
     public static final MapCodec<SolarPanelBlock> CODEC = simpleCodec(SolarPanelBlock::new);
 
@@ -39,12 +40,17 @@ public class SolarPanelBlock extends Block implements PowerComponent {
     }
 
     @Override
-    public PowerRole powerRole() {
-        return PowerRole.GENERATOR;
+    public UtilityKind utilityKind() {
+        return UtilityKind.POWER;
     }
 
     @Override
-    public int generationKw(ServerLevel level, BlockPos pos, BlockState state) {
+    public UtilityRole utilityRole() {
+        return UtilityRole.PRODUCER;
+    }
+
+    @Override
+    public int output(ServerLevel level, BlockPos pos, BlockState state) {
         // Buried or roofed panels produce nothing, which is the intuitive result and needs no
         // explaining in a tooltip.
         if (!level.canSeeSky(pos.above())) {

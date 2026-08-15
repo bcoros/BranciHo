@@ -1,7 +1,8 @@
 package com.branciho.livingcities.block;
 
-import com.branciho.livingcities.power.PowerComponent;
-import com.branciho.livingcities.power.PowerRole;
+import com.branciho.livingcities.utility.UtilityComponent;
+import com.branciho.livingcities.utility.UtilityKind;
+import com.branciho.livingcities.utility.UtilityRole;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.world.level.block.Block;
 
@@ -12,7 +13,7 @@ import net.minecraft.world.level.block.Block;
  * by a traced wire is a deliberate abstraction - a real hanging cable would need an entity or a block
  * every metre, and the whole point of a pylon is to span ground the player has not built on.
  */
-public class TransmissionPylonBlock extends Block implements PowerComponent {
+public class TransmissionPylonBlock extends Block implements UtilityComponent {
 
     public static final MapCodec<TransmissionPylonBlock> CODEC = simpleCodec(TransmissionPylonBlock::new);
 
@@ -29,8 +30,13 @@ public class TransmissionPylonBlock extends Block implements PowerComponent {
     }
 
     @Override
-    public PowerRole powerRole() {
-        return PowerRole.PYLON;
+    public UtilityKind utilityKind() {
+        return UtilityKind.POWER;
+    }
+
+    @Override
+    public UtilityRole utilityRole() {
+        return UtilityRole.PYLON;
     }
 
     @Override

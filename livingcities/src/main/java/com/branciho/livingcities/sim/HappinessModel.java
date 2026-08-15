@@ -72,6 +72,7 @@ public final class HappinessModel {
         contributors.add(score(HappinessFactor.SERVICES, servicesScore(snapshot)));
         contributors.add(score(HappinessFactor.FINANCES, financeScore(snapshot)));
         contributors.add(score(HappinessFactor.POWER, powerScore(snapshot)));
+        contributors.add(score(HappinessFactor.WATER, waterScore(snapshot)));
 
         double total = 0.0D;
         for (HappinessBreakdown.Contributor contributor : contributors) {
@@ -89,6 +90,11 @@ public final class HappinessModel {
      */
     private static double powerScore(CitySnapshot snapshot) {
         return snapshot.powerSatisfactionPermille() / 1000.0D;
+    }
+
+    /** As with power, a city drawing no water is not unhappy about a utility it has no use for. */
+    private static double waterScore(CitySnapshot snapshot) {
+        return snapshot.waterSatisfactionPermille() / 1000.0D;
     }
 
     private static HappinessBreakdown.Contributor score(HappinessFactor factor, double value) {

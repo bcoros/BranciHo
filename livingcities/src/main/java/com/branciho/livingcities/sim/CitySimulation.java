@@ -168,14 +168,16 @@ public final class CitySimulation {
         final boolean unpaid = settle(city, state, budget, deltaTicks);
 
         // --- 4. happiness ----------------------------------------------------------------------
-        final int powerPermille = powerSatisfactionPermille(buildings);
+        final int powerPermille = utilitySatisfactionPermille(buildings, true);
+        final int waterPermille = utilitySatisfactionPermille(buildings, false);
         stats.setPowerSatisfactionPermille(powerPermille);
+        stats.setWaterSatisfactionPermille(waterPermille);
 
         final CitySnapshot provisional = new CitySnapshot(
                 city.id(), population, housingCapacity, housed, jobCapacity, employed, workforce,
                 budget.civicCells(), city.claimCount(), count,
                 city.treasuryCents(), budget.dailyIncomeCents(), budget.dailyExpenseCents(),
-                budget.effectiveTaxPermille(), stats.happinessPermille(), powerPermille, unpaid);
+                budget.effectiveTaxPermille(), stats.happinessPermille(), powerPermille, waterPermille, unpaid);
 
         final HappinessBreakdown happiness = HappinessModel.evaluate(provisional);
         stats.setHappinessPermille(happiness.totalPermille());
@@ -202,27 +204,31 @@ public final class CitySimulation {
      * @return true if the city could not cover its bills in full
      */
     /**
-     * How well the city's grid is serving it, weighted by demand.
+     * How well a utility is serving the city, weighted by demand.
      *
      * <p>Weighted rather than averaged per building: a tower drawing a megawatt going dark matters far
-     * more than a shed, and a plain average would let a hundred powered sheds hide it.
+     * more than a shed, and a plain average would let a hundred served sheds hide it.
      *
-     * <p>A city drawing no power at all is fully satisfied. Otherwise a brand new city would open
-     * unhappy about a utility it has not built anything to need yet.
+     * <p>A city drawing nothing is fully satisfied. Otherwise a brand new city would open unhappy
+     * about a utility it has not built anything to need yet.
      */
-    private static int powerSatisfactionPermille(List<Building> buildings) {
-        if (!LivingCitiesConfig.SERVER.powerRequired.get()) {
+    private static int utilitySatisfactionPermille(List<Building> buildings, boolean power) {
+        boolean required = power
+                ? LivingCitiesConfig.SERVER.powerRequired.get()
+                : LivingCitiesConfig.SERVER.waterRequired.get();
+        if (!required) {
             return 1000;
         }
         long demand = 0L;
         double served = 0.0D;
         for (Building building : buildings) {
-            int buildingDemand = building.powerDemandKw();
+            int buildingDemand = power ? building.powerDemandKw() : building.waterDemand();
             if (buildingDemand <= 0) {
                 continue;
             }
             demand += buildingDemand;
-            served += buildingDemand * (double) building.powerSatisfaction();
+            served += buildingDemand
+                    * (double) (power ? building.powerSatisfaction() : building.waterSatisfaction());
         }
         if (demand <= 0L) {
             return 1000;

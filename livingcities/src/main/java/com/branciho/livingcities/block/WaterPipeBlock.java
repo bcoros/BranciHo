@@ -12,19 +12,18 @@ import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 /**
- * Short-range wiring. Carries power between blocks it directly touches.
+ * Carries water between blocks it directly touches.
  *
- * <p>A plain block rather than a block entity on purpose: a city can contain thousands of these, and
- * a block entity each would be thousands of objects for something that stores nothing. The grid walker
- * reads them straight from the world instead.
+ * <p>A plain block, not a block entity: a city can contain thousands, and a block entity each would
+ * be thousands of objects storing nothing. Pipes are meant to be buried and forgotten.
  */
-public class PowerCableBlock extends Block implements UtilityComponent {
+public class WaterPipeBlock extends Block implements UtilityComponent {
 
-    public static final MapCodec<PowerCableBlock> CODEC = simpleCodec(PowerCableBlock::new);
+    public static final MapCodec<WaterPipeBlock> CODEC = simpleCodec(WaterPipeBlock::new);
 
-    private static final VoxelShape SHAPE = Block.box(6.0D, 0.0D, 6.0D, 10.0D, 4.0D, 10.0D);
+    private static final VoxelShape SHAPE = Block.box(5.0D, 0.0D, 5.0D, 11.0D, 6.0D, 11.0D);
 
-    public PowerCableBlock(Properties properties) {
+    public WaterPipeBlock(Properties properties) {
         super(properties);
     }
 
@@ -40,7 +39,7 @@ public class PowerCableBlock extends Block implements UtilityComponent {
 
     @Override
     public UtilityKind utilityKind() {
-        return UtilityKind.POWER;
+        return UtilityKind.WATER;
     }
 
     @Override

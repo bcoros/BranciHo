@@ -112,5 +112,17 @@
   "screen.livingcities.electricity": "Electricity",
   "screen.livingcities.power_shortage": "Power shortage",
   "screen.livingcities.power_ok": "Supplied",
-  "happiness.livingcities.power": "Electricity"
+  "happiness.livingcities.power": "Electricity",
+  "block.livingcities.transformer": "Transformer",
+  "block.livingcities.wind_turbine": "Wind Turbine",
+  "block.livingcities.water_pipe": "Water Pipe",
+  "block.livingcities.water_pump": "Water Pump",
+  "block.livingcities.water_tower": "Water Tower",
+  "block.livingcities.pumping_station": "Pumping Station",
+  "message.livingcities.water_status": "Water: %s supplied / %s demanded (%s%%)",
+  "message.livingcities.water_pending": "Not connected to a water network yet - run pipes to a pump.",
+  "screen.livingcities.water": "Water",
+  "happiness.livingcities.water": "Water",
+  "utility.livingcities.power": "Electricity",
+  "utility.livingcities.water": "Water"
 }
