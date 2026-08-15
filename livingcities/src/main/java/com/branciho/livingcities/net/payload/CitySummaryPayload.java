@@ -25,6 +25,7 @@ public record CitySummaryPayload(
         long dailyIncomeCents,
         long dailyExpenseCents,
         int happinessPermille,
+        int powerSatisfactionPermille,
         int claimedChunks,
         int buildingCount
 ) implements CustomPacketPayload {
@@ -46,6 +47,7 @@ public record CitySummaryPayload(
         buf.writeLong(dailyIncomeCents);
         buf.writeLong(dailyExpenseCents);
         buf.writeVarInt(happinessPermille);
+        buf.writeVarInt(powerSatisfactionPermille);
         buf.writeVarInt(claimedChunks);
         buf.writeVarInt(buildingCount);
     }
@@ -61,6 +63,7 @@ public record CitySummaryPayload(
                 buf.readLong(),
                 buf.readLong(),
                 buf.readLong(),
+                buf.readVarInt(),
                 buf.readVarInt(),
                 buf.readVarInt(),
                 buf.readVarInt());

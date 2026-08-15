@@ -235,6 +235,7 @@ public final class ServerPayloadHandler {
                 city.stats().dailyIncomeCents(),
                 city.stats().dailyExpenseCents(),
                 city.stats().happinessPermille(),
+                city.stats().powerSatisfactionPermille(),
                 city.claimCount(),
                 city.buildingIds().size()));
     }

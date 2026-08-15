@@ -158,6 +158,11 @@ public class CityManagementScreen extends Screen {
         y = row(guiGraphics, left, y, "screen.livingcities.jobs", count(s.employed()) + " / " + count(s.jobs()));
         y = row(guiGraphics, left, y, "screen.livingcities.employment", percentOf(s.employed(), workforce(s)));
         y = row(guiGraphics, left, y, "screen.livingcities.happiness", (s.happinessPermille() / 10) + "%");
+        y = row(guiGraphics, left, y, "screen.livingcities.electricity",
+                s.powerSatisfactionPermille() >= 1000
+                        ? Component.translatable("screen.livingcities.power_ok").getString()
+                        : (s.powerSatisfactionPermille() / 10) + "% "
+                            + Component.translatable("screen.livingcities.power_shortage").getString());
         y += 6;
         y = row(guiGraphics, left, y, "screen.livingcities.territory", count(s.claimedChunks()) + " chunks");
         row(guiGraphics, left, y, "screen.livingcities.buildings", count(s.buildingCount()));

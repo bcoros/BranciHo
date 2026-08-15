@@ -110,5 +110,7 @@
   "message.livingcities.generator_status": "Generating %s kW, %s seconds of fuel left",
   "message.livingcities.generator_full": "This generator is full of fuel.",
   "screen.livingcities.electricity": "Electricity",
-  "screen.livingcities.power_shortage": "Power shortage"
+  "screen.livingcities.power_shortage": "Power shortage",
+  "screen.livingcities.power_ok": "Supplied",
+  "happiness.livingcities.power": "Electricity"
 }
