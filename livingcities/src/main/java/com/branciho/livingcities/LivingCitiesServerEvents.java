@@ -6,6 +6,8 @@ import com.branciho.livingcities.city.City;
 import com.branciho.livingcities.city.CityRegistry;
 import com.branciho.livingcities.net.BuildingActions;
 import com.branciho.livingcities.npc.CitizenSpawnDirector;
+import com.branciho.livingcities.power.PowerGrid;
+import com.branciho.livingcities.power.SubstationIndex;
 import com.branciho.livingcities.scan.BuildingScanService;
 import com.branciho.livingcities.sim.CitySimulation;
 import net.minecraft.server.MinecraftServer;
@@ -41,6 +43,7 @@ public final class LivingCitiesServerEvents {
         // cities so load spreads instead of spiking on one tick. Nothing here loops over every city.
         BuildingScanService.get(server).tick(server);
         CitySimulation.tick(server, registry, gameTime);
+        PowerGrid.get(server).tick(server, registry);
         CitizenSpawnDirector.tick(server, registry);
     }
 
@@ -58,6 +61,8 @@ public final class LivingCitiesServerEvents {
         CitySimulation.reset();
         BuildingActions.reset();
         CitizenSpawnDirector.reset();
+        PowerGrid.resetAll();
+        SubstationIndex.resetAll();
 
         // The scanner deliberately knows nothing about persistence or networking, so the integration
         // layer supplies both: save the new measurements, and push them to anyone looking at the
@@ -85,6 +90,8 @@ public final class LivingCitiesServerEvents {
         // Drops queued scans and abandons any in-flight background analysis, so a shutdown is not held
         // up by a half-scanned skyscraper and its result cannot be applied to a world that is gone.
         BuildingScanService.shutdown(event.getServer());
+        PowerGrid.shutdown(event.getServer());
+        SubstationIndex.shutdown(event.getServer());
         CitySimulation.reset();
         BuildingActions.reset();
         // Discards the tracked entity list; the citizens themselves are noSave() and simply vanish.
@@ -103,6 +110,7 @@ public final class LivingCitiesServerEvents {
         if (event.getState().getBlock() instanceof EntranceMarkerBlock) {
             updateEntrance(event.getLevel(), event.getPos(), false);
         }
+        markPowerDirty(event.getLevel(), event.getState());
         markDirty(event.getLevel(), event.getPos());
     }
 
@@ -111,7 +119,22 @@ public final class LivingCitiesServerEvents {
         if (event.getPlacedBlock().getBlock() instanceof EntranceMarkerBlock) {
             updateEntrance(event.getLevel(), event.getPos(), true);
         }
+        markPowerDirty(event.getLevel(), event.getPlacedBlock());
         markDirty(event.getLevel(), event.getPos());
+    }
+
+    /**
+     * Flag the grid for a rebuild when an electrical block changes.
+     *
+     * <p>Only a flag: the walk itself is deferred and rate limited, because laying a cable run places
+     * a hundred blocks in a few seconds and rebuilding per block would be a hundred full walks.
+     */
+    private static void markPowerDirty(net.minecraft.world.level.LevelAccessor levelAccessor,
+                                       net.minecraft.world.level.block.state.BlockState state) {
+        if (levelAccessor instanceof ServerLevel level
+                && state.getBlock() instanceof com.branciho.livingcities.power.PowerComponent) {
+            PowerGrid.get(level.getServer()).markDirty(level.dimension());
+        }
     }
 
     /**

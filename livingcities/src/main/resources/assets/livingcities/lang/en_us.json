@@ -99,5 +99,16 @@
   "screen.livingcities.tab_buildings": "Buildings",
   "screen.livingcities.open": "Open",
   "screen.livingcities.loading": "Loading...",
-  "screen.livingcities.no_buildings": "No buildings registered yet."
+  "screen.livingcities.no_buildings": "No buildings registered yet.",
+  "block.livingcities.power_cable": "Power Cable",
+  "block.livingcities.transmission_pylon": "Transmission Pylon",
+  "block.livingcities.substation": "Substation",
+  "block.livingcities.solar_panel": "Solar Panel",
+  "block.livingcities.coal_generator": "Coal Generator",
+  "message.livingcities.grid_status": "Grid: %s kW supplied / %s kW demanded (%s%%)",
+  "message.livingcities.grid_pending": "Not connected to a grid yet - place cables to a generator.",
+  "message.livingcities.generator_status": "Generating %s kW, %s seconds of fuel left",
+  "message.livingcities.generator_full": "This generator is full of fuel.",
+  "screen.livingcities.electricity": "Electricity",
+  "screen.livingcities.power_shortage": "Power shortage"
 }

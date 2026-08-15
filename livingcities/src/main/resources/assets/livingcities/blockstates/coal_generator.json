@@ -1,0 +1,6 @@
+{
+  "variants": {
+    "lit=false": { "model": "livingcities:block/coal_generator" },
+    "lit=true":  { "model": "livingcities:block/coal_generator_on" }
+  }
+}

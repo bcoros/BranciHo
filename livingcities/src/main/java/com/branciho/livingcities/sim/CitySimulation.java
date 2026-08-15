@@ -168,11 +168,14 @@ public final class CitySimulation {
         final boolean unpaid = settle(city, state, budget, deltaTicks);
 
         // --- 4. happiness ----------------------------------------------------------------------
+        final int powerPermille = powerSatisfactionPermille(buildings);
+        stats.setPowerSatisfactionPermille(powerPermille);
+
         final CitySnapshot provisional = new CitySnapshot(
                 city.id(), population, housingCapacity, housed, jobCapacity, employed, workforce,
                 budget.civicCells(), city.claimCount(), count,
                 city.treasuryCents(), budget.dailyIncomeCents(), budget.dailyExpenseCents(),
-                budget.effectiveTaxPermille(), stats.happinessPermille(), unpaid);
+                budget.effectiveTaxPermille(), stats.happinessPermille(), powerPermille, unpaid);
 
         final HappinessBreakdown happiness = HappinessModel.evaluate(provisional);
         stats.setHappinessPermille(happiness.totalPermille());
@@ -198,6 +201,35 @@ public final class CitySimulation {
      *
      * @return true if the city could not cover its bills in full
      */
+    /**
+     * How well the city's grid is serving it, weighted by demand.
+     *
+     * <p>Weighted rather than averaged per building: a tower drawing a megawatt going dark matters far
+     * more than a shed, and a plain average would let a hundred powered sheds hide it.
+     *
+     * <p>A city drawing no power at all is fully satisfied. Otherwise a brand new city would open
+     * unhappy about a utility it has not built anything to need yet.
+     */
+    private static int powerSatisfactionPermille(List<Building> buildings) {
+        if (!LivingCitiesConfig.SERVER.powerRequired.get()) {
+            return 1000;
+        }
+        long demand = 0L;
+        double served = 0.0D;
+        for (Building building : buildings) {
+            int buildingDemand = building.powerDemandKw();
+            if (buildingDemand <= 0) {
+                continue;
+            }
+            demand += buildingDemand;
+            served += buildingDemand * (double) building.powerSatisfaction();
+        }
+        if (demand <= 0L) {
+            return 1000;
+        }
+        return (int) Math.round(Math.clamp(served / demand, 0.0D, 1.0D) * 1000.0D);
+    }
+
     private static boolean settle(City city, CitySimState state, CityBudget budget, int deltaTicks) {
         final long netDaily = Math.clamp(budget.netDailyCents(), -MAX_DAILY_FLOW_CENTS, MAX_DAILY_FLOW_CENTS);
 

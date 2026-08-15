@@ -68,6 +68,14 @@ public final class LivingCitiesConfig {
         public final ModConfigSpec.IntValue maxPhysicalNpcs;
         public final ModConfigSpec.DoubleValue npcDensityMultiplier;
 
+        // --- power ---
+        public final ModConfigSpec.DoubleValue kwPerResident;
+        public final ModConfigSpec.DoubleValue kwPerJob;
+        public final ModConfigSpec.IntValue solarPanelKw;
+        public final ModConfigSpec.IntValue coalGeneratorKw;
+        public final ModConfigSpec.IntValue substationRadius;
+        public final ModConfigSpec.BooleanValue powerRequired;
+
         // --- creative / admin ---
         public final ModConfigSpec.BooleanValue creativeBypassesCost;
 
@@ -138,6 +146,30 @@ public final class LivingCitiesConfig {
             npcDensityMultiplier = builder
                     .comment("Scales how busy streets look. 0 disables physical NPCs entirely.")
                     .defineInRange("npcDensityMultiplier", 1.0D, 0.0D, 5.0D);
+            builder.pop();
+
+            builder.push("power");
+            kwPerResident = builder
+                    .comment("Electrical demand per unit of housing capacity, in kilowatts.")
+                    .defineInRange("kwPerResident", 0.5D, 0.0D, 100.0D);
+            kwPerJob = builder
+                    .comment("Electrical demand per job, in kilowatts. Workplaces draw more than homes.")
+                    .defineInRange("kwPerJob", 1.2D, 0.0D, 100.0D);
+            solarPanelKw = builder
+                    .comment("Output of one solar panel in full daylight, in kilowatts.")
+                    .defineInRange("solarPanelKw", 6, 0, 100_000);
+            coalGeneratorKw = builder
+                    .comment("Output of one coal generator while burning, in kilowatts.")
+                    .defineInRange("coalGeneratorKw", 120, 0, 100_000);
+            substationRadius = builder
+                    .comment("How far a substation distributes power to buildings, in blocks.",
+                            "This is the 'do not wire every apartment' radius; raising it makes",
+                            "districts easier to cover and the grid less of a planning problem.")
+                    .defineInRange("substationRadius", 48, 8, 256);
+            powerRequired = builder
+                    .comment("Whether buildings actually suffer without electricity.",
+                            "Turn off to keep the grid as decoration while still simulating a city.")
+                    .define("powerRequired", true);
             builder.pop();
 
             builder.push("creative");

@@ -26,6 +26,11 @@ public final class ModCreativeTabs {
                 output.accept(ModItems.CITY_HALL_CORE_ITEM.get());
                 output.accept(ModItems.ENTRANCE_MARKER_ITEM.get());
                 output.accept(ModItems.PATH_NODE_ITEM.get());
+                output.accept(ModItems.POWER_CABLE_ITEM.get());
+                output.accept(ModItems.TRANSMISSION_PYLON_ITEM.get());
+                output.accept(ModItems.SUBSTATION_ITEM.get());
+                output.accept(ModItems.SOLAR_PANEL_ITEM.get());
+                output.accept(ModItems.COAL_GENERATOR_ITEM.get());
             })
             .build());
 

@@ -71,12 +71,24 @@ public final class HappinessModel {
         contributors.add(score(HappinessFactor.TAXES, taxScore(snapshot)));
         contributors.add(score(HappinessFactor.SERVICES, servicesScore(snapshot)));
         contributors.add(score(HappinessFactor.FINANCES, financeScore(snapshot)));
+        contributors.add(score(HappinessFactor.POWER, powerScore(snapshot)));
 
         double total = 0.0D;
         for (HappinessBreakdown.Contributor contributor : contributors) {
             total += contributor.factor().weight() * contributor.score();
         }
         return new HappinessBreakdown((int) Math.round(clamp01(total) * 1000.0D), contributors);
+    }
+
+    /**
+     * How well the grid is keeping up.
+     *
+     * <p>A city with no buildings drawing power is not unhappy about electricity, so the neutral case
+     * scores full marks rather than zero - otherwise every brand new city would open at 85% mood for
+     * a utility it has no use for yet.
+     */
+    private static double powerScore(CitySnapshot snapshot) {
+        return snapshot.powerSatisfactionPermille() / 1000.0D;
     }
 
     private static HappinessBreakdown.Contributor score(HappinessFactor factor, double value) {

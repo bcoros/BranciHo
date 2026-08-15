@@ -32,6 +32,7 @@ public record CitySnapshot(
         long dailyExpenseCents,
         int effectiveTaxPermille,
         int happinessPermille,
+        int powerSatisfactionPermille,
         boolean unpaidExpenses) {
 
     /** Residents with nowhere to live. Non-zero means housing capacity is the binding constraint. */
@@ -63,6 +64,6 @@ public record CitySnapshot(
     public CitySnapshot withHappiness(int newHappinessPermille) {
         return new CitySnapshot(cityId, population, housingCapacity, housed, jobs, employed, workforce,
                 civicCells, claimedChunks, buildings, treasuryCents, dailyIncomeCents, dailyExpenseCents,
-                effectiveTaxPermille, newHappinessPermille, unpaidExpenses);
+                effectiveTaxPermille, newHappinessPermille, powerSatisfactionPermille, unpaidExpenses);
     }
 }

@@ -2,7 +2,12 @@ package com.branciho.livingcities.registry;
 
 import com.branciho.livingcities.LivingCities;
 import com.branciho.livingcities.block.CityHallCoreBlock;
+import com.branciho.livingcities.block.CoalGeneratorBlock;
 import com.branciho.livingcities.block.EntranceMarkerBlock;
+import com.branciho.livingcities.block.PowerCableBlock;
+import com.branciho.livingcities.block.SolarPanelBlock;
+import com.branciho.livingcities.block.SubstationBlock;
+import com.branciho.livingcities.block.TransmissionPylonBlock;
 import com.branciho.livingcities.block.PathNodeBlock;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
@@ -50,6 +55,56 @@ public final class ModBlocks {
                     .sound(SoundType.STONE)
                     .noOcclusion()
                     .noCollission());
+
+    // --- electrical infrastructure -------------------------------------------------
+
+    public static final DeferredBlock<PowerCableBlock> POWER_CABLE = BLOCKS.registerBlock(
+            "power_cable",
+            PowerCableBlock::new,
+            BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_BROWN)
+                    .strength(0.5F)
+                    .sound(SoundType.WOOL)
+                    .noOcclusion()
+                    .noCollission());
+
+    public static final DeferredBlock<TransmissionPylonBlock> TRANSMISSION_PYLON = BLOCKS.registerBlock(
+            "transmission_pylon",
+            TransmissionPylonBlock::new,
+            BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.METAL)
+                    .strength(2.5F)
+                    .sound(SoundType.METAL)
+                    .requiresCorrectToolForDrops());
+
+    public static final DeferredBlock<SubstationBlock> SUBSTATION = BLOCKS.registerBlock(
+            "substation",
+            SubstationBlock::new,
+            BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_LIGHT_GRAY)
+                    .strength(3.5F)
+                    .sound(SoundType.METAL)
+                    .requiresCorrectToolForDrops());
+
+    public static final DeferredBlock<SolarPanelBlock> SOLAR_PANEL = BLOCKS.registerBlock(
+            "solar_panel",
+            SolarPanelBlock::new,
+            BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_BLUE)
+                    .strength(1.5F)
+                    .sound(SoundType.GLASS)
+                    .noOcclusion());
+
+    public static final DeferredBlock<CoalGeneratorBlock> COAL_GENERATOR = BLOCKS.registerBlock(
+            "coal_generator",
+            CoalGeneratorBlock::new,
+            BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_GRAY)
+                    .strength(3.5F)
+                    .sound(SoundType.METAL)
+                    .requiresCorrectToolForDrops()
+                    // Lit only when actually burning, so a running plant reads at a glance.
+                    .lightLevel(state -> state.getValue(CoalGeneratorBlock.LIT) ? 13 : 0));
 
     public static void register(IEventBus bus) {
         BLOCKS.register(bus);

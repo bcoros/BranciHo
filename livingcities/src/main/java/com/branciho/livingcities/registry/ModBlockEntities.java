@@ -2,6 +2,8 @@ package com.branciho.livingcities.registry;
 
 import com.branciho.livingcities.LivingCities;
 import com.branciho.livingcities.blockentity.CityHallCoreBlockEntity;
+import com.branciho.livingcities.blockentity.CoalGeneratorBlockEntity;
+import com.branciho.livingcities.blockentity.SubstationBlockEntity;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.neoforged.bus.api.IEventBus;
@@ -20,6 +22,14 @@ public final class ModBlockEntities {
     public static final Supplier<BlockEntityType<CityHallCoreBlockEntity>> CITY_HALL_CORE =
             BLOCK_ENTITIES.register("city_hall_core", () ->
                     BlockEntityType.Builder.of(CityHallCoreBlockEntity::new, ModBlocks.CITY_HALL_CORE.get()).build(null));
+
+    public static final Supplier<BlockEntityType<SubstationBlockEntity>> SUBSTATION =
+            BLOCK_ENTITIES.register("substation", () ->
+                    BlockEntityType.Builder.of(SubstationBlockEntity::new, ModBlocks.SUBSTATION.get()).build(null));
+
+    public static final Supplier<BlockEntityType<CoalGeneratorBlockEntity>> COAL_GENERATOR =
+            BLOCK_ENTITIES.register("coal_generator", () ->
+                    BlockEntityType.Builder.of(CoalGeneratorBlockEntity::new, ModBlocks.COAL_GENERATOR.get()).build(null));
 
     public static void register(IEventBus bus) {
         BLOCK_ENTITIES.register(bus);

@@ -49,6 +49,12 @@ public final class Building {
     private int residents;
     private int workers;
 
+    // --- utilities, owned by the power grid ---
+    private int powerDemandKw;
+
+    /** 0..1: how much of this building's electrical demand its grid actually meets. */
+    private float powerSatisfaction;
+
     public Building(UUID id, UUID cityId, String name, BlockPos min, BlockPos max) {
         this.id = id;
         this.cityId = cityId;
@@ -289,6 +295,35 @@ public final class Building {
 
     public void setWorkers(int workers) {
         this.workers = Math.clamp(workers, 0, jobCapacity());
+    }
+
+    public int powerDemandKw() {
+        return powerDemandKw;
+    }
+
+    public void setPowerDemandKw(int powerDemandKw) {
+        this.powerDemandKw = Math.max(0, powerDemandKw);
+    }
+
+    public float powerSatisfaction() {
+        return powerSatisfaction;
+    }
+
+    public void setPowerSatisfaction(float powerSatisfaction) {
+        this.powerSatisfaction = Math.clamp(powerSatisfaction, 0.0F, 1.0F);
+    }
+
+    /** True when the grid meets essentially all of this building's demand. */
+    public boolean isPowered() {
+        return powerSatisfaction >= 0.99F;
+    }
+
+    /** Centre of the building, used for "which substation reaches this". */
+    public BlockPos centre() {
+        return new BlockPos(
+                (min.getX() + max.getX()) / 2,
+                (min.getY() + max.getY()) / 2,
+                (min.getZ() + max.getZ()) / 2);
     }
 
     /** 0..1; how well staffed this building is, which throttles its output. */

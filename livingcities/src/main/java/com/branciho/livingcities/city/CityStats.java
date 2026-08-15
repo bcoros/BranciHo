@@ -19,6 +19,9 @@ public final class CityStats {
     private int employed;
     private int happinessPermille = 700;
 
+    /** 0-1000: demand-weighted share of the city's electrical demand its grids are meeting. */
+    private int powerSatisfactionPermille = 1000;
+
     private long dailyIncomeCents;
     private long dailyExpenseCents;
 
@@ -73,6 +76,14 @@ public final class CityStats {
         this.happinessPermille = Math.clamp(happinessPermille, 0, 1000);
     }
 
+    public int powerSatisfactionPermille() {
+        return powerSatisfactionPermille;
+    }
+
+    public void setPowerSatisfactionPermille(int powerSatisfactionPermille) {
+        this.powerSatisfactionPermille = Math.clamp(powerSatisfactionPermille, 0, 1000);
+    }
+
     public long dailyIncomeCents() {
         return dailyIncomeCents;
     }
@@ -103,6 +114,7 @@ public final class CityStats {
         tag.putInt("Jobs", jobs);
         tag.putInt("Employed", employed);
         tag.putInt("Happiness", happinessPermille);
+        tag.putInt("PowerSatisfaction", powerSatisfactionPermille);
         tag.putLong("DailyIncome", dailyIncomeCents);
         tag.putLong("DailyExpense", dailyExpenseCents);
         tag.putDouble("PopulationRemainder", populationRemainder);
@@ -115,6 +127,7 @@ public final class CityStats {
         this.jobs = tag.getInt("Jobs");
         this.employed = tag.getInt("Employed");
         this.happinessPermille = tag.contains("Happiness") ? tag.getInt("Happiness") : 700;
+        this.powerSatisfactionPermille = tag.contains("PowerSatisfaction") ? tag.getInt("PowerSatisfaction") : 1000;
         this.dailyIncomeCents = tag.getLong("DailyIncome");
         this.dailyExpenseCents = tag.getLong("DailyExpense");
         this.populationRemainder = tag.getDouble("PopulationRemainder");
