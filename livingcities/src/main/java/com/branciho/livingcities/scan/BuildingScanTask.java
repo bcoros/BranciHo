@@ -1,6 +1,7 @@
 package com.branciho.livingcities.scan;
 
 import com.branciho.livingcities.LivingCities;
+import com.branciho.livingcities.block.EntranceMarkerBlock;
 import com.branciho.livingcities.building.Building;
 import it.unimi.dsi.fastutil.objects.Reference2IntOpenHashMap;
 import net.minecraft.Util;
@@ -109,6 +110,11 @@ public final class BuildingScanTask {
     private int cachedChunkZ = Integer.MIN_VALUE;
 
     private @Nullable CompletableFuture<FloorPlan> analysis;
+
+    /** A door every few blocks around a tower is plenty; the cap stops a griefy build eating memory. */
+    private static final int MAX_ENTRANCES = 64;
+
+    private final List<BlockPos> entrances = new ArrayList<>();
     private @Nullable FloorPlan plan;
 
     BuildingScanTask(ServerLevel level, Building building, @Nullable UUID requesterId, ScanSettings settings) {
@@ -163,6 +169,11 @@ public final class BuildingScanTask {
         };
     }
 
+    /** Entrance markers found inside the snapshot, in world coordinates. */
+    public List<BlockPos> entrances() {
+        return entrances;
+    }
+
     private int stepSnapshot(int budget) {
         final int columns = sizeX * sizeZ;
         final BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
@@ -208,6 +219,13 @@ public final class BuildingScanTask {
                     secondSample.set(index, cursor.immutable());
                 }
                 cells[base + y] = (short) index;
+
+                // Free ride on a walk we are already doing: entrance markers placed before the
+                // building was registered would otherwise never be noticed.
+                if (entrances.size() < MAX_ENTRANCES
+                        && state.getBlock() instanceof EntranceMarkerBlock) {
+                    entrances.add(cursor.immutable());
+                }
             }
 
             spent += sizeY;

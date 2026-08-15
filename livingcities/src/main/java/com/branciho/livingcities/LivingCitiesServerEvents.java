@@ -1,5 +1,7 @@
 package com.branciho.livingcities;
 
+import com.branciho.livingcities.block.EntranceMarkerBlock;
+import com.branciho.livingcities.building.Building;
 import com.branciho.livingcities.city.City;
 import com.branciho.livingcities.city.CityRegistry;
 import com.branciho.livingcities.net.BuildingActions;
@@ -98,12 +100,43 @@ public final class LivingCitiesServerEvents {
      */
     @SubscribeEvent
     public static void onBlockBroken(BlockEvent.BreakEvent event) {
+        if (event.getState().getBlock() instanceof EntranceMarkerBlock) {
+            updateEntrance(event.getLevel(), event.getPos(), false);
+        }
         markDirty(event.getLevel(), event.getPos());
     }
 
     @SubscribeEvent
     public static void onBlockPlaced(BlockEvent.EntityPlaceEvent event) {
+        if (event.getPlacedBlock().getBlock() instanceof EntranceMarkerBlock) {
+            updateEntrance(event.getLevel(), event.getPos(), true);
+        }
         markDirty(event.getLevel(), event.getPos());
+    }
+
+    /**
+     * Attach or detach an entrance marker from whatever building contains it.
+     *
+     * <p>Handled live rather than only on a rescan, because placing a door marker and having nothing
+     * happen until you remember to rescan makes the block look broken. A marker outside every
+     * registered building is simply a decorative block.
+     */
+    private static void updateEntrance(net.minecraft.world.level.LevelAccessor levelAccessor,
+                                       net.minecraft.core.BlockPos pos, boolean adding) {
+        if (!(levelAccessor instanceof ServerLevel level)) {
+            return;
+        }
+        CityRegistry registry = CityRegistry.get(level.getServer());
+        Building building = registry.buildingAt(level.dimension(), pos);
+        if (building == null) {
+            return;
+        }
+        if (adding) {
+            building.addEntrance(pos);
+        } else {
+            building.removeEntrance(pos);
+        }
+        registry.setDirty();
     }
 
     private static void markDirty(net.minecraft.world.level.LevelAccessor levelAccessor,

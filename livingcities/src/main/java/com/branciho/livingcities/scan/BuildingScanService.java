@@ -256,6 +256,17 @@ public final class BuildingScanService {
 
         building.replaceFloors(detected);
         building.inheritZoning(previous);
+
+        // Entrances are re-derived rather than merged: a marker the player has since broken must not
+        // survive as a doorway NPCs keep walking to. The snapshot is padded past the registered
+        // bounds, so markers just outside the building are filtered out here.
+        building.entrances().clear();
+        for (BlockPos entrance : task.entrances()) {
+            if (building.contains(entrance)) {
+                building.addEntrance(entrance);
+            }
+        }
+
         building.markScanned(task.level().getGameTime());
 
         listener.onScanComplete(task.level(), building, plan);
