@@ -1,0 +1,5 @@
+{
+  "variants": {
+    "": { "model": "livingcities:block/city_hall_core" }
+  }
+}
