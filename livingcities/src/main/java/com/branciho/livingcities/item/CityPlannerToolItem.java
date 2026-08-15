@@ -114,8 +114,12 @@ public class CityPlannerToolItem extends Item {
         if (selection.isComplete()) {
             tooltip.add(Component.translatable("tooltip.livingcities.selection_volume", selection.volume())
                     .withStyle(ChatFormatting.GRAY));
+            // The step people miss: corners are set on blocks, but registering happens in the air.
+            tooltip.add(Component.translatable("tooltip.livingcities.planner_register")
+                    .withStyle(ChatFormatting.GREEN));
         } else {
             tooltip.add(Component.translatable("tooltip.livingcities.planner_hint").withStyle(ChatFormatting.DARK_GRAY));
         }
+        tooltip.add(Component.translatable("tooltip.livingcities.planner_clear").withStyle(ChatFormatting.DARK_GRAY));
     }
 }

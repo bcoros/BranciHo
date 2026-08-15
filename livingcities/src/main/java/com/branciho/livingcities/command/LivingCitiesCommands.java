@@ -4,6 +4,7 @@ import com.branciho.livingcities.LivingCities;
 import com.branciho.livingcities.city.City;
 import com.branciho.livingcities.city.CityRegistry;
 import com.branciho.livingcities.net.ServerPayloadHandler;
+import com.branciho.livingcities.net.payload.ClaimChunkPayload;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.context.CommandContext;
 import net.minecraft.ChatFormatting;
@@ -28,9 +29,30 @@ public final class LivingCitiesCommands {
     public static void onRegisterCommands(RegisterCommandsEvent event) {
         event.getDispatcher().register(Commands.literal("livingcities")
                 .then(Commands.literal("here").executes(LivingCitiesCommands::here))
+                .then(Commands.literal("claim").executes(context -> claim(context, true)))
+                .then(Commands.literal("unclaim").executes(context -> claim(context, false)))
                 .then(Commands.literal("list")
                         .requires(source -> source.hasPermission(2))
                         .executes(LivingCitiesCommands::list)));
+    }
+
+    /**
+     * Claim or release the chunk the player is standing in.
+     *
+     * <p>Territory rules, pricing and permission checks all live in the packet handler already; this
+     * only builds the same request the UI will eventually send, so there is exactly one code path
+     * deciding whether a claim is allowed.
+     */
+    private static int claim(CommandContext<CommandSourceStack> context, boolean claiming) {
+        CommandSourceStack source = context.getSource();
+        ServerPlayer player = source.getPlayer();
+        if (player == null) {
+            source.sendFailure(Component.translatable("message.livingcities.players_only"));
+            return 0;
+        }
+        ChunkPos chunk = player.chunkPosition();
+        ServerPayloadHandler.claimChunk(player, new ClaimChunkPayload(chunk.x, chunk.z, claiming));
+        return Command.SINGLE_SUCCESS;
     }
 
     private static int here(CommandContext<CommandSourceStack> context) {

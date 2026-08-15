@@ -24,7 +24,7 @@
   "screen.livingcities.happiness": "Happiness",
   "screen.livingcities.territory": "Territory",
   "screen.livingcities.buildings": "Buildings",
-  "tooltip.livingcities.planner_hint": "Right-click: corner A  |  Sneak+right-click: corner B",
+  "tooltip.livingcities.planner_hint": "Right-click a block: corner A  |  Sneak+right-click a block: corner B",
   "tooltip.livingcities.selection_volume": "Selection: %s blocks",
   "message.livingcities.selection_corner": "Corner %s set at %s, %s, %s",
   "message.livingcities.selection_complete": "Corner %s set at %s, %s, %s - selection is %s blocks",
@@ -88,5 +88,7 @@
   "message.livingcities.scan_leaky": "%s is not fully enclosed - some floors could not be measured reliably.",
   "message.livingcities.scan_no_floors": "No floors detected in %s. Check it has enclosed, walkable space.",
   "message.livingcities.scan_too_complex": "%s is too complex to measure; try a tighter selection.",
-  "message.livingcities.scan_unknown_blocks": "%s contains blocks that could not be classified; capacity may be approximate."
+  "message.livingcities.scan_unknown_blocks": "%s contains blocks that could not be classified; capacity may be approximate.",
+  "tooltip.livingcities.planner_register": "Right-click the air to register this building",
+  "tooltip.livingcities.planner_clear": "Sneak+right-click the air to clear"
 }
