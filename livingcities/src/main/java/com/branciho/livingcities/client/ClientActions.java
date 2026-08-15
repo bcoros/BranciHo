@@ -4,6 +4,7 @@ import com.branciho.livingcities.client.screen.BuildingPanelScreen;
 import com.branciho.livingcities.client.screen.CityManagementScreen;
 import com.branciho.livingcities.client.screen.CreateCityScreen;
 import com.branciho.livingcities.net.payload.BuildingDetailPayload;
+import com.branciho.livingcities.net.payload.CityOverlayPayload;
 import com.branciho.livingcities.net.payload.CitySummaryPayload;
 import com.branciho.livingcities.net.payload.OpenCityScreenPayload;
 import net.minecraft.client.Minecraft;
@@ -53,7 +54,12 @@ public final class ClientActions {
         }
     }
 
+    public static void acceptOverlay(CityOverlayPayload payload) {
+        ClientOverlayCache.accept(payload);
+    }
+
     public static void clear() {
         lastSummary = null;
+        ClientOverlayCache.clear();
     }
 }

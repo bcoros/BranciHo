@@ -4,6 +4,9 @@ import com.branciho.livingcities.LivingCities;
 import com.branciho.livingcities.net.payload.AssignBuildingPayload;
 import com.branciho.livingcities.net.payload.BuildingDetailPayload;
 import com.branciho.livingcities.net.payload.CitySummaryPayload;
+import com.branciho.livingcities.net.payload.CityOverlayPayload;
+import com.branciho.livingcities.net.payload.RemoveBuildingPayload;
+import com.branciho.livingcities.net.payload.RequestOverlayPayload;
 import com.branciho.livingcities.net.payload.RescanBuildingPayload;
 import com.branciho.livingcities.net.payload.SetFloorZonePayload;
 import com.branciho.livingcities.net.payload.ClaimChunkPayload;
@@ -52,6 +55,10 @@ public final class LivingCitiesNetwork {
                 LivingCitiesNetwork::onSetFloorZone);
         registrar.playToServer(RescanBuildingPayload.TYPE, RescanBuildingPayload.STREAM_CODEC,
                 LivingCitiesNetwork::onRescanBuilding);
+        registrar.playToServer(RemoveBuildingPayload.TYPE, RemoveBuildingPayload.STREAM_CODEC,
+                LivingCitiesNetwork::onRemoveBuilding);
+        registrar.playToServer(RequestOverlayPayload.TYPE, RequestOverlayPayload.STREAM_CODEC,
+                LivingCitiesNetwork::onRequestOverlay);
 
         // --- server -> client ---
         registrar.playToClient(OpenCityScreenPayload.TYPE, OpenCityScreenPayload.STREAM_CODEC,
@@ -60,6 +67,8 @@ public final class LivingCitiesNetwork {
                 com.branciho.livingcities.client.ClientPayloadHandler::handleCitySummary);
         registrar.playToClient(BuildingDetailPayload.TYPE, BuildingDetailPayload.STREAM_CODEC,
                 com.branciho.livingcities.client.ClientPayloadHandler::handleBuildingDetail);
+        registrar.playToClient(CityOverlayPayload.TYPE, CityOverlayPayload.STREAM_CODEC,
+                com.branciho.livingcities.client.ClientPayloadHandler::handleCityOverlay);
     }
 
     private static void onCreateCity(CreateCityPayload payload, IPayloadContext context) {
@@ -95,6 +104,18 @@ public final class LivingCitiesNetwork {
     private static void onRescanBuilding(RescanBuildingPayload payload, IPayloadContext context) {
         if (context.player() instanceof ServerPlayer player) {
             context.enqueueWork(() -> BuildingActions.rescanBuilding(player, payload));
+        }
+    }
+
+    private static void onRemoveBuilding(RemoveBuildingPayload payload, IPayloadContext context) {
+        if (context.player() instanceof ServerPlayer player) {
+            context.enqueueWork(() -> BuildingActions.removeBuilding(player, payload));
+        }
+    }
+
+    private static void onRequestOverlay(RequestOverlayPayload payload, IPayloadContext context) {
+        if (context.player() instanceof ServerPlayer player) {
+            context.enqueueWork(() -> OverlayActions.requestOverlay(player, payload));
         }
     }
 

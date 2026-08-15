@@ -207,6 +207,29 @@ public final class Building {
         return distinct > 1 ? ZoneUse.SPECIAL : best;
     }
 
+    /**
+     * The single use occupying the most floor area, ignoring unassigned space.
+     *
+     * <p>Distinct from {@link #primaryUse()}, which collapses any mixed building to SPECIAL. For
+     * labelling and colouring you want to know that a mostly-residential tower is residential, even
+     * when its ground floor is shops.
+     */
+    public ZoneUse dominantUse() {
+        ZoneUse best = ZoneUse.UNUSED;
+        int bestArea = 0;
+        for (ZoneUse use : ZoneUse.values()) {
+            if (use == ZoneUse.UNUSED) {
+                continue;
+            }
+            int area = usableCells(use);
+            if (area > bestArea) {
+                bestArea = area;
+                best = use;
+            }
+        }
+        return best;
+    }
+
     public boolean isMixedUse() {
         long distinct = floors.stream()
                 .map(Floor::use)

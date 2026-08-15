@@ -10,6 +10,7 @@ import com.branciho.livingcities.city.CityRole;
 import com.branciho.livingcities.config.LivingCitiesConfig;
 import com.branciho.livingcities.net.payload.AssignBuildingPayload;
 import com.branciho.livingcities.net.payload.BuildingDetailPayload;
+import com.branciho.livingcities.net.payload.RemoveBuildingPayload;
 import com.branciho.livingcities.net.payload.RescanBuildingPayload;
 import com.branciho.livingcities.net.payload.SetFloorZonePayload;
 import com.branciho.livingcities.scan.BuildingScanService;
@@ -135,6 +136,8 @@ public final class BuildingActions {
         // Capacity stays zero until the scan lands; the panel shows it as still being measured.
         BuildingScanService.get(server).enqueue(level, candidate, player);
         sendDetail(player, candidate);
+        // Push the outline out immediately so the new box is visible rather than appearing seconds later.
+        OverlayActions.refreshFor(server, owner);
     }
 
     // ------------------------------------------------------------------ edit
@@ -202,6 +205,42 @@ public final class BuildingActions {
             return;
         }
         BuildingScanService.get(server).enqueue(player.serverLevel(), building, player);
+    }
+
+    // ------------------------------------------------------------------ remove
+
+    /**
+     * Delete a building registration.
+     *
+     * <p>A registration is an invisible box, not a block, so there is no way to break it in the world.
+     * Without an explicit delete, tearing a building down left its registration behind reserving the
+     * ground and rejecting anything rebuilt there as overlapping - a permanent dead spot on the map.
+     */
+    public static void removeBuilding(ServerPlayer player, RemoveBuildingPayload payload) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        CityRegistry registry = CityRegistry.get(server);
+        Building building = registry.building(payload.buildingId());
+        if (building == null) {
+            deny(player, "message.livingcities.building_missing");
+            return;
+        }
+        City city = registry.byId(building.cityId());
+        if (city == null || !ServerPayloadHandler.hasPermission(player, city, CityRole.BUILDER)) {
+            deny(player, "message.livingcities.no_permission");
+            return;
+        }
+
+        String name = building.name();
+        // Cancel any scan first: a result landing afterwards would resurrect the registration.
+        BuildingScanService.get(server).cancel(building.id());
+        registry.removeBuilding(building.id());
+
+        player.displayClientMessage(Component.translatable("message.livingcities.building_removed", name)
+                .withStyle(ChatFormatting.YELLOW), false);
+        OverlayActions.refreshFor(server, city);
     }
 
     // ------------------------------------------------------------------ detail

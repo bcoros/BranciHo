@@ -4,6 +4,7 @@ import com.branciho.livingcities.LivingCities;
 import com.branciho.livingcities.item.CityPlannerToolItem;
 import com.branciho.livingcities.item.SelectionData;
 import com.branciho.livingcities.net.payload.RequestCityDataPayload;
+import com.branciho.livingcities.net.payload.RequestOverlayPayload;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Minecraft;
@@ -17,6 +18,7 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -30,7 +32,11 @@ import net.neoforged.neoforge.network.PacketDistributor;
 @EventBusSubscriber(modid = LivingCities.MOD_ID, bus = EventBusSubscriber.Bus.GAME, value = Dist.CLIENT)
 public final class ClientEvents {
 
+    /** Ticks between overlay refreshes while it is switched on (about two seconds). */
+    private static final int OVERLAY_REFRESH_TICKS = 40;
+
     private static boolean overlayEnabled;
+    private static int overlayRefreshTimer;
 
     private ClientEvents() {
     }
@@ -51,11 +57,32 @@ public final class ClientEvents {
         }
         while (KeyBindings.TOGGLE_OVERLAY.consumeClick()) {
             overlayEnabled = !overlayEnabled;
+            if (overlayEnabled) {
+                PacketDistributor.sendToServer(new RequestOverlayPayload(true));
+            } else {
+                ClientOverlayCache.clear();
+            }
             minecraft.player.displayClientMessage(
                     net.minecraft.network.chat.Component.translatable(overlayEnabled
                             ? "message.livingcities.overlay_on"
                             : "message.livingcities.overlay_off"), true);
         }
+
+        // Refresh while it is on. Territory and buildings change rarely, so this is deliberately slow;
+        // the point is to notice a claim or a demolition, not to stream at frame rate.
+        if (overlayEnabled && ++overlayRefreshTimer >= OVERLAY_REFRESH_TICKS) {
+            overlayRefreshTimer = 0;
+            PacketDistributor.sendToServer(new RequestOverlayPayload(true));
+        }
+    }
+
+    /** Drop cached city data when leaving a world, so it cannot bleed into the next one. */
+    @SubscribeEvent
+    public static void onLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
+        overlayEnabled = false;
+        overlayRefreshTimer = 0;
+        ClientOverlayCache.clear();
+        ClientActions.clear();
     }
 
     @SubscribeEvent
@@ -69,16 +96,21 @@ public final class ClientEvents {
             return;
         }
 
-        AABB box = selectionBox(player);
-        if (box == null) {
-            return;
-        }
-
         PoseStack poseStack = event.getPoseStack();
         if (poseStack == null) {
             return;
         }
         Vec3 camera = event.getCamera().getPosition();
+
+        if (overlayEnabled) {
+            CityOverlayRenderer.render(poseStack, camera);
+        }
+
+        AABB box = selectionBox(player);
+        if (box == null) {
+            return;
+        }
+
         MultiBufferSource.BufferSource buffers = minecraft.renderBuffers().bufferSource();
         VertexConsumer consumer = buffers.getBuffer(RenderType.lines());
 

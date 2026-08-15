@@ -2,6 +2,7 @@ package com.branciho.livingcities.client.screen;
 
 import com.branciho.livingcities.building.ZoneUse;
 import com.branciho.livingcities.net.payload.BuildingDetailPayload;
+import com.branciho.livingcities.net.payload.RemoveBuildingPayload;
 import com.branciho.livingcities.net.payload.RescanBuildingPayload;
 import com.branciho.livingcities.net.payload.SetFloorZonePayload;
 import net.minecraft.ChatFormatting;
@@ -36,6 +37,10 @@ public class BuildingPanelScreen extends Screen {
     private BuildingDetailPayload detail;
     private int page;
 
+    /** Removal asks twice: the thing being deleted has no visible presence to double-check against. */
+    private boolean confirmingRemoval;
+    private Button removeButton;
+
     public BuildingPanelScreen(BuildingDetailPayload detail) {
         super(Component.literal(detail.name()));
         this.detail = detail;
@@ -55,6 +60,8 @@ public class BuildingPanelScreen extends Screen {
 
     @Override
     protected void init() {
+        // A refresh rebuilds the widgets, which must not silently leave a primed delete button.
+        confirmingRemoval = false;
         clampPage();
         int left = (this.width - PANEL_WIDTH) / 2;
         int listTop = 74;
@@ -90,8 +97,24 @@ public class BuildingPanelScreen extends Screen {
 
         addRenderableWidget(Button.builder(Component.translatable("screen.livingcities.rescan"),
                         b -> PacketDistributor.sendToServer(new RescanBuildingPayload(detail.buildingId())))
-                .bounds(left + PANEL_WIDTH - 150, navY, 70, 20)
+                .bounds(left + PANEL_WIDTH - 230, navY, 70, 20)
                 .build());
+
+        // Two-step, because a registration is invisible and deleting the wrong one is hard to notice.
+        this.removeButton = Button.builder(Component.translatable("screen.livingcities.remove"), b -> {
+                    if (confirmingRemoval) {
+                        PacketDistributor.sendToServer(new RemoveBuildingPayload(detail.buildingId()));
+                        onClose();
+                    } else {
+                        confirmingRemoval = true;
+                        b.setMessage(Component.translatable("screen.livingcities.remove_confirm")
+                                .withStyle(ChatFormatting.RED));
+                    }
+                })
+                .bounds(left + PANEL_WIDTH - 156, navY, 76, 20)
+                .build();
+        addRenderableWidget(this.removeButton);
+
         addRenderableWidget(Button.builder(Component.translatable("gui.done"), b -> onClose())
                 .bounds(left + PANEL_WIDTH - 76, navY, 76, 20)
                 .build());

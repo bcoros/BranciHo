@@ -7,6 +7,7 @@ import com.branciho.livingcities.net.BuildingActions;
 import com.branciho.livingcities.city.CityRegistry;
 import com.branciho.livingcities.net.ServerPayloadHandler;
 import com.branciho.livingcities.net.payload.ClaimChunkPayload;
+import com.branciho.livingcities.net.payload.RemoveBuildingPayload;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.context.CommandContext;
 import net.minecraft.ChatFormatting;
@@ -32,6 +33,7 @@ public final class LivingCitiesCommands {
         event.getDispatcher().register(Commands.literal("livingcities")
                 .then(Commands.literal("here").executes(LivingCitiesCommands::here))
                 .then(Commands.literal("building").executes(LivingCitiesCommands::building))
+                .then(Commands.literal("unassign").executes(LivingCitiesCommands::unassign))
                 .then(Commands.literal("claim").executes(context -> claim(context, true)))
                 .then(Commands.literal("unclaim").executes(context -> claim(context, false)))
                 .then(Commands.literal("list")
@@ -60,6 +62,30 @@ public final class LivingCitiesCommands {
             return 0;
         }
         BuildingActions.sendDetail(player, building);
+        return Command.SINGLE_SUCCESS;
+    }
+
+    /**
+     * Delete the registration of the building the player is standing in.
+     *
+     * <p>The panel has a button for this, but the panel needs the registration to still be findable.
+     * A ghost left by a demolished building is exactly the case where it is not, so this reaches it
+     * from a position instead.
+     */
+    private static int unassign(CommandContext<CommandSourceStack> context) {
+        CommandSourceStack source = context.getSource();
+        ServerPlayer player = source.getPlayer();
+        if (player == null) {
+            source.sendFailure(Component.translatable("message.livingcities.players_only"));
+            return 0;
+        }
+        CityRegistry registry = CityRegistry.get(source.getServer());
+        Building building = registry.buildingAt(player.serverLevel().dimension(), player.blockPosition());
+        if (building == null) {
+            source.sendFailure(Component.translatable("message.livingcities.not_in_building"));
+            return 0;
+        }
+        BuildingActions.removeBuilding(player, new RemoveBuildingPayload(building.id()));
         return Command.SINGLE_SUCCESS;
     }
 
