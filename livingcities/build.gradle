@@ -1,0 +1,80 @@
+plugins {
+    id 'java'
+    id 'net.neoforged.moddev'
+}
+
+version = mod_version
+group = mod_group
+base { archivesName = mod_id }
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(21)
+    withSourcesJar()
+}
+
+neoForge {
+    version = neoforge_version
+
+    runs {
+        client {
+            client()
+        }
+        server {
+            server()
+            programArgument '--nogui'
+        }
+        data {
+            data()
+        }
+    }
+
+    mods {
+        "${mod_id}" {
+            sourceSet sourceSets.main
+        }
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+// Expand mod metadata into neoforge.mods.toml / pack.mcmeta so versions live in
+// gradle.properties only.
+final Map<String, String> expandProps = [
+        mod_id            : mod_id,
+        mod_name          : mod_name,
+        mod_version       : mod_version,
+        mod_license       : mod_license,
+        mod_authors       : mod_authors,
+        mod_description   : mod_description,
+        minecraft_version : minecraft_version,
+        neoforge_version  : neoforge_version,
+]
+
+tasks.named('processResources', ProcessResources).configure {
+    inputs.properties(expandProps)
+    filesMatching(['META-INF/neoforge.mods.toml', 'pack.mcmeta']) {
+        expand expandProps
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 21
+    // Surface real problems; do not fail the build on them.
+    options.compilerArgs << '-Xlint:all' << '-Xlint:-processing' << '-Xlint:-serial'
+}
+
+tasks.named('jar', Jar).configure {
+    manifest {
+        attributes([
+                'Specification-Title'     : mod_id,
+                'Specification-Vendor'    : mod_authors,
+                'Specification-Version'   : '1',
+                'Implementation-Title'    : mod_name,
+                'Implementation-Version'  : mod_version,
+                'Implementation-Vendor'   : mod_authors,
+        ])
+    }
+}

@@ -1,0 +1,74 @@
+package com.branciho.livingcities.net;
+
+import com.branciho.livingcities.LivingCities;
+import com.branciho.livingcities.net.payload.CitySummaryPayload;
+import com.branciho.livingcities.net.payload.ClaimChunkPayload;
+import com.branciho.livingcities.net.payload.CreateCityPayload;
+import com.branciho.livingcities.net.payload.OpenCityScreenPayload;
+import com.branciho.livingcities.net.payload.RequestCityDataPayload;
+import net.minecraft.server.level.ServerPlayer;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.network.PacketDistributor;
+import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.neoforged.neoforge.network.registration.PayloadRegistrar;
+
+/**
+ * Payload registration and the server-side send helpers.
+ *
+ * <p>Client-bound handlers live in {@code com.branciho.livingcities.client.ClientPayloadHandler}.
+ * That class is only ever <em>invoked</em> on a client; the method references below are resolved
+ * lazily, and the class itself exposes no client types in its signatures, so a dedicated server can
+ * safely load this class.
+ */
+@EventBusSubscriber(modid = LivingCities.MOD_ID, bus = EventBusSubscriber.Bus.MOD)
+public final class LivingCitiesNetwork {
+
+    /** Bump when the wire format changes incompatibly. */
+    private static final String PROTOCOL_VERSION = "1";
+
+    private LivingCitiesNetwork() {
+    }
+
+    @SubscribeEvent
+    public static void onRegisterPayloads(RegisterPayloadHandlersEvent event) {
+        PayloadRegistrar registrar = event.registrar(PROTOCOL_VERSION);
+
+        // --- client -> server (always treated as untrusted requests) ---
+        registrar.playToServer(CreateCityPayload.TYPE, CreateCityPayload.STREAM_CODEC,
+                LivingCitiesNetwork::onCreateCity);
+        registrar.playToServer(ClaimChunkPayload.TYPE, ClaimChunkPayload.STREAM_CODEC,
+                LivingCitiesNetwork::onClaimChunk);
+        registrar.playToServer(RequestCityDataPayload.TYPE, RequestCityDataPayload.STREAM_CODEC,
+                LivingCitiesNetwork::onRequestCityData);
+
+        // --- server -> client ---
+        registrar.playToClient(OpenCityScreenPayload.TYPE, OpenCityScreenPayload.STREAM_CODEC,
+                com.branciho.livingcities.client.ClientPayloadHandler::handleOpenScreen);
+        registrar.playToClient(CitySummaryPayload.TYPE, CitySummaryPayload.STREAM_CODEC,
+                com.branciho.livingcities.client.ClientPayloadHandler::handleCitySummary);
+    }
+
+    private static void onCreateCity(CreateCityPayload payload, IPayloadContext context) {
+        if (context.player() instanceof ServerPlayer player) {
+            context.enqueueWork(() -> ServerPayloadHandler.createCity(player, payload));
+        }
+    }
+
+    private static void onClaimChunk(ClaimChunkPayload payload, IPayloadContext context) {
+        if (context.player() instanceof ServerPlayer player) {
+            context.enqueueWork(() -> ServerPayloadHandler.claimChunk(player, payload));
+        }
+    }
+
+    private static void onRequestCityData(RequestCityDataPayload payload, IPayloadContext context) {
+        if (context.player() instanceof ServerPlayer player) {
+            context.enqueueWork(() -> ServerPayloadHandler.requestCityData(player, payload));
+        }
+    }
+
+    public static void sendTo(ServerPlayer player, net.minecraft.network.protocol.common.custom.CustomPacketPayload payload) {
+        PacketDistributor.sendToPlayer(player, payload);
+    }
+}
