@@ -1,0 +1,5 @@
+{
+  "variants": {
+    "": { "model": "livingcities:block/path_node" }
+  }
+}

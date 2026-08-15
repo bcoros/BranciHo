@@ -54,7 +54,23 @@ jobs:
 
       - name: Build
         working-directory: livingcities
-        run: ./gradlew --no-daemon --stacktrace build
+        run: |
+          set -o pipefail
+          ./gradlew --no-daemon build 2>&1 | tee "$RUNNER_TEMP/build.log"
+
+      # Gradle stack traces bury the one thing that matters. Re-print just the
+      # compiler errors at the very end of the log so a failure is readable at a glance.
+      - name: Summarise failure
+        if: failure()
+        run: |
+          LOG="$RUNNER_TEMP/build.log"
+          [ -f "$LOG" ] || { echo "no build log produced"; exit 0; }
+          echo "===================== JAVAC ERRORS ====================="
+          grep -E "\.java:[0-9]+: (error|warning):" -A 3 "$LOG" | head -250 || true
+          echo "===================== WHAT WENT WRONG ====================="
+          sed -n '/What went wrong/,/^\* Try:/p' "$LOG" | head -60 || true
+          echo "===================== ERROR LINES ====================="
+          grep -iE "^(FAILURE|Execution failed|Could not resolve|Could not find|error:)" "$LOG" | head -40 || true
 
       - name: Upload mod jar
         uses: actions/upload-artifact@v4

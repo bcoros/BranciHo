@@ -75,6 +75,9 @@ public final class ClientEvents {
         }
 
         PoseStack poseStack = event.getPoseStack();
+        if (poseStack == null) {
+            return;
+        }
         Vec3 camera = event.getCamera().getPosition();
         MultiBufferSource.BufferSource buffers = minecraft.renderBuffers().bufferSource();
         VertexConsumer consumer = buffers.getBuffer(RenderType.lines());

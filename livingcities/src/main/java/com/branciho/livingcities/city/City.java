@@ -5,7 +5,6 @@ import it.unimi.dsi.fastutil.longs.LongSet;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.NbtUtils;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
@@ -201,7 +200,9 @@ public final class City {
         tag.putString("Name", name);
         tag.putUUID("Owner", owner);
         tag.putString("Dimension", dimension.location().toString());
-        tag.put("Core", NbtUtils.writeBlockPos(corePos));
+        tag.putInt("CoreX", corePos.getX());
+        tag.putInt("CoreY", corePos.getY());
+        tag.putInt("CoreZ", corePos.getZ());
         tag.putLong("Treasury", treasuryCents);
         tag.putLongArray("Claims", claimedChunks.toLongArray());
 
@@ -231,7 +232,7 @@ public final class City {
         ResourceKey<Level> dimension = ResourceKey.create(
                 net.minecraft.core.registries.Registries.DIMENSION,
                 ResourceLocation.parse(tag.getString("Dimension")));
-        BlockPos core = NbtUtils.readBlockPos(tag, "Core").orElse(BlockPos.ZERO);
+        BlockPos core = new BlockPos(tag.getInt("CoreX"), tag.getInt("CoreY"), tag.getInt("CoreZ"));
 
         City city = new City(id, dimension, core);
         city.name = tag.getString("Name");

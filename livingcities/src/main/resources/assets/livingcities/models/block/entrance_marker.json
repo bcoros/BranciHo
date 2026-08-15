@@ -1,0 +1,21 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "texture": "livingcities:block/entrance_marker",
+    "particle": "livingcities:block/entrance_marker"
+  },
+  "elements": [
+    {
+      "from": [2, 0, 2],
+      "to": [14, 1, 14],
+      "faces": {
+        "down":  { "uv": [2, 2, 14, 14], "texture": "#texture", "cullface": "down" },
+        "up":    { "uv": [2, 2, 14, 14], "texture": "#texture" },
+        "north": { "uv": [2, 15, 14, 16], "texture": "#texture" },
+        "south": { "uv": [2, 15, 14, 16], "texture": "#texture" },
+        "west":  { "uv": [2, 15, 14, 16], "texture": "#texture" },
+        "east":  { "uv": [2, 15, 14, 16], "texture": "#texture" }
+      }
+    }
+  ]
+}
