@@ -7,6 +7,8 @@ import net.minecraft.server.level.ServerLevel;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.level.BlockEvent;
+import net.neoforged.neoforge.event.server.ServerStartingEvent;
+import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
 /**
@@ -35,6 +37,25 @@ public final class LivingCitiesServerEvents {
         // Still to be attached as their packages land:
         //   BuildingScanService.get(server).tick(server)   - budgeted geometry scans
         //   CitizenSpawnDirector.tick(server, registry)    - representative NPCs
+    }
+
+    /**
+     * Clear the simulation's in-memory caches at both ends of a server's life.
+     *
+     * <p>The simulation keeps per-city scheduling, cash carry and notification cooldowns in static maps
+     * keyed by city id. In single player the JVM outlives the integrated server, so without this a
+     * player who quits to the menu and opens a different world would inherit the previous world's
+     * schedule offsets and warning cooldowns. Resetting on start as well as stop means a crash or an
+     * unclean shutdown cannot leave that state behind either.
+     */
+    @SubscribeEvent
+    public static void onServerStarting(ServerStartingEvent event) {
+        CitySimulation.reset();
+    }
+
+    @SubscribeEvent
+    public static void onServerStopping(ServerStoppingEvent event) {
+        CitySimulation.reset();
     }
 
     /**
