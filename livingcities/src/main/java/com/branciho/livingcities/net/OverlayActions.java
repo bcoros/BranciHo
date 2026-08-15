@@ -9,6 +9,11 @@ import com.branciho.livingcities.net.payload.RequestOverlayPayload;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import com.branciho.livingcities.utility.UtilityComponent;
+import com.branciho.livingcities.utility.UtilityGrid;
+import com.branciho.livingcities.utility.UtilityKind;
+import com.branciho.livingcities.utility.UtilityNetwork;
+import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.ChunkPos;
 
 import java.util.ArrayList;
@@ -46,6 +51,7 @@ public final class OverlayActions {
 
     public static void send(ServerPlayer player, CityRegistry registry) {
         ServerLevel level = player.serverLevel();
+        MinecraftServer server = level.getServer();
         ChunkPos centre = player.chunkPosition();
 
         final List<Long> chunks = new ArrayList<>();
@@ -83,13 +89,53 @@ public final class OverlayActions {
                             building.dominantUse().id(),
                             building.isMixedUse(),
                             building.needsRescan(),
+                            building.isPowered(),
+                            building.hasWater(),
                             building.min().getX(), building.min().getY(), building.min().getZ(),
                             building.max().getX(), building.max().getY(), building.max().getZ()));
                 }
             }
         }
 
-        LivingCitiesNetwork.sendTo(player, new CityOverlayPayload(ownCity != null, chunks, boxes));
+        LivingCitiesNetwork.sendTo(player, new CityOverlayPayload(
+                ownCity != null, chunks, boxes, gatherCoverage(server, level, centre)));
+    }
+
+    /**
+     * Distributors near the player and how far each reaches.
+     *
+     * <p>The single most useful thing the overlay can show: a substation's radius is invisible, so
+     * "why is this block dark" is otherwise unanswerable without counting blocks by hand.
+     */
+    private static List<CityOverlayPayload.Coverage> gatherCoverage(MinecraftServer server,
+                                                                    ServerLevel level, ChunkPos centre) {
+        final List<CityOverlayPayload.Coverage> coverage = new ArrayList<>();
+        final UtilityGrid grid = UtilityGrid.get(server);
+        final int maxDistance = (RADIUS_CHUNKS + 4) * 16;
+
+        for (UtilityKind kind : UtilityKind.values()) {
+            for (UtilityNetwork network : grid.networks(kind, level.dimension())) {
+                for (BlockPos distributor : network.distributors()) {
+                    if (coverage.size() >= CityOverlayPayload.MAX_COVERAGE) {
+                        return coverage;
+                    }
+                    int dx = distributor.getX() - centre.getMiddleBlockX();
+                    int dz = distributor.getZ() - centre.getMiddleBlockZ();
+                    if (Math.abs(dx) > maxDistance || Math.abs(dz) > maxDistance) {
+                        continue;
+                    }
+                    if (!(level.getBlockState(distributor).getBlock() instanceof UtilityComponent component)) {
+                        continue;
+                    }
+                    coverage.add(new CityOverlayPayload.Coverage(
+                            kind.id(),
+                            distributor.getX(), distributor.getY(), distributor.getZ(),
+                            component.coverageRadius(),
+                            network.isOverloaded()));
+                }
+            }
+        }
+        return coverage;
     }
 
     /** Push a refresh to every online member of a city, e.g. after a building is added or removed. */

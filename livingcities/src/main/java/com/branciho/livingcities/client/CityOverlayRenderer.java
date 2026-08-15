@@ -2,6 +2,7 @@ package com.branciho.livingcities.client;
 
 import com.branciho.livingcities.building.ZoneUse;
 import com.branciho.livingcities.net.payload.CityOverlayPayload;
+import com.branciho.livingcities.utility.UtilityKind;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Minecraft;
@@ -32,6 +33,9 @@ public final class CityOverlayRenderer {
     /** Buildings further away than this are skipped; outlines stop being legible long before. */
     private static final double MAX_BUILDING_DISTANCE_SQR = 160.0D * 160.0D;
 
+    /** Coverage rings are large, so they stay visible further out than building outlines. */
+    private static final double MAX_COVERAGE_DISTANCE_SQR = 220.0D * 220.0D;
+
     private CityOverlayRenderer() {
     }
 
@@ -53,6 +57,7 @@ public final class CityOverlayRenderer {
         poseStack.translate(-camera.x, -camera.y, -camera.z);
 
         drawTerritory(poseStack, consumer, overlay, player.getY());
+        drawCoverage(poseStack, consumer, overlay, player.position());
         drawBuildings(poseStack, consumer, overlay, player.position());
 
         poseStack.popPose();
@@ -102,6 +107,48 @@ public final class CityOverlayRenderer {
                 0.30F, 0.85F, 1.00F, 0.55F);
     }
 
+    /**
+     * Ring out each distributor's service radius on the ground.
+     *
+     * <p>Drawn as a ring at the distributor's own height rather than a sphere: the coverage test is a
+     * plain distance check, and a circle on the ground is what a player can actually plan against.
+     * An overloaded network rings red, which turns "the lights are off" into "this one is the problem".
+     */
+    private static void drawCoverage(PoseStack poseStack, VertexConsumer consumer,
+                                     CityOverlayPayload overlay, Vec3 eye) {
+        for (CityOverlayPayload.Coverage entry : overlay.coverage()) {
+            double cx = entry.x() + 0.5D;
+            double cy = entry.y() + 0.5D;
+            double cz = entry.z() + 0.5D;
+            if (eye.distanceToSqr(cx, cy, cz) > MAX_COVERAGE_DISTANCE_SQR) {
+                continue;
+            }
+            boolean water = UtilityKind.WATER.id().equals(entry.kindId());
+            float red = entry.overloaded() ? 1.0F : (water ? 0.30F : 1.00F);
+            float green = entry.overloaded() ? 0.25F : (water ? 0.75F : 0.85F);
+            float blue = entry.overloaded() ? 0.25F : (water ? 1.00F : 0.20F);
+            ring(poseStack, consumer, cx, cy, cz, entry.radius(), red, green, blue);
+        }
+    }
+
+    /** A ring approximated by short segments; enough for the eye, cheap enough to redraw every frame. */
+    private static void ring(PoseStack poseStack, VertexConsumer consumer,
+                             double cx, double cy, double cz, int radius, float r, float g, float b) {
+        final int segments = 64;
+        for (int i = 0; i < segments; i++) {
+            double a0 = (Math.PI * 2 * i) / segments;
+            double a1 = (Math.PI * 2 * (i + 1)) / segments;
+            double x0 = cx + Math.cos(a0) * radius;
+            double z0 = cz + Math.sin(a0) * radius;
+            double x1 = cx + Math.cos(a1) * radius;
+            double z1 = cz + Math.sin(a1) * radius;
+            // renderLineBox on a degenerate box gives a straight segment without a bespoke line helper.
+            LevelRenderer.renderLineBox(poseStack, consumer,
+                    new AABB(Math.min(x0, x1), cy, Math.min(z0, z1), Math.max(x0, x1), cy, Math.max(z0, z1)),
+                    r, g, b, 0.6F);
+        }
+    }
+
     private static void drawBuildings(PoseStack poseStack, VertexConsumer consumer,
                                       CityOverlayPayload overlay, Vec3 eye) {
         for (CityOverlayPayload.BuildingBox box : overlay.buildings()) {
@@ -122,6 +169,11 @@ public final class CityOverlayRenderer {
      * state the player most needs prompting about.
      */
     private static float[] colourFor(CityOverlayPayload.BuildingBox box) {
+        // Utility failure outranks everything else: a building with no power is not doing its job,
+        // whatever it is zoned as.
+        if (!box.powered() || !box.watered()) {
+            return new float[]{1.00F, 0.30F, 0.30F};
+        }
         if (box.needsRescan()) {
             return new float[]{1.00F, 0.72F, 0.15F};
         }
