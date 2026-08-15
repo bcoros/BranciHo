@@ -550,10 +550,27 @@ public final class CitizenSpawnDirector {
 
     /** Distance to the nearest point of the building's box, so a tower counts from its base. */
     private static boolean withinCrowdRadius(Building building, BlockPos origin) {
-        final long dx = origin.getX() - Math.clamp(origin.getX(), building.min().getX(), building.max().getX());
-        final long dy = origin.getY() - Math.clamp(origin.getY(), building.min().getY(), building.max().getY());
-        final long dz = origin.getZ() - Math.clamp(origin.getZ(), building.min().getZ(), building.max().getZ());
+        final long dx = axisGap(origin.getX(), building.min().getX(), building.max().getX());
+        final long dy = axisGap(origin.getY(), building.min().getY(), building.max().getY());
+        final long dz = axisGap(origin.getZ(), building.min().getZ(), building.max().getZ());
         return dx * dx + dy * dy + dz * dz <= (long) CROWD_RADIUS * CROWD_RADIUS;
+    }
+
+    /**
+     * Gap between a coordinate and an inclusive interval, 0 when inside it.
+     *
+     * <p>Written out rather than using {@code Math.clamp} because that throws when {@code min > max},
+     * and a {@code Building} constructed from unnormalised corners would turn a cosmetic subsystem
+     * into a server crash.
+     */
+    private static long axisGap(int value, int min, int max) {
+        if (value < min) {
+            return min - (long) value;
+        }
+        if (value > max) {
+            return value - (long) max;
+        }
+        return 0L;
     }
 
     // ------------------------------------------------------------------ state
