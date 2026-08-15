@@ -15,46 +15,55 @@ package com.branciho.livingcities.building;
 public enum ZoneUse {
 
     /** Scanned but not yet assigned. Contributes nothing. */
-    UNUSED("unused", 0.0D, 0.0D, TaxCategory.NONE),
+    UNUSED("unused", false, 0, TaxCategory.NONE),
 
-    RESIDENTIAL("residential", 4.0D, 0.0D, TaxCategory.RESIDENTIAL),
-    COMMERCIAL("commercial", 0.0D, 3.0D, TaxCategory.COMMERCIAL),
-    OFFICE("office", 0.0D, 5.0D, TaxCategory.OFFICE),
-    INDUSTRIAL("industrial", 0.0D, 1.5D, TaxCategory.INDUSTRIAL),
+    RESIDENTIAL("residential", true, 0, TaxCategory.RESIDENTIAL),
+    COMMERCIAL("commercial", false, 28, TaxCategory.COMMERCIAL),
+    OFFICE("office", false, 14, TaxCategory.OFFICE),
+    INDUSTRIAL("industrial", false, 18, TaxCategory.INDUSTRIAL),
 
-    WAREHOUSE("warehouse", 0.0D, 0.5D, TaxCategory.INDUSTRIAL),
-    GOVERNMENT("government", 0.0D, 3.0D, TaxCategory.NONE),
-    PUBLIC_SERVICE("public_service", 0.0D, 3.0D, TaxCategory.NONE),
-    ENTERTAINMENT("entertainment", 0.0D, 2.5D, TaxCategory.COMMERCIAL),
-    PARK("park", 0.0D, 0.2D, TaxCategory.NONE),
-    TRANSPORT("transport", 0.0D, 1.0D, TaxCategory.NONE),
-    UTILITY("utility", 0.0D, 0.8D, TaxCategory.NONE),
+    WAREHOUSE("warehouse", false, 110, TaxCategory.INDUSTRIAL),
+    GOVERNMENT("government", false, 16, TaxCategory.NONE),
+    PUBLIC_SERVICE("public_service", false, 20, TaxCategory.NONE),
+    ENTERTAINMENT("entertainment", false, 30, TaxCategory.COMMERCIAL),
+    TRANSPORT("transport", false, 45, TaxCategory.NONE),
+    UTILITY("utility", false, 60, TaxCategory.NONE),
+
+    /** Parks earn their keep through happiness and land value, not payroll. */
+    PARK("park", false, 0, TaxCategory.NONE),
 
     /** Anything the player wants to register but that the simulation should not score. */
-    SPECIAL("special", 0.0D, 0.0D, TaxCategory.NONE);
+    SPECIAL("special", false, 0, TaxCategory.NONE);
 
     private final String id;
-    private final double residentsPerHundred;
-    private final double jobsPerHundred;
+    private final boolean housing;
+    private final int cellsPerJob;
     private final TaxCategory taxCategory;
 
-    ZoneUse(String id, double residentsPerHundred, double jobsPerHundred, TaxCategory taxCategory) {
+    /**
+     * @param cellsPerJob usable floor blocks needed per job, or 0 for a use that employs nobody.
+     *                    Expressed as area-per-job rather than jobs-per-area because that is how the
+     *                    number is actually reasoned about ("a desk plus circulation is about 14 blocks")
+     *                    and it keeps the constants readable integers.
+     */
+    ZoneUse(String id, boolean housing, int cellsPerJob, TaxCategory taxCategory) {
         this.id = id;
-        this.residentsPerHundred = residentsPerHundred;
-        this.jobsPerHundred = jobsPerHundred;
+        this.housing = housing;
+        this.cellsPerJob = cellsPerJob;
         this.taxCategory = taxCategory;
+    }
+
+    public int cellsPerJob() {
+        return cellsPerJob;
     }
 
     public String id() {
         return id;
     }
 
-    public double residentsPerHundred() {
-        return residentsPerHundred;
-    }
-
+    /** Jobs per 100 usable floor blocks. Derived from {@link #cellsPerJob()}. */
     public double jobsPerHundred() {
-        return jobsPerHundred;
+        return cellsPerJob <= 0 ? 0.0D : 100.0D / cellsPerJob;
     }
 
     public TaxCategory taxCategory() {
@@ -62,11 +71,11 @@ public enum ZoneUse {
     }
 
     public boolean providesHousing() {
-        return residentsPerHundred > 0.0D;
+        return housing;
     }
 
     public boolean providesJobs() {
-        return jobsPerHundred > 0.0D;
+        return cellsPerJob > 0;
     }
 
     public static ZoneUse byId(String id, ZoneUse fallback) {

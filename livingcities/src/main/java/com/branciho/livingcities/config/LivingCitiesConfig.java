@@ -24,6 +24,21 @@ public final class LivingCitiesConfig {
     private LivingCitiesConfig() {
     }
 
+    /**
+     * The capacity multiplier, or 1.0 if the config has not loaded yet.
+     *
+     * <p>Capacity is computed from plain data objects that can legitimately be constructed before the
+     * server config exists (loading a save, datagen, tests). Reading the raw value there would throw,
+     * so this degrades to the neutral default instead of taking the server down over a tuning knob.
+     */
+    public static double capacityScale() {
+        try {
+            return SERVER.capacityScale.get();
+        } catch (IllegalStateException notLoadedYet) {
+            return 1.0D;
+        }
+    }
+
     public static final class Server {
 
         // --- economy ---
@@ -43,10 +58,7 @@ public final class LivingCitiesConfig {
         public final ModConfigSpec.IntValue maxSelectionVolume;
         public final ModConfigSpec.IntValue maxSelectionHeight;
         public final ModConfigSpec.IntValue scanBlocksPerTick;
-        public final ModConfigSpec.DoubleValue residentsPerHundredBlocks;
-        public final ModConfigSpec.DoubleValue jobsPerHundredBlocksCommercial;
-        public final ModConfigSpec.DoubleValue jobsPerHundredBlocksOffice;
-        public final ModConfigSpec.DoubleValue jobsPerHundredBlocksIndustrial;
+        public final ModConfigSpec.DoubleValue capacityScale;
 
         // --- simulation ---
         public final ModConfigSpec.IntValue simulationIntervalTicks;
@@ -98,15 +110,13 @@ public final class LivingCitiesConfig {
                     .comment("Building scan budget per server tick. Lower is gentler on the tick rate;",
                             "higher finishes large skyscrapers sooner.")
                     .defineInRange("scanBlocksPerTick", 24_000, 1_000, 500_000);
-            residentsPerHundredBlocks = builder
-                    .comment("Residents per 100 usable floor blocks of residential space.")
-                    .defineInRange("residentsPerHundredBlocks", 4.0D, 0.1D, 100.0D);
-            jobsPerHundredBlocksCommercial = builder
-                    .defineInRange("jobsPerHundredBlocksCommercial", 3.0D, 0.1D, 100.0D);
-            jobsPerHundredBlocksOffice = builder
-                    .defineInRange("jobsPerHundredBlocksOffice", 5.0D, 0.1D, 100.0D);
-            jobsPerHundredBlocksIndustrial = builder
-                    .defineInRange("jobsPerHundredBlocksIndustrial", 1.5D, 0.1D, 100.0D);
+            capacityScale = builder
+                    .comment("Global multiplier on every building's residents and jobs.",
+                            "Defaults are tuned so a small house holds 6, an apartment block ~180 and a",
+                            "residential tower ~1800, which is deliberately denser than real life because",
+                            "Minecraft builds are small next to the cities players picture.",
+                            "Set around 0.35 for Cities-Skylines-style realism.")
+                    .defineInRange("capacityScale", 1.0D, 0.05D, 10.0D);
             builder.pop();
 
             builder.push("simulation");
