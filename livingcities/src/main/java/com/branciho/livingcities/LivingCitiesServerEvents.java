@@ -1,6 +1,7 @@
 package com.branciho.livingcities;
 
 import com.branciho.livingcities.city.CityRegistry;
+import com.branciho.livingcities.sim.CitySimulation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -24,23 +25,17 @@ public final class LivingCitiesServerEvents {
     @SubscribeEvent
     public static void onServerTick(ServerTickEvent.Post event) {
         MinecraftServer server = event.getServer();
+        CityRegistry registry = CityRegistry.get(server);
+        long gameTime = server.overworld().getGameTime();
 
-        // Integration point for the staggered subsystems. Each decides internally how often it runs:
-        //   BuildingScanService.get(server).tick(server)          - budgeted geometry scans
-        //   CitySimulation.tick(server, registry, gameTime)       - population, jobs, economy
-        //   CitizenSpawnDirector.tick(server, registry)           - representative NPCs
-        // Wired up as each package lands; keeping the hook here means the tick path is already in place
-        // and reviewed rather than bolted on later.
-        if (server.getTickCount() % IDLE_HEARTBEAT_TICKS == 0) {
-            CityRegistry.get(server);
-        }
+        // Each subsystem decides internally how often it actually runs, and staggers its work across
+        // cities so load spreads instead of spiking on one tick. Nothing here loops over every city.
+        CitySimulation.tick(server, registry, gameTime);
+
+        // Still to be attached as their packages land:
+        //   BuildingScanService.get(server).tick(server)   - budgeted geometry scans
+        //   CitizenSpawnDirector.tick(server, registry)    - representative NPCs
     }
-
-    /**
-     * How often the registry is touched while no subsystem is wired in yet. This exists so the
-     * server-global data is loaded early rather than on the first player interaction.
-     */
-    private static final int IDLE_HEARTBEAT_TICKS = 600;
 
     /**
      * Editing blocks inside a registered building invalidates its measurements.
