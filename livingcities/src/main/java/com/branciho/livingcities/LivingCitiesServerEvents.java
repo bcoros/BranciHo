@@ -1,6 +1,7 @@
 package com.branciho.livingcities;
 
 import com.branciho.livingcities.city.CityRegistry;
+import com.branciho.livingcities.scan.BuildingScanService;
 import com.branciho.livingcities.sim.CitySimulation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -32,11 +33,10 @@ public final class LivingCitiesServerEvents {
 
         // Each subsystem decides internally how often it actually runs, and staggers its work across
         // cities so load spreads instead of spiking on one tick. Nothing here loops over every city.
+        BuildingScanService.get(server).tick(server);
         CitySimulation.tick(server, registry, gameTime);
 
-        // Still to be attached as their packages land:
-        //   BuildingScanService.get(server).tick(server)   - budgeted geometry scans
-        //   CitizenSpawnDirector.tick(server, registry)    - representative NPCs
+        // Still to be attached: CitizenSpawnDirector.tick(server, registry)
     }
 
     /**
@@ -55,6 +55,9 @@ public final class LivingCitiesServerEvents {
 
     @SubscribeEvent
     public static void onServerStopping(ServerStoppingEvent event) {
+        // Drops queued scans and abandons any in-flight background analysis, so a shutdown is not held
+        // up by a half-scanned skyscraper and its result cannot be applied to a world that is gone.
+        BuildingScanService.shutdown(event.getServer());
         CitySimulation.reset();
     }
 
