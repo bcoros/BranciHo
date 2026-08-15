@@ -90,5 +90,6 @@
   "message.livingcities.scan_too_complex": "%s is too complex to measure; try a tighter selection.",
   "message.livingcities.scan_unknown_blocks": "%s contains blocks that could not be classified; capacity may be approximate.",
   "tooltip.livingcities.planner_register": "Right-click the air to register this building",
-  "tooltip.livingcities.planner_clear": "Sneak+right-click the air to clear"
+  "tooltip.livingcities.planner_clear": "Sneak+right-click the air to clear",
+  "message.livingcities.not_in_building": "You are not standing in a registered building."
 }

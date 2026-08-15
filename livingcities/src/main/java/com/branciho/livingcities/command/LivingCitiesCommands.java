@@ -1,7 +1,9 @@
 package com.branciho.livingcities.command;
 
 import com.branciho.livingcities.LivingCities;
+import com.branciho.livingcities.building.Building;
 import com.branciho.livingcities.city.City;
+import com.branciho.livingcities.net.BuildingActions;
 import com.branciho.livingcities.city.CityRegistry;
 import com.branciho.livingcities.net.ServerPayloadHandler;
 import com.branciho.livingcities.net.payload.ClaimChunkPayload;
@@ -29,11 +31,36 @@ public final class LivingCitiesCommands {
     public static void onRegisterCommands(RegisterCommandsEvent event) {
         event.getDispatcher().register(Commands.literal("livingcities")
                 .then(Commands.literal("here").executes(LivingCitiesCommands::here))
+                .then(Commands.literal("building").executes(LivingCitiesCommands::building))
                 .then(Commands.literal("claim").executes(context -> claim(context, true)))
                 .then(Commands.literal("unclaim").executes(context -> claim(context, false)))
                 .then(Commands.literal("list")
                         .requires(source -> source.hasPermission(2))
                         .executes(LivingCitiesCommands::list)));
+    }
+
+    /**
+     * Open the panel for the building the player is standing in.
+     *
+     * <p>Without this the panel was reachable exactly once, at the moment of registration - and at that
+     * moment the scan has not finished, so it opens empty. Closing it stranded the building with no way
+     * back to its zoning controls, which made the mod's central feature look broken.
+     */
+    private static int building(CommandContext<CommandSourceStack> context) {
+        CommandSourceStack source = context.getSource();
+        ServerPlayer player = source.getPlayer();
+        if (player == null) {
+            source.sendFailure(Component.translatable("message.livingcities.players_only"));
+            return 0;
+        }
+        CityRegistry registry = CityRegistry.get(source.getServer());
+        Building building = registry.buildingAt(player.serverLevel().dimension(), player.blockPosition());
+        if (building == null) {
+            source.sendFailure(Component.translatable("message.livingcities.not_in_building"));
+            return 0;
+        }
+        BuildingActions.sendDetail(player, building);
+        return Command.SINGLE_SUCCESS;
     }
 
     /**
