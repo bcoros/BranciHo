@@ -94,5 +94,10 @@
   "message.livingcities.not_in_building": "You are not standing in a registered building.",
   "screen.livingcities.remove": "Remove",
   "screen.livingcities.remove_confirm": "Confirm?",
-  "message.livingcities.building_removed": "Removed the registration for %s"
+  "message.livingcities.building_removed": "Removed the registration for %s",
+  "screen.livingcities.tab_overview": "Overview",
+  "screen.livingcities.tab_buildings": "Buildings",
+  "screen.livingcities.open": "Open",
+  "screen.livingcities.loading": "Loading...",
+  "screen.livingcities.no_buildings": "No buildings registered yet."
 }

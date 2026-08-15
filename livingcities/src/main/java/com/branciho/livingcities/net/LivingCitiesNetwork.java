@@ -3,6 +3,8 @@ package com.branciho.livingcities.net;
 import com.branciho.livingcities.LivingCities;
 import com.branciho.livingcities.net.payload.AssignBuildingPayload;
 import com.branciho.livingcities.net.payload.BuildingDetailPayload;
+import com.branciho.livingcities.net.payload.BuildingListPayload;
+import com.branciho.livingcities.net.payload.RequestBuildingsPayload;
 import com.branciho.livingcities.net.payload.CitySummaryPayload;
 import com.branciho.livingcities.net.payload.CityOverlayPayload;
 import com.branciho.livingcities.net.payload.RemoveBuildingPayload;
@@ -59,6 +61,8 @@ public final class LivingCitiesNetwork {
                 LivingCitiesNetwork::onRemoveBuilding);
         registrar.playToServer(RequestOverlayPayload.TYPE, RequestOverlayPayload.STREAM_CODEC,
                 LivingCitiesNetwork::onRequestOverlay);
+        registrar.playToServer(RequestBuildingsPayload.TYPE, RequestBuildingsPayload.STREAM_CODEC,
+                LivingCitiesNetwork::onRequestBuildings);
 
         // --- server -> client ---
         registrar.playToClient(OpenCityScreenPayload.TYPE, OpenCityScreenPayload.STREAM_CODEC,
@@ -69,6 +73,8 @@ public final class LivingCitiesNetwork {
                 com.branciho.livingcities.client.ClientPayloadHandler::handleBuildingDetail);
         registrar.playToClient(CityOverlayPayload.TYPE, CityOverlayPayload.STREAM_CODEC,
                 com.branciho.livingcities.client.ClientPayloadHandler::handleCityOverlay);
+        registrar.playToClient(BuildingListPayload.TYPE, BuildingListPayload.STREAM_CODEC,
+                com.branciho.livingcities.client.ClientPayloadHandler::handleBuildingList);
     }
 
     private static void onCreateCity(CreateCityPayload payload, IPayloadContext context) {
@@ -110,6 +116,12 @@ public final class LivingCitiesNetwork {
     private static void onRemoveBuilding(RemoveBuildingPayload payload, IPayloadContext context) {
         if (context.player() instanceof ServerPlayer player) {
             context.enqueueWork(() -> BuildingActions.removeBuilding(player, payload));
+        }
+    }
+
+    private static void onRequestBuildings(RequestBuildingsPayload payload, IPayloadContext context) {
+        if (context.player() instanceof ServerPlayer player) {
+            context.enqueueWork(() -> BuildingActions.requestBuildings(player, payload));
         }
     }
 

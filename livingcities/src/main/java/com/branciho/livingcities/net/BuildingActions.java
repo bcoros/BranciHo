@@ -10,6 +10,8 @@ import com.branciho.livingcities.city.CityRole;
 import com.branciho.livingcities.config.LivingCitiesConfig;
 import com.branciho.livingcities.net.payload.AssignBuildingPayload;
 import com.branciho.livingcities.net.payload.BuildingDetailPayload;
+import com.branciho.livingcities.net.payload.BuildingListPayload;
+import com.branciho.livingcities.net.payload.RequestBuildingsPayload;
 import com.branciho.livingcities.net.payload.RemoveBuildingPayload;
 import com.branciho.livingcities.net.payload.RescanBuildingPayload;
 import com.branciho.livingcities.net.payload.SetFloorZonePayload;
@@ -23,6 +25,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -241,6 +244,67 @@ public final class BuildingActions {
         player.displayClientMessage(Component.translatable("message.livingcities.building_removed", name)
                 .withStyle(ChatFormatting.YELLOW), false);
         OverlayActions.refreshFor(server, city);
+    }
+
+    // ------------------------------------------------------------------ list
+
+    /**
+     * Answer a request for either a page of the player's city's buildings, or one building's detail.
+     *
+     * <p>The city is resolved from the player, never from the request, so this cannot be used to page
+     * through a rival's property register.
+     */
+    public static void requestBuildings(ServerPlayer player, RequestBuildingsPayload payload) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        CityRegistry registry = CityRegistry.get(server);
+
+        if (payload.buildingId().isPresent()) {
+            Building building = registry.building(payload.buildingId().get());
+            if (building == null) {
+                deny(player, "message.livingcities.building_missing");
+                return;
+            }
+            City owner = registry.byId(building.cityId());
+            if (owner == null || !ServerPayloadHandler.hasPermission(player, owner, CityRole.CITIZEN)) {
+                deny(player, "message.livingcities.no_permission");
+                return;
+            }
+            sendDetail(player, building);
+            return;
+        }
+
+        City city = registry.citiesOf(player.getUUID()).stream().findFirst().orElse(null);
+        if (city == null) {
+            LivingCitiesNetwork.sendTo(player, new BuildingListPayload(0, 1, 0, List.of()));
+            return;
+        }
+
+        List<Building> all = registry.buildingsOf(city);
+        // Stable ordering, or paging shuffles rows under the player between refreshes.
+        all.sort(Comparator.comparing(Building::name).thenComparing(b -> b.id().toString()));
+
+        int pageCount = Math.max(1, (all.size() + BuildingListPayload.PAGE_SIZE - 1) / BuildingListPayload.PAGE_SIZE);
+        int page = Math.clamp(payload.page(), 0, pageCount - 1);
+        int from = page * BuildingListPayload.PAGE_SIZE;
+        int to = Math.min(from + BuildingListPayload.PAGE_SIZE, all.size());
+
+        List<BuildingListPayload.Row> rows = new ArrayList<>(Math.max(0, to - from));
+        for (int i = from; i < to; i++) {
+            Building building = all.get(i);
+            rows.add(new BuildingListPayload.Row(
+                    building.id(),
+                    building.name(),
+                    building.dominantUse().id(),
+                    building.isMixedUse(),
+                    building.needsRescan(),
+                    building.residents(), building.housingCapacity(),
+                    building.workers(), building.jobCapacity(),
+                    building.min().getX(), building.min().getY(), building.min().getZ()));
+        }
+        LivingCitiesNetwork.sendTo(player, new BuildingListPayload(page, pageCount, all.size(), rows));
     }
 
     // ------------------------------------------------------------------ detail

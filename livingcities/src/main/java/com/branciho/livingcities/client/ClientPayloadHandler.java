@@ -1,6 +1,7 @@
 package com.branciho.livingcities.client;
 
 import com.branciho.livingcities.net.payload.BuildingDetailPayload;
+import com.branciho.livingcities.net.payload.BuildingListPayload;
 import com.branciho.livingcities.net.payload.CityOverlayPayload;
 import com.branciho.livingcities.net.payload.CitySummaryPayload;
 import com.branciho.livingcities.net.payload.OpenCityScreenPayload;
@@ -28,6 +29,10 @@ public final class ClientPayloadHandler {
 
     public static void handleBuildingDetail(BuildingDetailPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> ClientActions.acceptBuildingDetail(payload));
+    }
+
+    public static void handleBuildingList(BuildingListPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> ClientActions.acceptBuildingList(payload));
     }
 
     public static void handleCityOverlay(CityOverlayPayload payload, IPayloadContext context) {

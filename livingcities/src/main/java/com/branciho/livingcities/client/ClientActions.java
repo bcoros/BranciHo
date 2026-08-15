@@ -4,6 +4,7 @@ import com.branciho.livingcities.client.screen.BuildingPanelScreen;
 import com.branciho.livingcities.client.screen.CityManagementScreen;
 import com.branciho.livingcities.client.screen.CreateCityScreen;
 import com.branciho.livingcities.net.payload.BuildingDetailPayload;
+import com.branciho.livingcities.net.payload.BuildingListPayload;
 import com.branciho.livingcities.net.payload.CityOverlayPayload;
 import com.branciho.livingcities.net.payload.CitySummaryPayload;
 import com.branciho.livingcities.net.payload.OpenCityScreenPayload;
@@ -51,6 +52,13 @@ public final class ClientActions {
         switch (payload.screen()) {
             case CREATE_CITY -> minecraft.setScreen(new CreateCityScreen(payload.context()));
             case MANAGEMENT -> minecraft.setScreen(new CityManagementScreen(lastSummary));
+        }
+    }
+
+    /** A page of buildings only makes sense while the management screen is open to receive it. */
+    public static void acceptBuildingList(BuildingListPayload payload) {
+        if (Minecraft.getInstance().screen instanceof CityManagementScreen screen) {
+            screen.acceptBuildings(payload);
         }
     }
 
