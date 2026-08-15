@@ -66,11 +66,7 @@ public final class StreetSpawnFinder {
                                           double maxDistanceSq,
                                           RandomSource random) {
         for (int attempt = 0; attempt < ATTEMPTS; attempt++) {
-            final BlockPos anchor = anchor(building, random);
-            if (anchor == null) {
-                return null;
-            }
-            final BlockPos spot = standableNear(level, anchor);
+            final BlockPos spot = standableNear(level, anchor(building, random));
             if (spot == null) {
                 continue;
             }
@@ -98,7 +94,8 @@ public final class StreetSpawnFinder {
     }
 
     static boolean isStandable(ServerLevel level, int x, int y, int z) {
-        final BlockPos.MutableBlockPos probe = new BlockPos.MutableBlockPos(x, y - 1, z);
+        final BlockPos.MutableBlockPos probe = new BlockPos.MutableBlockPos();
+        probe.set(x, y - 1, z);
         // Unloaded chunks read as air and would happily pass every test below, so this check has to
         // come first. It also stops a spawn attempt from forcing a chunk load.
         if (!level.isLoaded(probe)) {
@@ -124,7 +121,7 @@ public final class StreetSpawnFinder {
 
     // ------------------------------------------------------------------ anchors
 
-    private static @Nullable BlockPos anchor(Building building, RandomSource random) {
+    private static BlockPos anchor(Building building, RandomSource random) {
         final Set<BlockPos> entrances = building.entrances();
         if (!entrances.isEmpty()) {
             final BlockPos entrance = pick(entrances, random);

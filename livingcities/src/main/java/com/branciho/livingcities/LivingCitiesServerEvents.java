@@ -3,6 +3,7 @@ package com.branciho.livingcities;
 import com.branciho.livingcities.city.City;
 import com.branciho.livingcities.city.CityRegistry;
 import com.branciho.livingcities.net.BuildingActions;
+import com.branciho.livingcities.npc.CitizenSpawnDirector;
 import com.branciho.livingcities.scan.BuildingScanService;
 import com.branciho.livingcities.sim.CitySimulation;
 import net.minecraft.server.MinecraftServer;
@@ -38,8 +39,7 @@ public final class LivingCitiesServerEvents {
         // cities so load spreads instead of spiking on one tick. Nothing here loops over every city.
         BuildingScanService.get(server).tick(server);
         CitySimulation.tick(server, registry, gameTime);
-
-        // Still to be attached: CitizenSpawnDirector.tick(server, registry)
+        CitizenSpawnDirector.tick(server, registry);
     }
 
     /**
@@ -55,6 +55,7 @@ public final class LivingCitiesServerEvents {
     public static void onServerStarting(ServerStartingEvent event) {
         CitySimulation.reset();
         BuildingActions.reset();
+        CitizenSpawnDirector.reset();
 
         // The scanner deliberately knows nothing about persistence or networking, so the integration
         // layer supplies both: save the new measurements, and push them to anyone looking at the
@@ -84,6 +85,8 @@ public final class LivingCitiesServerEvents {
         BuildingScanService.shutdown(event.getServer());
         CitySimulation.reset();
         BuildingActions.reset();
+        // Discards the tracked entity list; the citizens themselves are noSave() and simply vanish.
+        CitizenSpawnDirector.reset();
     }
 
     /**
