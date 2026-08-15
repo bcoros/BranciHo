@@ -83,5 +83,10 @@
   "zone.livingcities.park": "Park",
   "zone.livingcities.transport": "Transport",
   "zone.livingcities.utility": "Utility",
-  "zone.livingcities.special": "Special"
+  "zone.livingcities.special": "Special",
+  "message.livingcities.scan_cancelled": "Scan of %s cancelled.",
+  "message.livingcities.scan_leaky": "%s is not fully enclosed - some floors could not be measured reliably.",
+  "message.livingcities.scan_no_floors": "No floors detected in %s. Check it has enclosed, walkable space.",
+  "message.livingcities.scan_too_complex": "%s is too complex to measure; try a tighter selection.",
+  "message.livingcities.scan_unknown_blocks": "%s contains blocks that could not be classified; capacity may be approximate."
 }
