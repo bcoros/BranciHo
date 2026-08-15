@@ -15,24 +15,22 @@ import java.util.Set;
  * half-applied floor list behind.
  */
 public record DetectedFloor(
-        /** World Y the feet of someone standing on this floor occupy. */
+        // World Y the feet of someone standing on this floor occupy.
         int floorY,
-        /** Inclusive world Y range this storey owns, up to the next floor or the top of the build. */
+        // Inclusive world Y range this storey owns, up to the next floor or the top of the build.
         int yMin,
         int yMax,
-        /** Standable cells inside the footprint, before enclosure. The ceiling for any player override. */
+        // Standable cells in the footprint, before enclosure. The ceiling for any player override.
         int standCells,
-        /** Standable, enclosed, head-clear cells. This is the number that becomes population. */
+        // Standable, enclosed, head-clear cells. This is the number that becomes population.
         int usableCells,
-        /** Median clear height over the usable cells, capped to the storey's own Y range. */
+        // Median clear height over the usable cells, capped to the storey's own Y range.
         int ceilingHeight,
-        /**
-         * The enclosure fill leaked - the floor is roofed but not sealed, so this figure came from
-         * the fallback estimator. Worth surfacing in the UI rather than hiding: it usually means one
-         * missing block in a wall, which the player can fix in five seconds if they are told.
-         */
+        // The enclosure fill leaked - the floor is roofed but not sealed, so this figure came from
+        // the fallback estimator. Worth surfacing rather than hiding: it usually means one missing
+        // block in a wall, which the player can fix in seconds once they are told.
         boolean leaky,
-        /** Extra world heights absorbed into this storey, for hillside and split-level builds. */
+        // Extra world heights absorbed into this storey, for hillside and split-level builds.
         List<Integer> subLevelYs,
         Set<FloorFlag> flags) {
 

@@ -15,18 +15,18 @@ package com.branciho.livingcities.scan;
  */
 public record BlockProfile(
         BlockClass blockClass,
-        /** Highest point of the collision shape, 0..1 (or above 1 for fences). 0 when there is none. */
+        // Highest point of the collision shape, 0..1 (above 1 for fences). 0 when there is none.
         float collisionTopY,
-        /** Bounding-box volume of the collision shape; a cheap "how much does this obstruct" scalar. */
+        // Bounding-box volume of the collision shape; a cheap "how much does this obstruct" scalar.
         float collisionVolume,
-        /** {@code isFaceSturdy(UP)} - does the top face cover the full 1x1 area. */
+        // isFaceSturdy(UP): does the top face cover the full 1x1 area.
         boolean sturdyTop,
         boolean blocksMotion,
         boolean occludes,
         boolean solidRender,
-        /** Machinery and furniture marker: such a cell is occupied, not void. */
+        // Machinery and furniture marker: such a cell is occupied, not void.
         boolean hasBlockEntity,
-        /** The shape differed between two sampled positions, so the per-state profile is approximate. */
+        // The shape differed between two sampled positions, so this profile is an approximation.
         boolean positionSensitive,
         int lightEmission) {
 
@@ -41,8 +41,13 @@ public record BlockProfile(
     public static final BlockProfile AIR =
             new BlockProfile(BlockClass.OPEN, 0.0F, 0.0F, false, false, false, false, false, false, 0);
 
-    /** Shared profile for a technical block that must not shape the building at all. */
-    public static final BlockProfile EXCLUDED =
+    /**
+     * Shared profile for a technical block that must not shape the building at all.
+     *
+     * <p>Named {@code TECHNICAL} rather than {@code EXCLUDED} so it can never be confused with the
+     * {@link BlockClass#EXCLUDED} case label a few lines below.
+     */
+    public static final BlockProfile TECHNICAL =
             new BlockProfile(BlockClass.EXCLUDED, 0.0F, 0.0F, false, false, false, false, false, false, 0);
 
     /**

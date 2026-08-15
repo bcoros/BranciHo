@@ -12,13 +12,13 @@ import java.util.List;
  */
 public record FloorPlan(
         List<DetectedFloor> floors,
-        /** Heights that looked like a storey before validation. */
+        // Heights that looked like a storey before validation.
         int candidateCount,
-        /** Candidates validation rejected: roofs, terrain, scaffolding, crawlspaces. */
+        // Candidates validation rejected: roofs, terrain, scaffolding, crawlspaces.
         int rejectedCount,
-        /** Floors whose usable area came from the fallback estimator rather than a clean fill. */
+        // Floors whose usable area came from the fallback estimator rather than a clean fill.
         int leakyFloorCount,
-        /** Distinct block states that threw while being profiled. Nonzero means a mod incompatibility. */
+        // Distinct block states that threw while being profiled. Nonzero means a mod incompatibility.
         int unknownStates,
         int paletteSize,
         long analysisNanos) {

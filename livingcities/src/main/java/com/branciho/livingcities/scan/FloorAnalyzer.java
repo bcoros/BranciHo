@@ -482,7 +482,7 @@ public final class FloorAnalyzer {
             storey.largestComponent = largestComponent(storey.usable);
 
             final int cap = cfg.maxCeilingProbe();
-            final int[] histogram = new int[cap + 1];
+            final int[] heights = new int[cap + 1];
             int counted = 0;
             int covered = 0;
             for (int w = 0; w < words; w++) {
@@ -491,7 +491,7 @@ public final class FloorAnalyzer {
                     final int cell = (w << 6) + Long.numberOfTrailingZeros(bits);
                     bits &= bits - 1L;
                     final int height = clearHeight(cell % sizeX, floorY, cell / sizeX, cap);
-                    histogram[height]++;
+                    heights[height]++;
                     counted++;
                     if (height < cap) {
                         covered++;
@@ -499,7 +499,7 @@ public final class FloorAnalyzer {
                 }
             }
             storey.coveredFraction = counted == 0 ? 0.0F : covered / (float) counted;
-            storey.medianCeiling = counted == 0 ? 0 : median(histogram, counted);
+            storey.medianCeiling = counted == 0 ? 0 : median(heights, counted);
         }
 
         /**

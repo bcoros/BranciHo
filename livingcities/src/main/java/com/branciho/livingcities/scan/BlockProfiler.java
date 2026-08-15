@@ -65,7 +65,7 @@ public final class BlockProfiler {
         // Technical blocks are handled before any geometry is looked at, because the whole point is
         // that their geometry must not be reasoned about.
         if (state.is(SCAN_EXCLUDED)) {
-            return BlockProfile.EXCLUDED;
+            return BlockProfile.TECHNICAL;
         }
         if (state.isAir()) {
             return BlockProfile.AIR;
