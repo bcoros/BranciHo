@@ -1,10 +1,13 @@
 package com.branciho.livingcities;
 
+import com.branciho.livingcities.city.City;
 import com.branciho.livingcities.city.CityRegistry;
+import com.branciho.livingcities.net.BuildingActions;
 import com.branciho.livingcities.scan.BuildingScanService;
 import com.branciho.livingcities.sim.CitySimulation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.level.BlockEvent;
@@ -51,6 +54,27 @@ public final class LivingCitiesServerEvents {
     @SubscribeEvent
     public static void onServerStarting(ServerStartingEvent event) {
         CitySimulation.reset();
+        BuildingActions.reset();
+
+        // The scanner deliberately knows nothing about persistence or networking, so the integration
+        // layer supplies both: save the new measurements, and push them to anyone looking at the
+        // building. Without the second half, a player watching the panel sees "measuring..." forever
+        // even though the scan finished.
+        BuildingScanService.get(event.getServer()).setListener((level, building, plan) -> {
+            MinecraftServer server = level.getServer();
+            CityRegistry registry = CityRegistry.get(server);
+            registry.setDirty();
+
+            City city = registry.byId(building.cityId());
+            if (city == null) {
+                return;
+            }
+            for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+                if (city.roleOf(player.getUUID()) != null || player.hasPermissions(2)) {
+                    BuildingActions.sendDetail(player, building);
+                }
+            }
+        });
     }
 
     @SubscribeEvent
@@ -59,6 +83,7 @@ public final class LivingCitiesServerEvents {
         // up by a half-scanned skyscraper and its result cannot be applied to a world that is gone.
         BuildingScanService.shutdown(event.getServer());
         CitySimulation.reset();
+        BuildingActions.reset();
     }
 
     /**

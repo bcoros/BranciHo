@@ -1,7 +1,9 @@
 package com.branciho.livingcities.client;
 
+import com.branciho.livingcities.client.screen.BuildingPanelScreen;
 import com.branciho.livingcities.client.screen.CityManagementScreen;
 import com.branciho.livingcities.client.screen.CreateCityScreen;
+import com.branciho.livingcities.net.payload.BuildingDetailPayload;
 import com.branciho.livingcities.net.payload.CitySummaryPayload;
 import com.branciho.livingcities.net.payload.OpenCityScreenPayload;
 import net.minecraft.client.Minecraft;
@@ -24,6 +26,22 @@ public final class ClientActions {
         lastSummary = payload;
         if (Minecraft.getInstance().screen instanceof CityManagementScreen screen) {
             screen.refresh(payload);
+        }
+    }
+
+    /**
+     * Show a building's details, opening the panel if it is not already the active screen.
+     *
+     * <p>Refreshing in place matters: a scan finishing, or a zone change being accepted, arrives while
+     * the player is looking at the panel, and replacing the screen would reset their scroll position
+     * and steal focus mid-click.
+     */
+    public static void acceptBuildingDetail(BuildingDetailPayload payload) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.screen instanceof BuildingPanelScreen panel) {
+            panel.refresh(payload);
+        } else {
+            minecraft.setScreen(new BuildingPanelScreen(payload));
         }
     }
 

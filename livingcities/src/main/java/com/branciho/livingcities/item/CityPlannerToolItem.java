@@ -1,7 +1,10 @@
 package com.branciho.livingcities.item;
 
 import com.branciho.livingcities.config.LivingCitiesConfig;
+import com.branciho.livingcities.net.BuildingActions;
+import com.branciho.livingcities.net.payload.AssignBuildingPayload;
 import com.branciho.livingcities.registry.ModDataComponents;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -54,9 +57,18 @@ public class CityPlannerToolItem extends Item {
         return InteractionResult.sidedSuccess(context.getLevel().isClientSide());
     }
 
+    /**
+     * In the air: sneak to clear the selection, or use normally to register it as a building.
+     *
+     * <p>Registration is driven entirely from the server's own copy of the selection component rather
+     * than from a packet carrying coordinates. The server already has the authoritative corners — it
+     * wrote them in {@link #useOn} — so there is simply nothing here for a modified client to lie about.
+     */
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
+        SelectionData selection = selectionOf(stack);
+
         if (player.isShiftKeyDown()) {
             if (!level.isClientSide()) {
                 stack.set(ModDataComponents.SELECTION.get(), SelectionData.EMPTY);
@@ -65,7 +77,20 @@ public class CityPlannerToolItem extends Item {
             }
             return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
         }
-        return InteractionResultHolder.pass(stack);
+
+        if (!selection.isComplete()) {
+            if (!level.isClientSide()) {
+                player.displayClientMessage(
+                        Component.translatable("message.livingcities.selection_incomplete").withStyle(ChatFormatting.GRAY), true);
+            }
+            return InteractionResultHolder.pass(stack);
+        }
+
+        if (!level.isClientSide() && player instanceof ServerPlayer serverPlayer) {
+            BuildingActions.assignBuilding(serverPlayer, new AssignBuildingPayload(
+                    selection.pointA().orElseThrow(), selection.pointB().orElseThrow(), ""));
+        }
+        return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
     }
 
     private void feedback(Player player, SelectionData selection, String corner, BlockPos pos) {

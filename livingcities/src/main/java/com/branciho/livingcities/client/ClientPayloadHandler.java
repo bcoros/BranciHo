@@ -1,5 +1,6 @@
 package com.branciho.livingcities.client;
 
+import com.branciho.livingcities.net.payload.BuildingDetailPayload;
 import com.branciho.livingcities.net.payload.CitySummaryPayload;
 import com.branciho.livingcities.net.payload.OpenCityScreenPayload;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
@@ -22,5 +23,9 @@ public final class ClientPayloadHandler {
 
     public static void handleCitySummary(CitySummaryPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> ClientActions.acceptSummary(payload));
+    }
+
+    public static void handleBuildingDetail(BuildingDetailPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> ClientActions.acceptBuildingDetail(payload));
     }
 }

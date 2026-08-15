@@ -1,7 +1,11 @@
 package com.branciho.livingcities.net;
 
 import com.branciho.livingcities.LivingCities;
+import com.branciho.livingcities.net.payload.AssignBuildingPayload;
+import com.branciho.livingcities.net.payload.BuildingDetailPayload;
 import com.branciho.livingcities.net.payload.CitySummaryPayload;
+import com.branciho.livingcities.net.payload.RescanBuildingPayload;
+import com.branciho.livingcities.net.payload.SetFloorZonePayload;
 import com.branciho.livingcities.net.payload.ClaimChunkPayload;
 import com.branciho.livingcities.net.payload.CreateCityPayload;
 import com.branciho.livingcities.net.payload.OpenCityScreenPayload;
@@ -42,12 +46,20 @@ public final class LivingCitiesNetwork {
                 LivingCitiesNetwork::onClaimChunk);
         registrar.playToServer(RequestCityDataPayload.TYPE, RequestCityDataPayload.STREAM_CODEC,
                 LivingCitiesNetwork::onRequestCityData);
+        registrar.playToServer(AssignBuildingPayload.TYPE, AssignBuildingPayload.STREAM_CODEC,
+                LivingCitiesNetwork::onAssignBuilding);
+        registrar.playToServer(SetFloorZonePayload.TYPE, SetFloorZonePayload.STREAM_CODEC,
+                LivingCitiesNetwork::onSetFloorZone);
+        registrar.playToServer(RescanBuildingPayload.TYPE, RescanBuildingPayload.STREAM_CODEC,
+                LivingCitiesNetwork::onRescanBuilding);
 
         // --- server -> client ---
         registrar.playToClient(OpenCityScreenPayload.TYPE, OpenCityScreenPayload.STREAM_CODEC,
                 com.branciho.livingcities.client.ClientPayloadHandler::handleOpenScreen);
         registrar.playToClient(CitySummaryPayload.TYPE, CitySummaryPayload.STREAM_CODEC,
                 com.branciho.livingcities.client.ClientPayloadHandler::handleCitySummary);
+        registrar.playToClient(BuildingDetailPayload.TYPE, BuildingDetailPayload.STREAM_CODEC,
+                com.branciho.livingcities.client.ClientPayloadHandler::handleBuildingDetail);
     }
 
     private static void onCreateCity(CreateCityPayload payload, IPayloadContext context) {
@@ -65,6 +77,24 @@ public final class LivingCitiesNetwork {
     private static void onRequestCityData(RequestCityDataPayload payload, IPayloadContext context) {
         if (context.player() instanceof ServerPlayer player) {
             context.enqueueWork(() -> ServerPayloadHandler.requestCityData(player, payload));
+        }
+    }
+
+    private static void onAssignBuilding(AssignBuildingPayload payload, IPayloadContext context) {
+        if (context.player() instanceof ServerPlayer player) {
+            context.enqueueWork(() -> BuildingActions.assignBuilding(player, payload));
+        }
+    }
+
+    private static void onSetFloorZone(SetFloorZonePayload payload, IPayloadContext context) {
+        if (context.player() instanceof ServerPlayer player) {
+            context.enqueueWork(() -> BuildingActions.setFloorZone(player, payload));
+        }
+    }
+
+    private static void onRescanBuilding(RescanBuildingPayload payload, IPayloadContext context) {
+        if (context.player() instanceof ServerPlayer player) {
+            context.enqueueWork(() -> BuildingActions.rescanBuilding(player, payload));
         }
     }
 
