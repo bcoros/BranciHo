@@ -101,5 +101,6 @@
   "message.citiesinlife.line_built": "Power line connected, %s blocks.",
   "message.citiesinlife.line_removed": "Power line cut.",
   "block.citiesinlife.factory_output": "Factory Output Crate",
-  "screen.citiesinlife.factory_hint": "Put one item here to choose what this factory makes"
+  "screen.citiesinlife.factory_hint": "Put one item here to choose what this factory makes",
+  "message.citiesinlife.too_tall": "That selection is too tall to measure."
 }

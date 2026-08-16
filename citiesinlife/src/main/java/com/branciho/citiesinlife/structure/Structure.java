@@ -182,10 +182,25 @@ public final class Structure {
                 new BlockPos(tag.getInt("minX"), tag.getInt("minY"), tag.getInt("minZ")),
                 new BlockPos(tag.getInt("maxX"), tag.getInt("maxY"), tag.getInt("maxZ")));
         structure.measureMode = MeasureMode.byId(tag.getString("measure"), MeasureMode.FLOORS);
-        structure.usableCells = tag.getInt("cells");
+
         ListTag floorList = tag.getList("floors", Tag.TAG_COMPOUND);
         for (int i = 0; i < floorList.size(); i++) {
             structure.floors.add(Floor.load(floorList.getCompound(i)));
+        }
+
+        // Saves written before the measurement mode existed have no "cells" tag: capacity was
+        // derived by summing the floors. Reading it as a plain getInt gives 0, which then propagates
+        // through the simulation and permanently zeroes the population of an existing city. Falling
+        // back to the floor sum is exact for that data, because block-volume measuring did not exist
+        // yet, so every old structure was floor-measured.
+        if (tag.contains("cells")) {
+            structure.usableCells = tag.getInt("cells");
+        } else {
+            int total = 0;
+            for (Floor floor : structure.floors) {
+                total += floor.usableCells();
+            }
+            structure.usableCells = total;
         }
         return structure;
     }

@@ -36,8 +36,14 @@ public final class CityData extends SavedData {
 
     private static final String FILE_ID = "citiesinlife";
 
-    /** Bumped whenever the on-disk shape changes, so old saves can be migrated rather than corrupted. */
-    private static final int DATA_VERSION = 1;
+    /**
+     * Bumped whenever the on-disk shape changes, so old saves can be migrated rather than corrupted.
+     *
+     * <p>2 marks the addition of a structure's stored cell count and measurement mode. It was left at
+     * 1 when those fields were added, so nothing noticed the format change and old worlds loaded
+     * silently wrong.
+     */
+    private static final int DATA_VERSION = 2;
 
     private final Map<UUID, City> cities = new LinkedHashMap<>();
     private final Map<UUID, Structure> structures = new LinkedHashMap<>();

@@ -30,6 +30,9 @@ public final class StructureScanner {
     /** Biggest footprint on either horizontal axis. */
     public static final int MAX_SPAN = 128;
 
+    /** Biggest vertical span. Taller than any building, and a bound on the per-column arrays. */
+    public static final int MAX_HEIGHT = 384;
+
     /** Headroom a cell needs above it before a person could plausibly occupy it. */
     private static final int REQUIRED_HEADROOM = 2;
 
@@ -59,6 +62,9 @@ public final class StructureScanner {
         long spanZ = (long) max.getZ() - min.getZ() + 1;
         if (spanX > MAX_SPAN || spanZ > MAX_SPAN) {
             return "too_wide";
+        }
+        if (spanY > MAX_HEIGHT) {
+            return "too_tall";
         }
         if (spanX * spanY * spanZ > MAX_VOLUME) {
             return "too_large";
@@ -93,35 +99,45 @@ public final class StructureScanner {
      * sensible number for a shape the storey detector cannot read, not to be precise.
      */
     private static int enclosedCells(Level level, BlockPos min, BlockPos max) {
+        final int height = max.getY() - min.getY() + 1;
+        final boolean[] passable = new boolean[height];
+        final boolean[] solid = new boolean[height];
         final BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
         int enclosed = 0;
 
         for (int x = min.getX(); x <= max.getX(); x++) {
             for (int z = min.getZ(); z <= max.getZ(); z++) {
-                for (int y = min.getY(); y <= max.getY(); y++) {
-                    cursor.set(x, y, z);
-                    if (!isPassable(level, cursor)) {
-                        continue;
+                // Read each column once. The earlier version searched the whole column downward and
+                // upward for every individual cell, which is fine on a cottage and turns a tall
+                // hollow selection - exactly the shape this mode exists for - into tens of millions
+                // of block lookups on the server thread from one right-click.
+                for (int i = 0; i < height; i++) {
+                    cursor.set(x, min.getY() + i, z);
+                    BlockState state = level.getBlockState(cursor);
+                    solid[i] = state.blocksMotion();
+                    passable[i] = state.getFluidState().isEmpty() && (state.isAir() || !solid[i]);
+                }
+
+                // "Something solid below and something solid above" is exactly "between the lowest
+                // and highest solid block in this column", which one pass can find.
+                int lowestSolid = -1;
+                int highestSolid = -1;
+                for (int i = 0; i < height; i++) {
+                    if (solid[i]) {
+                        if (lowestSolid < 0) {
+                            lowestSolid = i;
+                        }
+                        highestSolid = i;
                     }
-                    if (hasSolidBelow(level, cursor, x, y - 1, z, min.getY())
-                            && hasCoverAbove(level, cursor, x, y + 1, z, max.getY())) {
+                }
+                for (int i = lowestSolid + 1; i < highestSolid; i++) {
+                    if (passable[i]) {
                         enclosed++;
                     }
                 }
             }
         }
         return enclosed / VOLUME_PER_CELL;
-    }
-
-    private static boolean hasSolidBelow(Level level, BlockPos.MutableBlockPos cursor,
-                                         int x, int fromY, int z, int floorLimit) {
-        for (int y = fromY; y >= floorLimit; y--) {
-            cursor.set(x, y, z);
-            if (level.getBlockState(cursor).blocksMotion()) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private static List<Floor> scanFloors(Level level, BlockPos min, BlockPos max) {

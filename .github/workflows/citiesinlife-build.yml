@@ -40,6 +40,28 @@ jobs:
           set -o pipefail
           ./gradlew --no-daemon build 2>&1 | tee "$RUNNER_TEMP/build.log"
 
+      # Two reviewers disagreed on whether 1.21.1 wants data/<ns>/loot_table or loot_tables, and
+      # getting it wrong means blocks silently drop nothing - the exact bug this is fixing. Ask the
+      # real Minecraft jar instead of guessing, and fail loudly if our layout does not match it.
+      - name: Verify data pack layout against Minecraft
+        working-directory: citiesinlife
+        run: |
+          JAR=$(find ~/.gradle/caches -name 'client-*.jar' -o -name 'minecraft-*.jar' 2>/dev/null \
+                | grep -v sources | head -1)
+          if [ -z "$JAR" ]; then echo "no Minecraft jar found; skipping"; exit 0; fi
+          echo "inspecting $JAR"
+          VANILLA=$(unzip -Z1 "$JAR" 'data/minecraft/loot_table*/**' 2>/dev/null | head -1)
+          if [ -z "$VANILLA" ]; then echo "no vanilla loot tables in jar; skipping"; exit 0; fi
+          echo "vanilla path: $VANILLA"
+          EXPECT=$(echo "$VANILLA" | cut -d/ -f3)
+          OURS=$(ls src/main/resources/data/citiesinlife | grep '^loot_table' | head -1)
+          echo "Minecraft uses: $EXPECT   |   we ship: $OURS"
+          if [ "$EXPECT" != "$OURS" ]; then
+            echo "::error::Loot table directory mismatch - Minecraft expects '$EXPECT' but we ship '$OURS'. Blocks will drop nothing."
+            exit 1
+          fi
+          echo "loot table directory matches"
+
       # Gradle buries compiler errors under hundreds of lines. Re-print just the
       # errors at the end of the log so a failure is readable at a glance.
       - name: Summarise failure

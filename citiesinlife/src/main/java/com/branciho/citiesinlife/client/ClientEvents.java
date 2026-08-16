@@ -16,6 +16,7 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.phys.HitResult;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -126,20 +127,42 @@ public final class ClientEvents {
         }
     }
 
+    /**
+     * Right-clicking thin air.
+     *
+     * <p>This used to listen to {@code PlayerInteractEvent.RightClickEmpty}, which never fired:
+     * that event is only raised for a hand holding <em>nothing</em>, and both branches require a
+     * tool in the main hand. So placing a corner while pointing at the sky did nothing, and there
+     * was no way at all to abort a half-drawn power line.
+     *
+     * <p>The use-key hook fires with an item held. It runs for both hands and for block clicks too,
+     * so it is gated to the main hand and to a genuine miss - block clicks are handled by
+     * {@link #onRightClickBlock} and must not run twice.
+     */
     @SubscribeEvent
-    public static void onRightClickEmpty(PlayerInteractEvent.RightClickEmpty event) {
-        if (event.getHand() != InteractionHand.MAIN_HAND) {
+    public static void onUseInput(InputEvent.InteractionKeyMappingTriggered event) {
+        if (!event.isUseItem() || event.getHand() != InteractionHand.MAIN_HAND) {
             return;
         }
-        if (!(event.getEntity() instanceof LocalPlayer player)) {
+        Minecraft minecraft = Minecraft.getInstance();
+        LocalPlayer player = minecraft.player;
+        if (player == null) {
             return;
         }
+        if (minecraft.hitResult != null && minecraft.hitResult.getType() != HitResult.Type.MISS) {
+            return;
+        }
+
         if (holdingWand(player)) {
             handlePlannerRightClick(player);
         } else if (holdingLineTool(player) && player.isShiftKeyDown()) {
             ClientPowerTool.clear();
             player.displayClientMessage(Component.translatable("hud.citiesinlife.line_cleared"), true);
+        } else {
+            return;
         }
+        event.setSwingHand(false);
+        event.setCanceled(true);
     }
 
     private static void handlePlannerRightClick(LocalPlayer player) {
