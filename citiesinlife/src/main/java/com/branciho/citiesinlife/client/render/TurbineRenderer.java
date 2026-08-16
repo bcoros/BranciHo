@@ -64,4 +64,16 @@ public class TurbineRenderer implements BlockEntityRenderer<TurbineBlockEntity> 
     public int getViewDistance() {
         return 96;
     }
+
+    /**
+     * Draw it even when its own block position is off screen.
+     *
+     * <p>The machine is two blocks taller and one block wider than the position it is anchored to, so
+     * culling on that single block makes the whole turbine blink out whenever you stand close enough
+     * to look at it — which is exactly when you want to see it.
+     */
+    @Override
+    public boolean shouldRenderOffScreen(TurbineBlockEntity turbine) {
+        return true;
+    }
 }

@@ -11,7 +11,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.phys.AABB;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -123,17 +122,6 @@ public class TurbineBlockEntity extends BlockEntity {
     @Override
     public @Nullable Packet<ClientGamePacketListener> getUpdatePacket() {
         return ClientboundBlockEntityDataPacket.create(this);
-    }
-
-    /**
-     * The machine is drawn well outside its own block, so say so.
-     *
-     * <p>Without this the whole turbine vanishes the moment its single block position leaves the
-     * screen, which happens constantly when you stand next to something three blocks wide.
-     */
-    @Override
-    public AABB getRenderBoundingBox() {
-        return new AABB(worldPosition).inflate(2.0D);
     }
 
     // ------------------------------------------------------------ persistence
