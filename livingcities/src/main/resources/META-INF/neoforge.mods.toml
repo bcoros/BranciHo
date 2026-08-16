@@ -11,8 +11,8 @@ description = '''
 ${mod_description}
 
 Living Cities does not ship prefab buildings. You build whatever you want, with whatever
-blocks you want, and then tell the mod what it is. It handles population, jobs, economy,
-territory and the people walking around in it.
+blocks you want, and then tell the mod what it is — and it handles the population, jobs,
+economy and territory that follow from it.
 '''
 
 [[dependencies.${mod_id}]]

@@ -1,3 +1,19 @@
+> **This document describes a build that no longer exists.**
+>
+> Living Cities was deliberately reset to an empty skeleton in August 2026 and is being rebuilt from
+> scratch. Everything below describes the *previous* implementation (v0.2.0-alpha.2) — roughly 100
+> Java files covering cities, buildings, the scanner, the simulation and the utility grids. None of
+> that code is in `src/` any more.
+>
+> It is kept because the reasoning is still good: the algorithms, the complexity analysis, the
+> fitted constants and, in §18, the list of things that turned out to be wrong. Treat it as a
+> reference on how the problems were solved once, **not** as a description of the current code, and
+> not as an obligation to solve them the same way again.
+>
+> To read the deleted code itself: `git show 402af0f:livingcities/src/...`
+>
+> ---
+
 # Living Cities — Architecture, v0.1
 
 **Target:** Minecraft Java 1.21.1 · NeoForge 21.1.133 · Java 21 · ModDevGradle 2.0.78

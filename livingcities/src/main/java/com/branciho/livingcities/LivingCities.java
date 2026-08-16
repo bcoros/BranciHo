@@ -1,31 +1,28 @@
 package com.branciho.livingcities;
 
-import com.branciho.livingcities.config.LivingCitiesConfig;
-import com.branciho.livingcities.registry.ModBlockEntities;
 import com.branciho.livingcities.registry.ModBlocks;
 import com.branciho.livingcities.registry.ModCreativeTabs;
-import com.branciho.livingcities.registry.ModDataComponents;
-import com.branciho.livingcities.registry.ModEntities;
 import com.branciho.livingcities.registry.ModItems;
 import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
-import net.neoforged.fml.config.ModConfig;
 import org.slf4j.Logger;
 
 /**
  * Mod entry point.
  *
- * <p>Living Cities never ships prefab architecture. The player builds whatever they want out of
- * whatever blocks they want, and then tells this mod what the build <em>is</em>. Everything here
- * exists to support that: selection tooling, a scanner that measures arbitrary geometry, and an
- * aggregate simulation that runs on the server.
+ * <p>This is a deliberate clean slate. The mod currently registers one block and nothing else — no
+ * city system, no simulation, no scanner. That is the starting point, not an accident.
  *
- * <p>Nothing in this class (or anything it touches at load time) may reference client-only types.
- * Client wiring lives in {@code com.branciho.livingcities.client} and is registered from
- * {@code LivingCitiesClient}, which is guarded by {@code Dist.CLIENT}.
+ * <p>The design it is being rebuilt towards is in {@code docs/DESIGN-BRIEF.md}, and the constraints
+ * that must not be traded away are in {@code AGENTS.md} at the repository root. Read both before
+ * adding anything.
+ *
+ * <p>Nothing in this class, or anything it touches at load time, may reference client-only types.
+ * A dedicated server loads this class and crashes if a {@code net.minecraft.client} type appears on
+ * the path. Client wiring belongs in a {@code client} package guarded by {@code Dist.CLIENT}.
  */
 @Mod(LivingCities.MOD_ID)
 public final class LivingCities {
@@ -37,12 +34,7 @@ public final class LivingCities {
     public LivingCities(IEventBus modBus, ModContainer container) {
         ModBlocks.register(modBus);
         ModItems.register(modBus);
-        ModBlockEntities.register(modBus);
-        ModEntities.register(modBus);
-        ModDataComponents.register(modBus);
         ModCreativeTabs.register(modBus);
-
-        container.registerConfig(ModConfig.Type.SERVER, LivingCitiesConfig.SERVER_SPEC);
 
         LOGGER.info("Living Cities {} initialising", container.getModInfo().getVersion());
     }
