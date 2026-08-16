@@ -1,11 +1,14 @@
 package com.branciho.citiesinlife.client;
 
 import com.branciho.citiesinlife.CitiesInLife;
+import com.branciho.citiesinlife.client.screen.FactoryOutputScreen;
+import com.branciho.citiesinlife.registry.ModMenus;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
+import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 
 /**
@@ -27,6 +30,11 @@ public final class CitiesInLifeClient {
         event.register(KeyBindings.TYPE_PREVIOUS);
         event.register(KeyBindings.TYPE_NEXT);
         event.register(KeyBindings.TOGGLE_MEASURE_MODE);
+    }
+
+    @SubscribeEvent
+    public static void registerMenuScreens(RegisterMenuScreensEvent event) {
+        event.register(ModMenus.FACTORY_OUTPUT.get(), FactoryOutputScreen::new);
     }
 
     @SubscribeEvent

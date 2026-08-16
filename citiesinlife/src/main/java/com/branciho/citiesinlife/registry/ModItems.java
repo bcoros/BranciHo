@@ -31,6 +31,9 @@ public final class ModItems {
     public static final DeferredItem<BlockItem> TRANSIT_STATION =
             ITEMS.registerSimpleBlockItem("transit_station", ModBlocks.TRANSIT_STATION);
 
+    public static final DeferredItem<BlockItem> FACTORY_OUTPUT =
+            ITEMS.registerSimpleBlockItem("factory_output", ModBlocks.FACTORY_OUTPUT);
+
     private ModItems() {
     }
 

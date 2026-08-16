@@ -2,6 +2,7 @@ package com.branciho.citiesinlife;
 
 import com.branciho.citiesinlife.net.ServerActions;
 import com.branciho.citiesinlife.sim.CitySimulation;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -15,9 +16,25 @@ public final class ServerEvents {
     private ServerEvents() {
     }
 
+    /**
+     * How often each player is re-sent the power lines and structures around them.
+     *
+     * <p>Two seconds. Lines and registrations have no blocks of their own, so nothing tells the
+     * client about them when you simply walk somewhere new — without this you would ride out to a
+     * transmission run you built earlier and find the sky empty.
+     */
+    private static final int SYNC_INTERVAL_TICKS = 40;
+
     @SubscribeEvent
     public static void onServerTick(ServerTickEvent.Post event) {
-        CitySimulation.tick(event.getServer());
+        MinecraftServer server = event.getServer();
+        CitySimulation.tick(server);
+
+        if (server.getTickCount() % SYNC_INTERVAL_TICKS == 0) {
+            for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+                ServerActions.syncSurroundings(player);
+            }
+        }
     }
 
     @SubscribeEvent

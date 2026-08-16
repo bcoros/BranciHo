@@ -372,6 +372,22 @@ public final class ServerActions {
 
     // ---------------------------------------------------------------- syncing
 
+    /**
+     * Re-send only what is around the player: structures and power lines.
+     *
+     * <p>Separate from the full sync because this runs on a timer for every player. The city figures
+     * change rarely and cost a chunk array each time; what is in view changes constantly as you walk.
+     */
+    public static void syncSurroundings(ServerPlayer player) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        CitiesInLifeNetwork.sendTo(player,
+                new StructureSyncPayload(nearbyStructures(CityData.get(server), player)));
+        CitiesInLifeNetwork.sendTo(player, new PowerLinesPayload(nearbyLines(server, player)));
+    }
+
     /** Push the player's city and the structures around them. */
     public static void sync(ServerPlayer player) {
         MinecraftServer server = player.getServer();

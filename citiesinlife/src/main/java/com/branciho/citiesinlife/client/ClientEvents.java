@@ -15,6 +15,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.InteractionHand;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -106,6 +107,13 @@ public final class ClientEvents {
         if (!event.getLevel().isClientSide()) {
             return;
         }
+        // Minecraft tries the main hand and then the off hand, firing this event once for each.
+        // Without this check a single click ran the handler twice: the first call set the pending
+        // end of a power line and the second immediately linked it to itself, which is why every
+        // attempt reported "that is the same block". It was double-advancing the planner too.
+        if (event.getHand() != InteractionHand.MAIN_HAND) {
+            return;
+        }
         if (!(event.getEntity() instanceof LocalPlayer player)) {
             return;
         }
@@ -120,6 +128,9 @@ public final class ClientEvents {
 
     @SubscribeEvent
     public static void onRightClickEmpty(PlayerInteractEvent.RightClickEmpty event) {
+        if (event.getHand() != InteractionHand.MAIN_HAND) {
+            return;
+        }
         if (!(event.getEntity() instanceof LocalPlayer player)) {
             return;
         }

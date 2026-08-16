@@ -122,6 +122,12 @@ public final class Structure {
         return type.jobsFor(usableCells());
     }
 
+    public boolean contains(BlockPos pos) {
+        return pos.getX() >= min.getX() && pos.getX() <= max.getX()
+                && pos.getY() >= min.getY() && pos.getY() <= max.getY()
+                && pos.getZ() >= min.getZ() && pos.getZ() <= max.getZ();
+    }
+
     public boolean intersects(BlockPos otherMin, BlockPos otherMax) {
         return min.getX() <= otherMax.getX() && max.getX() >= otherMin.getX()
                 && min.getY() <= otherMax.getY() && max.getY() >= otherMin.getY()

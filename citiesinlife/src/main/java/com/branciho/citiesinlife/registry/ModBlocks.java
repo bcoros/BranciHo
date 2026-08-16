@@ -1,6 +1,7 @@
 package com.branciho.citiesinlife.registry;
 
 import com.branciho.citiesinlife.CitiesInLife;
+import com.branciho.citiesinlife.block.FactoryOutputBlock;
 import com.branciho.citiesinlife.block.PowerMastBlock;
 import com.branciho.citiesinlife.block.SolarPanelBlock;
 import com.branciho.citiesinlife.block.TransitStationBlock;
@@ -37,6 +38,12 @@ public final class ModBlocks {
                     .requiresCorrectToolForDrops()
                     .sound(SoundType.METAL)
                     .noOcclusion()));
+
+    public static final DeferredBlock<FactoryOutputBlock> FACTORY_OUTPUT = BLOCKS.register("factory_output",
+            () -> new FactoryOutputBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.WOOD)
+                    .strength(2.5F, 5.0F)
+                    .sound(SoundType.WOOD)));
 
     private ModBlocks() {
     }

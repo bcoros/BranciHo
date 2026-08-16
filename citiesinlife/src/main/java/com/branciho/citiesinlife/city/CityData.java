@@ -177,6 +177,22 @@ public final class CityData extends SavedData {
         return found;
     }
 
+    /**
+     * The registered structure whose box contains this position.
+     *
+     * <p>Used by the factory output block to find out which factory it stands in - a block has to be
+     * able to ask "what am I part of" for a structure to mean anything to the world.
+     */
+    public @Nullable Structure structureAt(ResourceKey<Level> dimension, BlockPos pos) {
+        long chunkKey = ChunkPos.asLong(pos.getX() >> 4, pos.getZ() >> 4);
+        for (Structure structure : structuresInChunk(dimension, chunkKey)) {
+            if (structure.contains(pos)) {
+                return structure;
+            }
+        }
+        return null;
+    }
+
     /** Anything already registered that would overlap this box. */
     public @Nullable Structure overlapping(ResourceKey<Level> dimension, BlockPos min, BlockPos max) {
         for (int x = min.getX() >> 4; x <= max.getX() >> 4; x++) {

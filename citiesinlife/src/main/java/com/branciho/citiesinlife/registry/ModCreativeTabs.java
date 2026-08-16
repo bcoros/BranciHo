@@ -24,6 +24,7 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.SOLAR_PANEL.get());
                         output.accept(ModItems.POWER_MAST.get());
                         output.accept(ModItems.TRANSIT_STATION.get());
+                        output.accept(ModItems.FACTORY_OUTPUT.get());
                     })
                     .build());
 

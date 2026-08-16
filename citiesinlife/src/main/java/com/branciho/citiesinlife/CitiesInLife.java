@@ -1,8 +1,10 @@
 package com.branciho.citiesinlife;
 
+import com.branciho.citiesinlife.registry.ModBlockEntities;
 import com.branciho.citiesinlife.registry.ModBlocks;
 import com.branciho.citiesinlife.registry.ModCreativeTabs;
 import com.branciho.citiesinlife.registry.ModItems;
+import com.branciho.citiesinlife.registry.ModMenus;
 import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.bus.api.IEventBus;
@@ -33,6 +35,8 @@ public final class CitiesInLife {
     public CitiesInLife(IEventBus modBus, ModContainer container) {
         ModBlocks.register(modBus);
         ModItems.register(modBus);
+        ModBlockEntities.register(modBus);
+        ModMenus.register(modBus);
         ModCreativeTabs.register(modBus);
 
         LOGGER.info("Cities In Life {} initialising", container.getModInfo().getVersion());

@@ -8,7 +8,7 @@ floors you actually built and turns them into residents, jobs and tax revenue.
 
 ---
 
-## Alpha 2 — Utilities
+## Alpha 2.1 — Utilities & Factories
 
 ### The Planner Wand
 
@@ -96,6 +96,21 @@ station's territory requirement is what keeps power tied to land you actually cl
 A city short of power **stops growing** rather than emptying out. The city panel shows produced vs
 needed.
 
+### Factories that make things
+
+Register a building as **Factory**, then put a **Factory Output Crate** inside the box you selected.
+
+Right click the crate: one slot at the top, a chest's worth of storage below. **Put one item in the
+top slot** to choose what the factory makes — a log, a brick, whatever. That item is never consumed;
+it is a choice, not an ingredient.
+
+Every five seconds the factory produces into the crate: **one item, plus one more per 64 jobs**. A
+factory with no workers makes nothing. When the crate is full production stops rather than voiding
+anything, so leaving one running costs you nothing.
+
+**Hoppers can pull from it** — hopper minecarts, droppers, anything that empties a chest works, and a
+comparator reads how full it is. Nothing can be put *in*; it is an output.
+
 ### Structure mode — `Shift + L`
 
 Registered structures are server-side boxes with no blocks of their own, so without this they are
@@ -122,7 +137,7 @@ Needs **JDK 21**.
 
 ```bash
 cd citiesinlife
-./gradlew build        # -> build/libs/citiesinlife-0.2.0-alpha.1.jar
+./gradlew build        # -> build/libs/citiesinlife-0.2.1-alpha.1.jar
 ./gradlew runClient    # launch a dev client with the mod loaded
 ```
 
