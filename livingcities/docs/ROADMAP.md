@@ -30,8 +30,9 @@ combined while adding nothing to the city simulation.
 **Cars, buses, trains and metros are unaffected** — those remain physical representative vehicles in
 Stage 7 as written. The restriction is aircraft only.
 
-**2. Stage 0 is largely already done.** The mod was reset to a clean skeleton in August 2026, which
-delivered most of Stage 0's requirements. See the Stage 0 section for exactly what remains.
+**2. Stage 0 is finished.** The August 2026 reset delivered the project, toolchain, registries and CI;
+a follow-up pass delivered logging, config, network registration, `SavedData` with a data version,
+client/server verification and the version command. **The current stage is Stage 1.**
 
 **3. The "never make the user compile" rule is relaxed.** V3 says the user should never install Java
 or run Gradle. That was true when the mod was written by a cloud assistant that could not run the
@@ -221,7 +222,7 @@ Delivered by the Stage 0 implementation pass:
 CI green · Minecraft launches · command works · world loads, saves and reloads · no advanced city
 simulation yet.
 
-**Only after Stage 0 is proven stable does Stage 1 begin.**
+**Met. Stage 0 is closed — do not reopen or rebuild it.**
 
 ---
 
@@ -689,13 +690,14 @@ configurable definitions. Optional integrations must never make another mod mand
 
 ## Standing instruction
 
-We are beginning again from **Stage 0**. Do not continue the previous implementation as the primary
-codebase — use it only for lessons and vision. The new architecture must be designed to survive every
-later stage.
+**Stage 0 is complete. The current stage is Stage 1 — City Foundation.**
 
-**Do not begin Stage 1 until Stage 0 compiles, targets NeoForge 1.21.1 on Java 21, has a correct
-Gradle wrapper, clean client/server separation, persistence architecture, GitHub Actions, a
-downloadable JAR, and launches successfully.**
+Do not continue the pre-reset implementation as the primary codebase — use it only for lessons and
+vision. The architecture must be designed to survive every later stage.
+
+Stage 0's exit conditions have been met: the project compiles, targets NeoForge 1.21.1 on Java 21,
+has a correct Gradle wrapper, clean client/server separation, persistence architecture, GitHub
+Actions and a downloadable JAR, and launches successfully. **Do not rebuild any of it.** Build on it.
 
 When a stage is complete: **stop.** Report exactly what was implemented, provide the successful build,
 and wait for explicit instruction to continue.

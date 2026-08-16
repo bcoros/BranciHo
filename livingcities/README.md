@@ -9,13 +9,19 @@ building*. The mod measures what you built and simulates it. The architecture st
 
 ---
 
-## Status: rebuilding from scratch
+## Status: Stage 1 — City Foundation
 
-**The mod is currently an empty skeleton.** It registers one block — a City Hall Core with no
-behaviour yet — and nothing else.
+The mod is being rebuilt stage by stage against [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
-This is deliberate. An earlier build reached cities, territory, building scanning, an economy and
-power/water grids, and was reset in August 2026 to start again. That code is still in git history
+**Stage 0 — Engineering Foundation: complete.** Project, toolchain, registries, logging, config,
+network registration, persistence with a data version, client/server separation and CI.
+
+**Stage 1 — City Foundation: in progress.** City hall core, city creation, chunk territory, the
+planner tool, building registration, floor detection, capacity, virtual population and basic tax
+revenue.
+
+An earlier build reached cities, territory, building scanning, an economy and power/water grids, and
+was reset in August 2026 to start again on a proper foundation. That code is still in git history
 (`git show 402af0f:livingcities/src/...`) and the reasoning behind it is preserved in
 [`docs/PRIOR-BUILD.md`](docs/PRIOR-BUILD.md).
 

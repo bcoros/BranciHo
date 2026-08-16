@@ -5,15 +5,23 @@ Notes for anyone — human or AI assistant — picking this project up. Read thi
 The mod lives in `livingcities/`. Everything else in this repo is unrelated (the loose `.md` files at
 the root are leftovers from a Git workshop in 2020 — leave them alone).
 
-## Current state: deliberately empty
+## Current state: Stage 1 — City Foundation
 
-**The mod was reset to a skeleton in August 2026 and is being rebuilt from scratch.** Right now it
-registers one inert block and nothing else. That is the intended starting point.
+The mod was reset to a clean skeleton in August 2026 and is being rebuilt stage by stage against
+`livingcities/docs/ROADMAP.md`.
 
-An earlier build reached roughly 100 Java files covering cities, buildings, a scanner, an economy
-simulation and power/water grids. It was deleted on purpose. It is still in git history and can be
-read — `git show 402af0f:livingcities/src/...` — and `livingcities/docs/PRIOR-BUILD.md` explains how
-each problem was solved. Use them as reference, **not** as something to restore.
+**Stage 0 — Engineering Foundation is complete.** Project, toolchain, registries, logging, config,
+network registration, `SavedData` with a data version, client/server separation and CI are all in
+place. Do not rebuild them.
+
+**Stage 1 — City Foundation is the current stage.** City hall core, city creation, chunk territory,
+roles, the planner tool, building registration, floor detection, capacity, virtual population,
+employment and basic tax revenue. Nothing beyond Stage 1 until it is finished and signed off.
+
+An earlier, pre-reset build reached roughly 100 Java files covering cities, buildings, a scanner, an
+economy simulation and power/water grids. It was deleted on purpose. It is still in git history and
+can be read — `git show 402af0f:livingcities/src/...` — and `livingcities/docs/PRIOR-BUILD.md`
+explains how each problem was solved. Use them as reference, **not** as something to restore.
 
 ## What it is
 

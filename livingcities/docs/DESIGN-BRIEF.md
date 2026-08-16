@@ -1,7 +1,10 @@
 # Living Cities — what it is meant to be
 
-The mod was reset to an empty skeleton and is being rebuilt. This document is the target. It is
-deliberately about *what* and *why*, not *how* — the how is open again.
+The mod was reset in August 2026 and is being rebuilt stage by stage. This document is the target. It
+is deliberately about *what* and *why*, not *how* — the how is open again.
+
+*Current position: Stage 0 complete, **Stage 1 — City Foundation** in progress. See
+[`ROADMAP.md`](ROADMAP.md).*
 
 ---
 
