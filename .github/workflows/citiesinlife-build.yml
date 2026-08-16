@@ -46,18 +46,31 @@ jobs:
       - name: Verify data pack layout against Minecraft
         working-directory: citiesinlife
         run: |
-          JAR=$(find ~/.gradle/caches -name 'client-*.jar' -o -name 'minecraft-*.jar' 2>/dev/null \
-                | grep -v sources | head -1)
-          if [ -z "$JAR" ]; then echo "no Minecraft jar found; skipping"; exit 0; fi
-          echo "inspecting $JAR"
-          VANILLA=$(unzip -Z1 "$JAR" 'data/minecraft/loot_table*/**' 2>/dev/null | head -1)
-          if [ -z "$VANILLA" ]; then echo "no vanilla loot tables in jar; skipping"; exit 0; fi
-          echo "vanilla path: $VANILLA"
-          EXPECT=$(echo "$VANILLA" | cut -d/ -f3)
           OURS=$(ls src/main/resources/data/citiesinlife | grep '^loot_table' | head -1)
-          echo "Minecraft uses: $EXPECT   |   we ship: $OURS"
-          if [ "$EXPECT" != "$OURS" ]; then
-            echo "::error::Loot table directory mismatch - Minecraft expects '$EXPECT' but we ship '$OURS'. Blocks will drop nothing."
+          echo "we ship: $OURS"
+
+          VANILLA=""
+          SEARCHED=0
+          for JAR in $(find "$HOME/.gradle" build -name '*.jar' 2>/dev/null \
+                       | grep -viE 'sources|javadoc' | head -400); do
+            SEARCHED=$((SEARCHED + 1))
+            HIT=$(unzip -Z1 "$JAR" 'data/minecraft/loot_table*/*' 2>/dev/null | head -1)
+            if [ -n "$HIT" ]; then
+              echo "vanilla loot tables found in: $JAR"
+              echo "vanilla path: $HIT"
+              VANILLA=$(echo "$HIT" | cut -d/ -f3)
+              break
+            fi
+          done
+
+          if [ -z "$VANILLA" ]; then
+            echo "::warning::Searched $SEARCHED jars and found no vanilla loot tables, so the data pack layout is UNVERIFIED. If blocks drop nothing in game, this is the first thing to check."
+            exit 0
+          fi
+
+          echo "Minecraft uses: $VANILLA   |   we ship: $OURS"
+          if [ "$VANILLA" != "$OURS" ]; then
+            echo "::error::Loot table directory mismatch - Minecraft expects '$VANILLA' but we ship '$OURS'. Every block would drop nothing."
             exit 1
           fi
           echo "loot table directory matches"
