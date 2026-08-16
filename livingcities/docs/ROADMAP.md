@@ -197,9 +197,9 @@ livingcities
                                 └── npc
 ```
 
-### Status: partially complete
+### Status: COMPLETE
 
-The August 2026 reset already delivered:
+Delivered by the August 2026 reset:
 
 - [x] NeoForge 1.21.1 project, Java 21 toolchain, Gradle wrapper
 - [x] Correct mod metadata
@@ -207,15 +207,14 @@ The August 2026 reset already delivered:
 - [x] GitHub Actions build producing an installable JAR
 - [x] Mod launches without crashing
 
-### Remaining for Stage 0
+Delivered by the Stage 0 implementation pass:
 
-- [ ] Logging conventions
-- [ ] Config framework
-- [ ] Network registration architecture (payload registry, no payloads yet)
-- [ ] Persistent `SavedData` architecture with a data version field
-- [ ] Verified client/server separation — `runServer` must load with no client class reachable
-- [ ] `/livingcities version`, printing name, version and current stage:
-      `Living Cities 0.1.0-alpha · Stage 0 — Engineering Foundation`
+- [x] Logging conventions
+- [x] Config framework
+- [x] Network registration architecture (payload registry, no payloads yet)
+- [x] Persistent `SavedData` architecture with a data version field
+- [x] Verified client/server separation — `runServer` loads with no client class reachable
+- [x] `/livingcities version`, printing name, version and current stage
 
 ### Success condition
 
@@ -673,8 +672,8 @@ configurable definitions. Optional integrations must never make another mod mand
 
 | Stage | Name | Status |
 | --- | --- | --- |
-| **0** | Engineering Foundation / Clean Rebuild | **in progress** |
-| 1 | City Foundation | |
+| 0 | Engineering Foundation / Clean Rebuild | **complete** |
+| **1** | City Foundation | **in progress** |
 | 2 | Utilities | |
 | 3 | Living Streets | |
 | 4 | Industrial Economy | |
