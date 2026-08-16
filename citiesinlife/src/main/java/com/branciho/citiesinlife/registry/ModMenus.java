@@ -1,6 +1,7 @@
 package com.branciho.citiesinlife.registry;
 
 import com.branciho.citiesinlife.CitiesInLife;
+import com.branciho.citiesinlife.menu.BoilerMenu;
 import com.branciho.citiesinlife.menu.FactoryOutputMenu;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.flag.FeatureFlags;
@@ -17,6 +18,10 @@ public final class ModMenus {
     public static final DeferredHolder<MenuType<?>, MenuType<FactoryOutputMenu>> FACTORY_OUTPUT =
             MENUS.register("factory_output",
                     () -> new MenuType<>(FactoryOutputMenu::new, FeatureFlags.DEFAULT_FLAGS));
+
+    public static final DeferredHolder<MenuType<?>, MenuType<BoilerMenu>> BOILER =
+            MENUS.register("boiler",
+                    () -> new MenuType<>(BoilerMenu::new, FeatureFlags.DEFAULT_FLAGS));
 
     private ModMenus() {
     }

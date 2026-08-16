@@ -7,6 +7,8 @@ import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.ContainerData;
+import net.minecraft.world.inventory.SimpleContainerData;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 
@@ -19,24 +21,33 @@ import net.minecraft.world.item.ItemStack;
 public class FactoryOutputMenu extends AbstractContainerMenu {
 
     public static final int TEMPLATE_X = 80;
-    public static final int TEMPLATE_Y = 20;
+    public static final int TEMPLATE_Y = 22;
     public static final int STORAGE_X = 8;
-    public static final int STORAGE_Y = 42;
-    public static final int PLAYER_Y = 108;
-    public static final int HOTBAR_Y = 168;
+    public static final int STORAGE_Y = 68;
+    public static final int PLAYER_Y = 136;
+    public static final int HOTBAR_Y = 194;
+
+    /** Two lines of plain text between the template slot and the crate: the caption and the status. */
+    public static final int HINT_Y = 42;
+    public static final int STATUS_Y = 54;
 
     private final Container container;
+    private final ContainerData data;
 
     /** Client-side constructor: the real contents arrive through the menu's own syncing. */
     public FactoryOutputMenu(int id, Inventory playerInventory) {
-        this(id, playerInventory, new SimpleContainer(FactoryOutputBlockEntity.TOTAL_SLOTS));
+        this(id, playerInventory, new SimpleContainer(FactoryOutputBlockEntity.TOTAL_SLOTS),
+                new SimpleContainerData(FactoryOutputBlockEntity.DATA_SIZE));
     }
 
-    public FactoryOutputMenu(int id, Inventory playerInventory, Container container) {
+    public FactoryOutputMenu(int id, Inventory playerInventory, Container container, ContainerData data) {
         super(ModMenus.FACTORY_OUTPUT.get(), id);
         checkContainerSize(container, FactoryOutputBlockEntity.TOTAL_SLOTS);
+        checkContainerDataCount(data, FactoryOutputBlockEntity.DATA_SIZE);
         this.container = container;
+        this.data = data;
         container.startOpen(playerInventory.player);
+        addDataSlots(data);
 
         addSlot(new Slot(container, FactoryOutputBlockEntity.TEMPLATE_SLOT, TEMPLATE_X, TEMPLATE_Y));
 
@@ -88,6 +99,14 @@ public class FactoryOutputMenu extends AbstractContainerMenu {
             slot.setChanged();
         }
         return original;
+    }
+
+    public int workers() {
+        return data.get(FactoryOutputBlockEntity.DATA_WORKERS);
+    }
+
+    public int status() {
+        return data.get(FactoryOutputBlockEntity.DATA_STATUS);
     }
 
     @Override

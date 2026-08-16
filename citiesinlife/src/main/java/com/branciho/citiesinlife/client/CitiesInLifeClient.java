@@ -1,11 +1,16 @@
 package com.branciho.citiesinlife.client;
 
 import com.branciho.citiesinlife.CitiesInLife;
+import com.branciho.citiesinlife.client.render.TurbineModel;
+import com.branciho.citiesinlife.client.render.TurbineRenderer;
+import com.branciho.citiesinlife.client.screen.BoilerScreen;
 import com.branciho.citiesinlife.client.screen.FactoryOutputScreen;
+import com.branciho.citiesinlife.registry.ModBlockEntities;
 import com.branciho.citiesinlife.registry.ModMenus;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
@@ -35,6 +40,19 @@ public final class CitiesInLifeClient {
     @SubscribeEvent
     public static void registerMenuScreens(RegisterMenuScreensEvent event) {
         event.register(ModMenus.FACTORY_OUTPUT.get(), FactoryOutputScreen::new);
+        event.register(ModMenus.BOILER.get(), BoilerScreen::new);
+    }
+
+    @SubscribeEvent
+    public static void registerLayerDefinitions(EntityRenderersEvent.RegisterLayerDefinitions event) {
+        event.registerLayerDefinition(TurbineModel.LAYER, TurbineModel::create);
+    }
+
+    @SubscribeEvent
+    public static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
+        // The turbine is three blocks wide and its rotor turns, so none of it can come from a block
+        // model. All of it is drawn here.
+        event.registerBlockEntityRenderer(ModBlockEntities.TURBINE.get(), TurbineRenderer::new);
     }
 
     @SubscribeEvent

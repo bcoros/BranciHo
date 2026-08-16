@@ -1,7 +1,9 @@
 package com.branciho.citiesinlife.registry;
 
 import com.branciho.citiesinlife.CitiesInLife;
+import com.branciho.citiesinlife.blockentity.BoilerBlockEntity;
 import com.branciho.citiesinlife.blockentity.FactoryOutputBlockEntity;
+import com.branciho.citiesinlife.blockentity.TurbineBlockEntity;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.neoforged.bus.api.IEventBus;
@@ -17,6 +19,18 @@ public final class ModBlockEntities {
             FACTORY_OUTPUT = BLOCK_ENTITIES.register("factory_output",
                     () -> BlockEntityType.Builder
                             .of(FactoryOutputBlockEntity::new, ModBlocks.FACTORY_OUTPUT.get())
+                            .build(null));
+
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<BoilerBlockEntity>>
+            BOILER = BLOCK_ENTITIES.register("boiler",
+                    () -> BlockEntityType.Builder
+                            .of(BoilerBlockEntity::new, ModBlocks.BOILER.get())
+                            .build(null));
+
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TurbineBlockEntity>>
+            TURBINE = BLOCK_ENTITIES.register("turbine",
+                    () -> BlockEntityType.Builder
+                            .of(TurbineBlockEntity::new, ModBlocks.TURBINE.get())
                             .build(null));
 
     private ModBlockEntities() {

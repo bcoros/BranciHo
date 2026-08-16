@@ -34,6 +34,12 @@ public final class ModItems {
     public static final DeferredItem<BlockItem> FACTORY_OUTPUT =
             ITEMS.registerSimpleBlockItem("factory_output", ModBlocks.FACTORY_OUTPUT);
 
+    public static final DeferredItem<BlockItem> BOILER =
+            ITEMS.registerSimpleBlockItem("boiler", ModBlocks.BOILER);
+
+    public static final DeferredItem<BlockItem> TURBINE =
+            ITEMS.registerSimpleBlockItem("turbine", ModBlocks.TURBINE);
+
     private ModItems() {
     }
 

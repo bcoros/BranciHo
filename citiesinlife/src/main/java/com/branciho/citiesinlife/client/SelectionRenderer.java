@@ -1,6 +1,7 @@
 package com.branciho.citiesinlife.client;
 
 import com.branciho.citiesinlife.block.PowerMastBlock;
+import com.branciho.citiesinlife.block.TurbineBlock;
 import com.branciho.citiesinlife.net.ClientCityCache;
 import com.branciho.citiesinlife.net.payload.StructureSyncPayload;
 import com.branciho.citiesinlife.structure.StructureType;
@@ -187,13 +188,17 @@ public final class SelectionRenderer {
      * Where a wire meets a block.
      *
      * <p>Masts are three blocks tall but stored as their foot, so a line has to be lifted to the
-     * crossarm or every wire in the world would run along the ground.
+     * crossarm or every wire in the world would run along the ground. The turbine has the same
+     * problem for the same reason: it is one block position wearing a machine two blocks tall.
      */
     private static Vec3 attachPoint(Level level, long packed) {
         BlockPos pos = BlockPos.of(packed);
         if (level.getBlockState(pos).getBlock() instanceof PowerMastBlock) {
             BlockPos top = PowerMastBlock.attachPoint(pos);
             return new Vec3(top.getX() + 0.5D, top.getY() + 0.75D, top.getZ() + 0.5D);
+        }
+        if (level.getBlockState(pos).getBlock() instanceof TurbineBlock) {
+            return new Vec3(pos.getX() + 0.5D, pos.getY() + 1.4D, pos.getZ() + 0.5D);
         }
         return new Vec3(pos.getX() + 0.5D, pos.getY() + 0.9D, pos.getZ() + 0.5D);
     }

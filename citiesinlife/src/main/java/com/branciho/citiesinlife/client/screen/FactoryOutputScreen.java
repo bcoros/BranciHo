@@ -1,5 +1,6 @@
 package com.branciho.citiesinlife.client.screen;
 
+import com.branciho.citiesinlife.blockentity.FactoryOutputBlockEntity;
 import com.branciho.citiesinlife.menu.FactoryOutputMenu;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
@@ -24,11 +25,12 @@ public class FactoryOutputScreen extends AbstractContainerScreen<FactoryOutputMe
     private static final int ACCENT = 0xFF16E0D0;
     private static final int TEXT = 0xFFE6ECF2;
     private static final int DIM = 0xFF8C97A3;
+    private static final int WARN = 0xFFE8A33D;
 
     public FactoryOutputScreen(FactoryOutputMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
         this.imageWidth = 176;
-        this.imageHeight = 193;
+        this.imageHeight = 218;
         this.inventoryLabelY = FactoryOutputMenu.PLAYER_Y - 11;
         this.titleLabelY = 6;
     }
@@ -79,6 +81,25 @@ public class FactoryOutputScreen extends AbstractContainerScreen<FactoryOutputMe
 
         // The one instruction that makes the block make sense at a glance.
         Component hint = Component.translatable("screen.citiesinlife.factory_hint");
-        graphics.drawString(this.font, hint, 8, FactoryOutputMenu.TEMPLATE_Y + 4, DIM, false);
+        graphics.drawString(this.font, hint, 8, FactoryOutputMenu.HINT_Y, DIM, false);
+
+        // Why it is or is not making anything. A crate that silently does nothing is the worst
+        // possible version of this block, so say which of the reasons it is.
+        graphics.drawString(this.font, statusLine(), 8, FactoryOutputMenu.STATUS_Y,
+                menu.status() == FactoryOutputBlockEntity.STATUS_PRODUCING ? ACCENT : WARN, false);
+    }
+
+    private Component statusLine() {
+        return switch (menu.status()) {
+            case FactoryOutputBlockEntity.STATUS_PRODUCING ->
+                    Component.translatable("screen.citiesinlife.factory_working", menu.workers());
+            case FactoryOutputBlockEntity.STATUS_NO_WORKERS ->
+                    Component.translatable("screen.citiesinlife.factory_no_workers");
+            case FactoryOutputBlockEntity.STATUS_NO_TEMPLATE ->
+                    Component.translatable("screen.citiesinlife.factory_no_template");
+            case FactoryOutputBlockEntity.STATUS_FULL ->
+                    Component.translatable("screen.citiesinlife.factory_full");
+            default -> Component.translatable("screen.citiesinlife.factory_not_registered");
+        };
     }
 }

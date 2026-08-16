@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "facing=north": { "model": "citiesinlife:block/turbine" },
+    "facing=east":  { "model": "citiesinlife:block/turbine" },
+    "facing=south": { "model": "citiesinlife:block/turbine" },
+    "facing=west":  { "model": "citiesinlife:block/turbine" }
+  }
+}

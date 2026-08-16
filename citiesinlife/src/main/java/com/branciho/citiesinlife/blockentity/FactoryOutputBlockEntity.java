@@ -1,5 +1,6 @@
 package com.branciho.citiesinlife.blockentity;
 
+import com.branciho.citiesinlife.city.City;
 import com.branciho.citiesinlife.city.CityData;
 import com.branciho.citiesinlife.menu.FactoryOutputMenu;
 import com.branciho.citiesinlife.registry.ModBlockEntities;
@@ -19,6 +20,7 @@ import net.minecraft.world.WorldlyContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -52,11 +54,46 @@ public class FactoryOutputBlockEntity extends BlockEntity implements WorldlyCont
     /** Jobs needed for each extra item per run, so a bigger factory is worth building. */
     private static final int JOBS_PER_EXTRA_ITEM = 64;
 
+    /** What the crate is doing, for the screen to explain. */
+    public static final int STATUS_PRODUCING = 0;
+    public static final int STATUS_NOT_A_FACTORY = 1;
+    public static final int STATUS_NO_WORKERS = 2;
+    public static final int STATUS_NO_TEMPLATE = 3;
+    public static final int STATUS_FULL = 4;
+
+    /** Indices into the two-value block of numbers the screen reads. */
+    public static final int DATA_WORKERS = 0;
+    public static final int DATA_STATUS = 1;
+    public static final int DATA_SIZE = 2;
+
     private final NonNullList<ItemStack> items = NonNullList.withSize(TOTAL_SLOTS, ItemStack.EMPTY);
+
+    /** How the screen learns what the crate is doing; kept in sync by the menu itself. */
+    private final ContainerData data = new ContainerData() {
+        @Override
+        public int get(int index) {
+            return index == DATA_WORKERS ? workers : status;
+        }
+
+        @Override
+        public void set(int index, int value) {
+            if (index == DATA_WORKERS) {
+                workers = value;
+            } else {
+                status = value;
+            }
+        }
+
+        @Override
+        public int getCount() {
+            return DATA_SIZE;
+        }
+    };
 
     /** Cached for the screen: what the enclosing structure offers, refreshed on each production run. */
     private int workers;
     private boolean validFactory;
+    private int status = STATUS_NOT_A_FACTORY;
 
     public FactoryOutputBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.FACTORY_OUTPUT.get(), pos, state);
@@ -75,31 +112,66 @@ public class FactoryOutputBlockEntity extends BlockEntity implements WorldlyCont
         }
         ItemStack template = factory.items.get(TEMPLATE_SLOT);
         if (template.isEmpty()) {
+            factory.status = STATUS_NO_TEMPLATE;
             return;
         }
 
         int amount = 1 + factory.workers / JOBS_PER_EXTRA_ITEM;
         if (factory.insert(template.getItem().getDefaultInstance(), amount)) {
+            factory.status = STATUS_PRODUCING;
             factory.setChanged();
+        } else {
+            factory.status = STATUS_FULL;
         }
     }
 
-    /** Look up the structure this block stands in and see whether it is a working factory. */
+    /**
+     * Look up the structure this block stands in and see whether it is a working factory.
+     *
+     * <p>The important word is <em>staffed</em>. A structure's {@code jobs()} is how many people it
+     * has room to employ, which is a property of the walls and has nothing to do with whether anyone
+     * turned up. Reading that number directly meant a crate in an empty city kept stamping out goods
+     * with nobody inside — the building was counted as its own workforce.
+     *
+     * <p>What actually staffs it is the city's employment: the share of the city's employed residents
+     * that this factory's job slots account for. No population means no employment means no workers
+     * means no output, which is what a factory with nobody in it should do.
+     */
     private void refreshFactoryState(Level level, BlockPos pos) {
+        validFactory = false;
+        workers = 0;
+
         MinecraftServer server = level.getServer();
         if (server == null) {
-            validFactory = false;
-            workers = 0;
+            status = STATUS_NOT_A_FACTORY;
             return;
         }
-        Structure structure = CityData.get(server).structureAt(level.dimension(), pos);
+        CityData data = CityData.get(server);
+        Structure structure = data.structureAt(level.dimension(), pos);
         if (structure == null || structure.type() != StructureType.FACTORY) {
-            validFactory = false;
-            workers = 0;
+            status = STATUS_NOT_A_FACTORY;
             return;
         }
+        City city = data.city(structure.cityId());
+        if (city == null) {
+            status = STATUS_NOT_A_FACTORY;
+            return;
+        }
+
         validFactory = true;
-        workers = structure.jobs();
+
+        int slots = structure.jobs();
+        int cityJobs = city.jobs();
+        if (slots <= 0 || cityJobs <= 0 || city.employed() <= 0) {
+            status = STATUS_NO_WORKERS;
+            return;
+        }
+        // Employment is tracked for the city as a whole, so split it between the workplaces in
+        // proportion to how many jobs each one offers.
+        workers = (int) ((long) city.employed() * slots / cityJobs);
+        if (workers <= 0) {
+            status = STATUS_NO_WORKERS;
+        }
     }
 
     /**
@@ -134,6 +206,10 @@ public class FactoryOutputBlockEntity extends BlockEntity implements WorldlyCont
 
     public boolean validFactory() {
         return validFactory;
+    }
+
+    public int status() {
+        return status;
     }
 
     // -------------------------------------------------------------- container
@@ -225,7 +301,13 @@ public class FactoryOutputBlockEntity extends BlockEntity implements WorldlyCont
 
     @Override
     public AbstractContainerMenu createMenu(int id, Inventory playerInventory, Player player) {
-        return new FactoryOutputMenu(id, playerInventory, this);
+        // Production only runs every few seconds. Without this, opening the crate straight after
+        // building it shows whatever the last run left behind - usually "not a factory" on a crate
+        // that is perfectly fine.
+        if (level != null) {
+            refreshFactoryState(level, worldPosition);
+        }
+        return new FactoryOutputMenu(id, playerInventory, this, data);
     }
 
     // ------------------------------------------------------------ persistence
@@ -237,6 +319,7 @@ public class FactoryOutputBlockEntity extends BlockEntity implements WorldlyCont
         ContainerHelper.loadAllItems(tag, items, registries);
         workers = tag.getInt("workers");
         validFactory = tag.getBoolean("validFactory");
+        status = tag.getInt("status");
     }
 
     @Override
@@ -245,5 +328,6 @@ public class FactoryOutputBlockEntity extends BlockEntity implements WorldlyCont
         ContainerHelper.saveAllItems(tag, items, registries);
         tag.putInt("workers", workers);
         tag.putBoolean("validFactory", validFactory);
+        tag.putInt("status", status);
     }
 }

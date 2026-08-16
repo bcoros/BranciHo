@@ -23,6 +23,8 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.POWER_LINE_TOOL.get());
                         output.accept(ModItems.SOLAR_PANEL.get());
                         output.accept(ModItems.POWER_MAST.get());
+                        output.accept(ModItems.BOILER.get());
+                        output.accept(ModItems.TURBINE.get());
                         output.accept(ModItems.TRANSIT_STATION.get());
                         output.accept(ModItems.FACTORY_OUTPUT.get());
                     })
