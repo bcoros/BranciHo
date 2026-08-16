@@ -5,6 +5,7 @@ import com.branciho.citiesinlife.menu.BoilerMenu;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.entity.player.Inventory;
 
 /**
@@ -44,7 +45,7 @@ public class BoilerScreen extends AbstractContainerScreen<BoilerMenu> {
     public BoilerScreen(BoilerMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
         this.imageWidth = 176;
-        this.imageHeight = 176;
+        this.imageHeight = 188;
         this.inventoryLabelY = BoilerMenu.PLAYER_Y - 11;
         this.titleLabelY = 6;
     }
@@ -108,7 +109,15 @@ public class BoilerScreen extends AbstractContainerScreen<BoilerMenu> {
 
         boolean running = menu.status() == BoilerBlockEntity.STATUS_RUNNING_TURBINE
                 || menu.status() == BoilerBlockEntity.STATUS_RUNNING_VENTING;
-        graphics.drawString(this.font, statusLine(), 8, BoilerMenu.STATUS_Y, running ? ACCENT : WARN, false);
+        int colour = running ? ACCENT : WARN;
+
+        // Wrapped, because every one of these lines is an instruction and cutting it in half at the
+        // edge of the panel would defeat the point of writing it.
+        int y = BoilerMenu.STATUS_Y;
+        for (FormattedCharSequence line : this.font.split(statusLine(), imageWidth - 16)) {
+            graphics.drawString(this.font, line, 8, y, colour, false);
+            y += 10;
+        }
     }
 
     private Component statusLine() {

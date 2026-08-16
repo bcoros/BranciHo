@@ -27,10 +27,11 @@ public class BoilerMenu extends AbstractContainerMenu {
     public static final int FUEL_X = 56;
     public static final int FUEL_Y = 53;
 
-    public static final int STATUS_Y = 72;
+    /** Room for two wrapped lines, because "why is it not running" needs a sentence, not a word. */
+    public static final int STATUS_Y = 71;
     public static final int PLAYER_X = 8;
-    public static final int PLAYER_Y = 94;
-    public static final int HOTBAR_Y = 152;
+    public static final int PLAYER_Y = 106;
+    public static final int HOTBAR_Y = 164;
 
     private final Container container;
     private final ContainerData data;
