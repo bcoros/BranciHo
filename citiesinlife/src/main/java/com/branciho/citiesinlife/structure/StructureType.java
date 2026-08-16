@@ -26,18 +26,28 @@ public enum StructureType implements StringRepresentable {
 
     RESIDENTIAL("residential", 0x66E576, 0),
 
-    COMMERCIAL("commercial", 0x59A6FF, 28),
+    COMMERCIAL("commercial", 0x59A6FF, 6),
 
     /** Offices. Denser than shops because a desk needs less room than a shop floor. */
-    BUSINESS("business", 0x4DD9E6, 14),
+    BUSINESS("business", 0x4DD9E6, 3),
 
-    FACTORY("factory", 0xFFD859, 18);
+    FACTORY("factory", 0xFFD859, 4);
 
     /** Floor cells consumed by one dwelling. */
     public static final double CELLS_PER_DWELLING = 16.0D;
 
-    /** People per dwelling. */
-    public static final int RESIDENTS_PER_DWELLING = 3;
+    /**
+     * Virtual residents per dwelling.
+     *
+     * <p>Ten rather than a literal household, because a registered building stands for a piece of a
+     * city rather than for one address. A modest apartment block reading as 370 people is what makes
+     * a city feel like a city; the same block reading as 111 reads like a village and made the whole
+     * economy feel pointless.
+     *
+     * <p>These are <em>virtual</em> citizens — a number, not entities. Physical NPCs will later be a
+     * small visible sample of this figure, never one entity per person.
+     */
+    public static final int RESIDENTS_PER_DWELLING = 10;
 
     /** Below this, a floor is a cupboard rather than a home or a workplace. */
     public static final int MIN_USABLE_CELLS = 9;

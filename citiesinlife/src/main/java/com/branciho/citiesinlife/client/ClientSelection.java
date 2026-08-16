@@ -1,7 +1,7 @@
 package com.branciho.citiesinlife.client;
 
 import com.branciho.citiesinlife.scan.StructureScanner;
-import com.branciho.citiesinlife.structure.Floor;
+import com.branciho.citiesinlife.structure.MeasureMode;
 import com.branciho.citiesinlife.structure.StructureType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
@@ -11,8 +11,6 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
-
-import java.util.List;
 
 /**
  * The selection the player is currently drawing.
@@ -45,6 +43,7 @@ public final class ClientSelection {
     private static @Nullable BlockPos pointA;
     private static @Nullable BlockPos pointB;
     private static StructureType type = StructureType.RESIDENTIAL;
+    private static MeasureMode measureMode = MeasureMode.FLOORS;
 
     private static int previewFloors = -1;
     private static int previewCells = -1;
@@ -75,6 +74,17 @@ public final class ClientSelection {
 
     public static void cycleType(int direction) {
         type = type.next(direction);
+    }
+
+    public static MeasureMode measureMode() {
+        return measureMode;
+    }
+
+    /** Swap measurement mode and re-measure, so the panel updates the moment it is pressed. */
+    public static void toggleMeasureMode() {
+        measureMode = measureMode.other();
+        lastPreviewedB = null;
+        refreshPreview();
     }
 
     public static int previewFloors() {
@@ -189,12 +199,9 @@ public final class ClientSelection {
             return;
         }
 
-        List<Floor> floors = StructureScanner.scan(level, min, max);
-        previewFloors = floors.size();
-        previewCells = 0;
-        for (Floor floor : floors) {
-            previewCells += floor.usableCells();
-        }
+        StructureScanner.Measurement measured = StructureScanner.measure(level, min, max, measureMode);
+        previewFloors = measured.floors().size();
+        previewCells = measured.usableCells();
     }
 
     private static void clearPreview() {
@@ -222,5 +229,6 @@ public final class ClientSelection {
     public static void reset() {
         cancel();
         type = StructureType.RESIDENTIAL;
+        measureMode = MeasureMode.FLOORS;
     }
 }

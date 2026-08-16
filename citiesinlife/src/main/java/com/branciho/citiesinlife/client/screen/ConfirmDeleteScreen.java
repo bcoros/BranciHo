@@ -3,6 +3,7 @@ package com.branciho.citiesinlife.client.screen;
 import com.branciho.citiesinlife.net.CitiesInLifeNetwork;
 import com.branciho.citiesinlife.net.payload.DeleteStructurePayload;
 import com.branciho.citiesinlife.net.payload.StructureSyncPayload;
+import com.branciho.citiesinlife.structure.MeasureMode;
 import com.branciho.citiesinlife.structure.StructureType;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -12,14 +13,14 @@ import net.minecraft.network.chat.Component;
 /**
  * "Delete this structure area?"
  *
- * <p>Confirmed rather than instant because the click that gets here is Shift+left click while
+ * <p>Confirmed rather than instant because the click that gets here is sneak + right click while
  * looking at a building, and losing a registered tower to a misjudged crosshair would be infuriating.
  * The dialog also states plainly that the blocks survive, which is the first thing anybody wonders.
  */
 public class ConfirmDeleteScreen extends Screen {
 
     private static final int PANEL_WIDTH = 250;
-    private static final int PANEL_HEIGHT = 124;
+    private static final int PANEL_HEIGHT = 136;
 
     private final StructureSyncPayload.Entry target;
 
@@ -54,7 +55,7 @@ public class ConfirmDeleteScreen extends Screen {
 
     @Override
     public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        super.renderBackground(graphics, mouseX, mouseY, partialTick);
+        CityScreen.softDim(graphics, this);
         CityScreen.panel(graphics, left, top, PANEL_WIDTH, PANEL_HEIGHT);
 
         graphics.drawCenteredString(this.font, Component.translatable("screen.citiesinlife.delete_title"),
@@ -64,13 +65,18 @@ public class ConfirmDeleteScreen extends Screen {
         StructureType type = StructureType.byId(target.typeId(), StructureType.RESIDENTIAL);
         graphics.drawCenteredString(this.font,
                 Component.literal(target.name()), left + PANEL_WIDTH / 2, top + 36, 0xFF000000 | type.colour());
+        MeasureMode mode = MeasureMode.byId(target.measureModeId(), MeasureMode.FLOORS);
         graphics.drawCenteredString(this.font,
                 Component.translatable("screen.citiesinlife.delete_detail",
-                        type.displayName(), target.floors(), target.usableCells()),
+                        type.displayName(), target.usableCells(), mode.displayName()),
                 left + PANEL_WIDTH / 2, top + 50, CityScreen.COLOUR_DIM);
         graphics.drawCenteredString(this.font,
+                Component.translatable("screen.citiesinlife.delete_capacity",
+                        target.residents(), target.jobs()),
+                left + PANEL_WIDTH / 2, top + 62, CityScreen.COLOUR_DIM);
+        graphics.drawCenteredString(this.font,
                 Component.translatable("screen.citiesinlife.delete_note"),
-                left + PANEL_WIDTH / 2, top + 68, CityScreen.COLOUR_DIM);
+                left + PANEL_WIDTH / 2, top + 80, CityScreen.COLOUR_DIM);
     }
 
     @Override

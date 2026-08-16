@@ -15,7 +15,7 @@ import net.minecraft.network.chat.Component;
  */
 public class CityScreen extends Screen {
 
-    static final int COLOUR_PANEL = 0xF00B0F16;
+    static final int COLOUR_PANEL = 0xD00B0F16;
     static final int COLOUR_BORDER = 0x66FFFFFF;
     static final int COLOUR_ACCENT = 0xFF16E0D0;
     static final int COLOUR_TEXT = 0xFFE6ECF2;
@@ -57,7 +57,7 @@ public class CityScreen extends Screen {
      */
     @Override
     public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        super.renderBackground(graphics, mouseX, mouseY, partialTick);
+        softDim(graphics, this);
         panel(graphics, left, top, PANEL_WIDTH, PANEL_HEIGHT);
 
         CitySyncPayload city = ClientCityCache.city();
@@ -101,6 +101,16 @@ public class CityScreen extends Screen {
         int width = this.font.width(value);
         graphics.drawString(this.font, value, left + PANEL_WIDTH - 12 - width, y, valueColour, false);
         return y + 14;
+    }
+
+    /**
+     * A light wash over the world instead of the vanilla blur.
+     *
+     * <p>These screens are meant to sit over the city you are looking at, not hide it — you claim
+     * land while looking at the land. Just enough darkening to keep the text readable.
+     */
+    static void softDim(GuiGraphics graphics, Screen screen) {
+        graphics.fill(0, 0, screen.width, screen.height, 0x50000000);
     }
 
     /** The shared panel look, reused by the other screens in this package. */

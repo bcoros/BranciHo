@@ -70,6 +70,7 @@ public class NameCityScreen extends Screen {
                 ClientSelection.pointA(),
                 ClientSelection.pointB(),
                 StructureType.CITY_CORE.id(),
+                ClientSelection.measureMode().id(),
                 nameBox.getValue().trim()));
         ClientSelection.cancel();
         this.minecraft.setScreen(null);
@@ -77,7 +78,7 @@ public class NameCityScreen extends Screen {
 
     @Override
     public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        super.renderBackground(graphics, mouseX, mouseY, partialTick);
+        CityScreen.softDim(graphics, this);
         CityScreen.panel(graphics, left, top, PANEL_WIDTH, PANEL_HEIGHT);
 
         graphics.drawString(this.font, Component.translatable("screen.citiesinlife.found_city"),

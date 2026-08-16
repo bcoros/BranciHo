@@ -14,7 +14,6 @@ import com.branciho.citiesinlife.structure.StructureType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -27,10 +26,9 @@ import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 /**
  * All client input for the planner.
  *
- * <p>Every hotkey and click here does something visible. That is not a given — the previous attempt
- * at this mod shipped a keybind wired to a boolean nothing read, which looked correct in the code and
- * did nothing in the game. If a handler is added here without something on screen changing, it is a
- * bug regardless of whether it compiles.
+ * <p>Every handler here changes something visible. That is not a given — the predecessor to this mod
+ * shipped a keybind wired to a boolean nothing read, which looked correct and did nothing. If a
+ * handler is added here and nothing on screen changes, it is a bug regardless of whether it compiles.
  */
 @EventBusSubscriber(modid = CitiesInLife.MOD_ID, value = Dist.CLIENT)
 public final class ClientEvents {
@@ -39,8 +37,7 @@ public final class ClientEvents {
     }
 
     private static boolean holdingWand(LocalPlayer player) {
-        ItemStack held = player.getMainHandItem();
-        return held.is(ModItems.PLANNER_WAND.get());
+        return player.getMainHandItem().is(ModItems.PLANNER_WAND.get());
     }
 
     // ------------------------------------------------------------------ ticks
@@ -63,13 +60,36 @@ public final class ClientEvents {
         while (KeyBindings.TOGGLE_STRUCTURE_MODE.consumeClick()) {
             StructureMode.toggle();
             if (StructureMode.active()) {
-                // Ask for a fresh snapshot: outlining stale data would show buildings that are not
-                // there any more, which is worse than showing nothing.
+                // Ask for a fresh snapshot: outlining stale data would draw buildings that are not
+                // there any more, which is worse than drawing nothing.
                 CitiesInLifeNetwork.sendToServer(new RequestCityPayload());
             }
             player.displayClientMessage(Component.translatable(StructureMode.active()
                     ? "hud.citiesinlife.structure_mode_on"
                     : "hud.citiesinlife.structure_mode_off"), true);
+        }
+
+        // Type and measurement keys work whether or not a box is being drawn, so the player can set
+        // up what they are about to place before placing it.
+        boolean holdingWand = holdingWand(player);
+
+        while (KeyBindings.TYPE_PREVIOUS.consumeClick()) {
+            if (holdingWand) {
+                ClientSelection.cycleType(-1);
+            }
+        }
+        while (KeyBindings.TYPE_NEXT.consumeClick()) {
+            if (holdingWand) {
+                ClientSelection.cycleType(1);
+            }
+        }
+        while (KeyBindings.TOGGLE_MEASURE_MODE.consumeClick()) {
+            if (holdingWand) {
+                ClientSelection.toggleMeasureMode();
+                player.displayClientMessage(Component.translatable(
+                        "hud.citiesinlife.measure_switched",
+                        ClientSelection.measureMode().displayName()), true);
+            }
         }
     }
 
@@ -95,14 +115,39 @@ public final class ClientEvents {
         }
     }
 
+    /**
+     * Right click does everything: place corners, clear a selection, and delete a registration.
+     *
+     * <p>Deleting used to be on Shift + left click and did not work reliably — the attack key is
+     * fought over by several things at once. Right click is the same path that already places
+     * corners, so it is known to fire, and sneaking plus structure mode is a specific enough
+     * combination that it cannot happen by accident.
+     */
     private static void handleRightClick(LocalPlayer player) {
-        if (player.isShiftKeyDown() && ClientSelection.active()) {
-            ClientSelection.cancel();
-            player.displayClientMessage(
-                    Component.translatable("hud.citiesinlife.selection_cleared"), true);
-            return;
+        if (player.isShiftKeyDown()) {
+            if (StructureMode.active()) {
+                deleteTargeted(player);
+                return;
+            }
+            if (ClientSelection.active()) {
+                ClientSelection.cancel();
+                player.displayClientMessage(
+                        Component.translatable("hud.citiesinlife.selection_cleared"), true);
+                return;
+            }
         }
         ClientSelection.advance();
+    }
+
+    private static void deleteTargeted(LocalPlayer player) {
+        Minecraft minecraft = Minecraft.getInstance();
+        StructureSyncPayload.Entry target = StructureMode.lookingAt();
+        if (target == null) {
+            player.displayClientMessage(
+                    Component.translatable("hud.citiesinlife.nothing_targeted"), true);
+            return;
+        }
+        minecraft.setScreen(new ConfirmDeleteScreen(target));
     }
 
     // ------------------------------------------------------------- left click
@@ -115,21 +160,6 @@ public final class ClientEvents {
         Minecraft minecraft = Minecraft.getInstance();
         LocalPlayer player = minecraft.player;
         if (player == null || !holdingWand(player)) {
-            return;
-        }
-
-        // Deleting a registration takes priority: it is only reachable while structure mode is on
-        // and the player is sneaking, so it cannot be triggered by accident during normal planning.
-        if (StructureMode.active() && player.isShiftKeyDown()) {
-            StructureSyncPayload.Entry target = StructureMode.lookingAt();
-            if (target != null) {
-                minecraft.setScreen(new ConfirmDeleteScreen(target));
-            } else {
-                player.displayClientMessage(
-                        Component.translatable("hud.citiesinlife.nothing_targeted"), true);
-            }
-            event.setSwingHand(false);
-            event.setCanceled(true);
             return;
         }
 
@@ -154,27 +184,12 @@ public final class ClientEvents {
         }
 
         CitiesInLifeNetwork.sendToServer(new RegisterStructurePayload(
-                ClientSelection.pointA(), ClientSelection.pointB(), type.id(), ""));
+                ClientSelection.pointA(),
+                ClientSelection.pointB(),
+                type.id(),
+                ClientSelection.measureMode().id(),
+                ""));
         ClientSelection.cancel();
-    }
-
-    // ----------------------------------------------------------------- scroll
-
-    @SubscribeEvent
-    public static void onScroll(InputEvent.MouseScrollingEvent event) {
-        Minecraft minecraft = Minecraft.getInstance();
-        LocalPlayer player = minecraft.player;
-        if (player == null || !holdingWand(player) || !ClientSelection.active()) {
-            return;
-        }
-        double delta = event.getScrollDeltaY();
-        if (delta == 0.0D) {
-            return;
-        }
-        // Scrolling only steals the hotbar while a selection is in progress; the rest of the time
-        // the wand behaves like any other item so switching slots still works.
-        ClientSelection.cycleType(delta > 0.0D ? -1 : 1);
-        event.setCanceled(true);
     }
 
     // --------------------------------------------------------------- lifecycle

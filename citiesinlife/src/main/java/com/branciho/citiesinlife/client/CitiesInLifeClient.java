@@ -24,6 +24,9 @@ public final class CitiesInLifeClient {
     public static void registerKeyMappings(RegisterKeyMappingsEvent event) {
         event.register(KeyBindings.OPEN_CITY);
         event.register(KeyBindings.TOGGLE_STRUCTURE_MODE);
+        event.register(KeyBindings.TYPE_PREVIOUS);
+        event.register(KeyBindings.TYPE_NEXT);
+        event.register(KeyBindings.TOGGLE_MEASURE_MODE);
     }
 
     @SubscribeEvent

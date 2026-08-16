@@ -1,6 +1,7 @@
 package com.branciho.citiesinlife.scan;
 
 import com.branciho.citiesinlife.structure.Floor;
+import com.branciho.citiesinlife.structure.MeasureMode;
 import com.branciho.citiesinlife.structure.StructureType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -35,6 +36,19 @@ public final class StructureScanner {
     /** Storeys closer together than this are the same storey seen twice. */
     private static final int MIN_FLOOR_SPACING = 3;
 
+    /**
+     * Cubic blocks of enclosed space that count as one cell of floor.
+     *
+     * <p>Three, because a storey is a floor plus roughly two blocks of headroom. Dividing interior
+     * volume by that converts "how much space is in here" into the same units floor detection
+     * produces, so both modes feed the same capacity formulas.
+     */
+    private static final int VOLUME_PER_CELL = 3;
+
+    /** What measuring a selection produced. Floors may be empty in volume mode. */
+    public record Measurement(List<Floor> floors, int usableCells) {
+    }
+
     private StructureScanner() {
     }
 
@@ -53,13 +67,64 @@ public final class StructureScanner {
     }
 
     /**
-     * Find the usable storeys inside a box.
+     * Measure a selection using the mode the player chose.
      *
      * <p>Runs on the server thread and is bounded by {@link #MAX_VOLUME}, which is what keeps it from
      * being a tick spike. Everything it touches is read through {@link Level}, so it must never be
      * moved off-thread without snapshotting first.
      */
-    public static List<Floor> scan(Level level, BlockPos min, BlockPos max) {
+    public static Measurement measure(Level level, BlockPos min, BlockPos max, MeasureMode mode) {
+        if (mode == MeasureMode.BLOCK_VOLUME) {
+            return new Measurement(List.of(), enclosedCells(level, min, max));
+        }
+        List<Floor> floors = scanFloors(level, min, max);
+        int cells = 0;
+        for (Floor floor : floors) {
+            cells += floor.usableCells();
+        }
+        return new Measurement(floors, cells);
+    }
+
+    /**
+     * Interior space, converted to an equivalent floor area.
+     *
+     * <p>A cell counts as interior when it is open space with something solid both above and below it
+     * inside the selection. That is a crude definition and deliberately so — it is meant to give a
+     * sensible number for a shape the storey detector cannot read, not to be precise.
+     */
+    private static int enclosedCells(Level level, BlockPos min, BlockPos max) {
+        final BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+        int enclosed = 0;
+
+        for (int x = min.getX(); x <= max.getX(); x++) {
+            for (int z = min.getZ(); z <= max.getZ(); z++) {
+                for (int y = min.getY(); y <= max.getY(); y++) {
+                    cursor.set(x, y, z);
+                    if (!isPassable(level, cursor)) {
+                        continue;
+                    }
+                    if (hasSolidBelow(level, cursor, x, y - 1, z, min.getY())
+                            && hasCoverAbove(level, cursor, x, y + 1, z, max.getY())) {
+                        enclosed++;
+                    }
+                }
+            }
+        }
+        return enclosed / VOLUME_PER_CELL;
+    }
+
+    private static boolean hasSolidBelow(Level level, BlockPos.MutableBlockPos cursor,
+                                         int x, int fromY, int z, int floorLimit) {
+        for (int y = fromY; y >= floorLimit; y--) {
+            cursor.set(x, y, z);
+            if (level.getBlockState(cursor).blocksMotion()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static List<Floor> scanFloors(Level level, BlockPos min, BlockPos max) {
         final int height = max.getY() - min.getY() + 1;
         final int[] usableAtY = new int[height];
 

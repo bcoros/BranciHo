@@ -55,7 +55,7 @@ public final class PlannerHud {
     private static void drawPlannerPanel(GuiGraphics graphics, Minecraft minecraft) {
         final var font = minecraft.font;
         final int rows = StructureType.SELECTABLE.length;
-        final int height = 96 + rows * ROW_HEIGHT;
+        final int height = 130 + rows * ROW_HEIGHT;
         final int top = Math.max(8, (minecraft.getWindow().getGuiScaledHeight() - height) / 2);
 
         panel(graphics, PANEL_X, top, PANEL_WIDTH, height);
@@ -89,6 +89,10 @@ public final class PlannerHud {
             y += 11;
         }
 
+        // Which measuring method is in play, because it changes the two numbers above it.
+        y = valueRow(graphics, y, "hud.citiesinlife.measure",
+                ClientSelection.measureMode().displayName());
+
         y += 4;
         graphics.drawString(font, Component.translatable("hud.citiesinlife.building_type"),
                 PANEL_X + PADDING, y, COLOUR_HEADING, false);
@@ -100,11 +104,17 @@ public final class PlannerHud {
             y += ROW_HEIGHT;
         }
 
-        y += 2;
-        graphics.drawString(font, Component.translatable(ClientSelection.phase() == ClientSelection.Phase.COMPLETE
-                        ? "hud.citiesinlife.left_click_confirm"
-                        : "hud.citiesinlife.scroll_hint"),
+        y += 3;
+        graphics.drawString(font, Component.translatable("hud.citiesinlife.arrows_hint"),
                 PANEL_X + PADDING, y, COLOUR_DIM, false);
+        y += 10;
+        graphics.drawString(font, Component.translatable("hud.citiesinlife.measure_hint"),
+                PANEL_X + PADDING, y, COLOUR_DIM, false);
+        y += 10;
+        if (ClientSelection.phase() == ClientSelection.Phase.COMPLETE) {
+            graphics.drawString(font, Component.translatable("hud.citiesinlife.left_click_confirm"),
+                    PANEL_X + PADDING, y, COLOUR_SET, false);
+        }
     }
 
     /** One selectable building type. The chosen one gets its own colour as a filled bar. */

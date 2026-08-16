@@ -17,6 +17,10 @@ import java.util.Optional;
  * one, a player who demolishes a building is left with an invisible claim that blocks the ground
  * forever and reports "that overlaps something" with no way to find out what. This mode is the
  * answer to that, and it is why deleting is built in the same breath as seeing.
+ *
+ * <p>Deleting is sneak + right click, not the attack key. The attack key is contested by several
+ * systems at once and the first attempt at this simply never fired; right click is the same path
+ * that already places selection corners, so it is known to work.
  */
 public final class StructureMode {
 

@@ -8,7 +8,7 @@ import com.branciho.citiesinlife.net.payload.DeleteStructurePayload;
 import com.branciho.citiesinlife.net.payload.RegisterStructurePayload;
 import com.branciho.citiesinlife.net.payload.StructureSyncPayload;
 import com.branciho.citiesinlife.scan.StructureScanner;
-import com.branciho.citiesinlife.structure.Floor;
+import com.branciho.citiesinlife.structure.MeasureMode;
 import com.branciho.citiesinlife.structure.Structure;
 import com.branciho.citiesinlife.structure.StructureType;
 import net.minecraft.core.BlockPos;
@@ -106,17 +106,24 @@ public final class ServerActions {
             return;
         }
 
-        List<Floor> floors = StructureScanner.scan(level, min, max);
+        MeasureMode mode = MeasureMode.byId(payload.measureModeId(), MeasureMode.FLOORS);
+        StructureScanner.Measurement measured = StructureScanner.measure(level, min, max, mode);
+
         String name = defaultName(type, data.structuresOf(city).size() + 1);
         Structure structure = Structure.create(city.id(), name, type, level.dimension(), min, max);
-        structure.setFloors(floors);
+        structure.setMeasurement(mode, measured.floors(), measured.usableCells());
         data.addStructure(city, structure);
 
         player.sendSystemMessage(Component.translatable(
                 "message.citiesinlife.registered",
-                name, floors.size(), structure.usableCells()));
-        if (floors.isEmpty()) {
-            player.sendSystemMessage(Component.translatable("message.citiesinlife.no_floors"));
+                name, measured.floors().size(), structure.usableCells()));
+
+        // Point at the other mode rather than just reporting nothing: an empty measurement is
+        // almost always a shape the storey detector cannot read, not a mistake by the player.
+        if (structure.usableCells() == 0) {
+            player.sendSystemMessage(Component.translatable(mode == MeasureMode.FLOORS
+                    ? "message.citiesinlife.no_floors"
+                    : "message.citiesinlife.no_interior"));
         }
         sync(player);
     }
@@ -306,6 +313,7 @@ public final class ServerActions {
                             structure.id(),
                             structure.name(),
                             structure.type().id(),
+                            structure.measureMode().id(),
                             structure.min().getX(), structure.min().getY(), structure.min().getZ(),
                             structure.max().getX(), structure.max().getY(), structure.max().getZ(),
                             structure.floorCount(),

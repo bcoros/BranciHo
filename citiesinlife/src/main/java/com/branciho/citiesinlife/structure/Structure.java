@@ -33,6 +33,16 @@ public final class Structure {
     private final BlockPos max;
     private final List<Floor> floors = new ArrayList<>();
 
+    /**
+     * How this structure was measured, and what that measurement produced.
+     *
+     * <p>The cell count is stored rather than re-derived from {@link #floors} because block-volume
+     * mode produces no floors at all — it measures enclosed space instead. Both modes end up in the
+     * same unit so the capacity formulas do not care which was used.
+     */
+    private MeasureMode measureMode = MeasureMode.FLOORS;
+    private int usableCells;
+
     public Structure(UUID id, UUID cityId, String name, StructureType type,
                      ResourceKey<Level> dimension, BlockPos min, BlockPos max) {
         this.id = id;
@@ -85,9 +95,15 @@ public final class Structure {
         return floors;
     }
 
-    public void setFloors(List<Floor> detected) {
+    public void setMeasurement(MeasureMode mode, List<Floor> detected, int cells) {
+        this.measureMode = mode;
+        this.usableCells = Math.max(0, cells);
         floors.clear();
         floors.addAll(detected);
+    }
+
+    public MeasureMode measureMode() {
+        return measureMode;
     }
 
     public int floorCount() {
@@ -95,11 +111,7 @@ public final class Structure {
     }
 
     public int usableCells() {
-        int total = 0;
-        for (Floor floor : floors) {
-            total += floor.usableCells();
-        }
-        return total;
+        return usableCells;
     }
 
     public int residents() {
@@ -138,6 +150,8 @@ public final class Structure {
         tag.putString("name", name);
         tag.putString("type", type.id());
         tag.putString("dimension", dimension.location().toString());
+        tag.putString("measure", measureMode.id());
+        tag.putInt("cells", usableCells);
         tag.putInt("minX", min.getX());
         tag.putInt("minY", min.getY());
         tag.putInt("minZ", min.getZ());
@@ -161,6 +175,8 @@ public final class Structure {
                 ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(tag.getString("dimension"))),
                 new BlockPos(tag.getInt("minX"), tag.getInt("minY"), tag.getInt("minZ")),
                 new BlockPos(tag.getInt("maxX"), tag.getInt("maxY"), tag.getInt("maxZ")));
+        structure.measureMode = MeasureMode.byId(tag.getString("measure"), MeasureMode.FLOORS);
+        structure.usableCells = tag.getInt("cells");
         ListTag floorList = tag.getList("floors", Tag.TAG_COMPOUND);
         for (int i = 0; i < floorList.size(); i++) {
             structure.floors.add(Floor.load(floorList.getCompound(i)));

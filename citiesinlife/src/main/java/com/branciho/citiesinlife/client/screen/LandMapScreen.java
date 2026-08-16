@@ -84,7 +84,7 @@ public class LandMapScreen extends Screen {
 
     @Override
     public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        super.renderBackground(graphics, mouseX, mouseY, partialTick);
+        CityScreen.softDim(graphics, this);
 
         final int panelWidth = GRID * TILE + PANEL_PADDING * 2;
         final int panelHeight = GRID * TILE + HEADER + FOOTER;
