@@ -1,0 +1,63 @@
+name: Build Cities In Life
+
+on:
+  push:
+    paths:
+      - 'citiesinlife/**'
+      - '.github/workflows/citiesinlife-build.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Compile mod jar
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Cache Gradle and NeoForge artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            citiesinlife/.gradle
+          key: gradle-cil-${{ runner.os }}-${{ hashFiles('citiesinlife/gradle.properties', 'citiesinlife/*.gradle') }}
+          restore-keys: |
+            gradle-cil-${{ runner.os }}-
+
+      - name: Build
+        working-directory: citiesinlife
+        run: |
+          set -o pipefail
+          ./gradlew --no-daemon build 2>&1 | tee "$RUNNER_TEMP/build.log"
+
+      # Gradle buries compiler errors under hundreds of lines. Re-print just the
+      # errors at the end of the log so a failure is readable at a glance.
+      - name: Summarise failure
+        if: failure()
+        run: |
+          LOG="$RUNNER_TEMP/build.log"
+          [ -f "$LOG" ] || { echo "no build log produced"; exit 0; }
+          echo "===================== JAVAC ERRORS ====================="
+          grep -E "\.java:[0-9]+: (error|warning):" -A 3 "$LOG" | head -250 || true
+          echo "===================== WHAT WENT WRONG ====================="
+          sed -n '/What went wrong/,/^\* Try:/p' "$LOG" | head -60 || true
+          echo "===================== ERROR LINES ====================="
+          grep -iE "^(FAILURE|Execution failed|Could not resolve|Could not find|error:)" "$LOG" | head -40 || true
+
+      - name: Upload mod jar
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: citiesinlife-jar
+          path: citiesinlife/build/libs/*.jar
+          if-no-files-found: warn
