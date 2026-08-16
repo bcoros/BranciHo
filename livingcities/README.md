@@ -20,6 +20,8 @@ power/water grids, and was reset in August 2026 to start again. That code is sti
 [`docs/PRIOR-BUILD.md`](docs/PRIOR-BUILD.md).
 
 What the mod is being rebuilt towards: [`docs/DESIGN-BRIEF.md`](docs/DESIGN-BRIEF.md).
+The stage-by-stage plan, which is the authority on scope and order:
+[`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ---
 
@@ -75,6 +77,7 @@ livingcities/
     registry/              blocks, items, creative tab
   docs/
     DESIGN-BRIEF.md        what the mod is meant to become  <- start here
+    ROADMAP.md             the stage plan, Stage 0 -> 11+   <- the authority
     DEV_SETUP.md           how to build and run it
     PRIOR-BUILD.md         how the deleted implementation worked
 ```

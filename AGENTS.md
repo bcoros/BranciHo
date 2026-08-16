@@ -23,8 +23,26 @@ that is the one rule that must never be traded away: the player builds a skyscra
 blocks they like, selects it, and says *this is an office*. The mod measures what is there and
 simulates it.
 
-What it is aiming at is in `livingcities/docs/DESIGN-BRIEF.md`. Read that first.
-How to actually run it is in `livingcities/docs/DEV_SETUP.md`.
+## Which document wins
+
+| Document | What it settles |
+| --- | --- |
+| **`livingcities/docs/ROADMAP.md`** | **The authority.** Stage order, scope, process, what belongs where. Stage 0 → 11+. |
+| `livingcities/docs/DESIGN-BRIEF.md` | Why the mod exists and what makes it different. Read first, for orientation. |
+| `AGENTS.md` (this file) | Constraints that must hold whatever stage you are on. |
+| `livingcities/docs/DEV_SETUP.md` | How to build and run it. |
+| `livingcities/docs/PRIOR-BUILD.md` | How the deleted implementation worked. Reference only. |
+
+If two of them disagree about stage order or scope, **`ROADMAP.md` wins.**
+
+Two rules from the roadmap that are easy to violate by accident:
+
+- **Implement only the current stage.** Small hooks for future systems are fine; major future-stage
+  features are not. When a stage is done, stop and report rather than rolling into the next one.
+- **Airports have no aircraft.** Stage 9 airports are player-built terminals that move passengers as
+  a validated transfer between registered airports, and generate virtual air traffic. There is no
+  flight simulation. Cars, buses, trains and metros are unaffected — those are real vehicles in
+  Stage 7.
 
 ## Hard constraints
 

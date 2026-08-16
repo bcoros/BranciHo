@@ -59,18 +59,12 @@ Get this wrong early and the mod has a hard ceiling it can never be refactored o
 
 ## Roadmap
 
-The order matters — each stage assumes the one before it exists.
+**The stage list lives in [`ROADMAP.md`](ROADMAP.md), and that document is the authority.** It runs
+Stage 0 (engineering foundation) through Stage 11+ (expansion era), and it wins over this document on
+anything to do with stage order, scope or process.
 
-| Stage | What it adds |
-| --- | --- |
-| **1. Foundation** | Found a city, claim territory, select a structure, measure it, zone it, see it. |
-| **2. Utilities** | Power and water: generation, distribution networks, coverage, buildings that go dark. |
-| **3. Living streets** | A pedestrian graph, real commuting between registered buildings, time-of-day activity. |
-| **4. Industrial economy** | Supply chains, goods, industry that depends on something. |
-| **5. Services** | Schools, hospitals, emergency services, coverage radii that matter. |
-| **6. Multiplayer civilisation** | Several cities per world, trade, borders, roles and permissions. |
-| **7. Transport** | Roads and transit that change where people can live and work. |
-| **8. Infrastructure & disasters** | Things that break, and the consequences of not maintaining them. |
+This file exists to answer *why the mod is worth building*. The roadmap answers *what to build and in
+what order*. Read this one first, then work from that one.
 
 Stages 1 and 2 were built once already and then deliberately deleted. `PRIOR-BUILD.md` documents how
 they were solved — useful as reference, not as a template.
