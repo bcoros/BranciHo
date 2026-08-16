@@ -3,6 +3,7 @@ package com.branciho.citiesinlife.block;
 import com.branciho.citiesinlife.power.PowerBlock;
 import com.branciho.citiesinlife.power.PowerGrid;
 import com.branciho.citiesinlife.power.PowerRole;
+import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
@@ -26,6 +27,10 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  */
 public class SolarPanelBlock extends HorizontalDirectionalBlock implements PowerBlock {
 
+    // HorizontalDirectionalBlock re-declares codec() as abstract, so every subclass has to
+    // supply one. simpleCodec works because the only constructor argument is Properties.
+    public static final MapCodec<SolarPanelBlock> CODEC = simpleCodec(SolarPanelBlock::new);
+
     public static final DirectionProperty FACING = HorizontalDirectionalBlock.FACING;
 
     /** Units in clear daylight with a clear view of the sky. */
@@ -36,6 +41,11 @@ public class SolarPanelBlock extends HorizontalDirectionalBlock implements Power
     public SolarPanelBlock(Properties properties) {
         super(properties);
         registerDefaultState(stateDefinition.any().setValue(FACING, Direction.NORTH));
+    }
+
+    @Override
+    protected MapCodec<? extends HorizontalDirectionalBlock> codec() {
+        return CODEC;
     }
 
     @Override
