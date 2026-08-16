@@ -4,6 +4,7 @@ import com.branciho.citiesinlife.power.PowerBlock;
 import com.branciho.citiesinlife.power.PowerGrid;
 import com.branciho.citiesinlife.power.PowerRole;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.context.BlockPlaceContext;
@@ -15,6 +16,8 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
@@ -35,22 +38,34 @@ public class PowerMastBlock extends Block implements PowerBlock {
     /** 0 is the foot, 2 is the crossarm at the top. */
     public static final IntegerProperty SEGMENT = IntegerProperty.create("segment", 0, 2);
 
+    /**
+     * Which way the crossarm points.
+     *
+     * <p>Every mast used to face north no matter how it was placed, so a line running east to west
+     * met the arms end-on and looked wrong from every angle. The post is symmetrical, but the arm at
+     * the top is not, and that is the part you actually see against the sky.
+     */
+    public static final DirectionProperty FACING = BlockStateProperties.HORIZONTAL_FACING;
+
     public static final int HEIGHT = 3;
 
     /** How far one mast can throw a line to another. */
     public static final int MAST_RANGE = 64;
 
     private static final VoxelShape POST = Block.box(6.0D, 0.0D, 6.0D, 10.0D, 16.0D, 10.0D);
-    private static final VoxelShape CROSSARM = Block.box(1.0D, 6.0D, 6.0D, 15.0D, 16.0D, 10.0D);
+    private static final VoxelShape CROSSARM_X = Block.box(1.0D, 6.0D, 6.0D, 15.0D, 16.0D, 10.0D);
+    private static final VoxelShape CROSSARM_Z = Block.box(6.0D, 6.0D, 1.0D, 10.0D, 16.0D, 15.0D);
 
     public PowerMastBlock(Properties properties) {
         super(properties);
-        registerDefaultState(stateDefinition.any().setValue(SEGMENT, 0));
+        registerDefaultState(stateDefinition.any()
+                .setValue(SEGMENT, 0)
+                .setValue(FACING, Direction.NORTH));
     }
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(SEGMENT);
+        builder.add(SEGMENT, FACING);
     }
 
     @Override
@@ -67,14 +82,18 @@ public class PowerMastBlock extends Block implements PowerBlock {
         if (pos.getY() + HEIGHT > level.getMaxBuildHeight()) {
             return null;
         }
-        return defaultBlockState().setValue(SEGMENT, 0);
+        return defaultBlockState()
+                .setValue(SEGMENT, 0)
+                .setValue(FACING, context.getHorizontalDirection().getOpposite());
     }
 
     @Override
     public void setPlacedBy(Level level, BlockPos pos, BlockState state, @Nullable net.minecraft.world.entity.LivingEntity placer,
                             net.minecraft.world.item.ItemStack stack) {
+        // The upper segments have to carry the same facing, or the crossarm ends up pointing a
+        // different way from the post it is standing on.
         for (int offset = 1; offset < HEIGHT; offset++) {
-            level.setBlock(pos.above(offset), defaultBlockState().setValue(SEGMENT, offset), Block.UPDATE_ALL);
+            level.setBlock(pos.above(offset), state.setValue(SEGMENT, offset), Block.UPDATE_ALL);
         }
     }
 
@@ -89,7 +108,7 @@ public class PowerMastBlock extends Block implements PowerBlock {
     }
 
     @Override
-    protected BlockState updateShape(BlockState state, net.minecraft.core.Direction direction,
+    protected BlockState updateShape(BlockState state, Direction direction,
                                      BlockState neighbour, LevelAccessor level,
                                      BlockPos pos, BlockPos neighbourPos) {
         if (!canSurvive(state, level, pos)) {
@@ -124,7 +143,10 @@ public class PowerMastBlock extends Block implements PowerBlock {
 
     @Override
     protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
-        return state.getValue(SEGMENT) == HEIGHT - 1 ? CROSSARM : POST;
+        if (state.getValue(SEGMENT) != HEIGHT - 1) {
+            return POST;
+        }
+        return state.getValue(FACING).getAxis() == Direction.Axis.X ? CROSSARM_Z : CROSSARM_X;
     }
 
     @Override

@@ -2,6 +2,7 @@ package com.branciho.citiesinlife.registry;
 
 import com.branciho.citiesinlife.CitiesInLife;
 import com.branciho.citiesinlife.block.BoilerBlock;
+import com.branciho.citiesinlife.block.ChimneyBlock;
 import com.branciho.citiesinlife.block.FactoryOutputBlock;
 import com.branciho.citiesinlife.block.PowerMastBlock;
 import com.branciho.citiesinlife.block.SolarPanelBlock;
@@ -49,6 +50,14 @@ public final class ModBlocks {
                     .sound(SoundType.METAL)
                     // The firebox glows through the front while it is burning.
                     .lightLevel(state -> state.getValue(BoilerBlock.LIT) ? 13 : 0)));
+
+    public static final DeferredBlock<ChimneyBlock> CHIMNEY = BLOCKS.register("chimney",
+            () -> new ChimneyBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_RED)
+                    .strength(2.0F, 6.0F)
+                    .requiresCorrectToolForDrops()
+                    .sound(SoundType.STONE)
+                    .noOcclusion()));
 
     public static final DeferredBlock<TurbineBlock> TURBINE = BLOCKS.register("turbine",
             () -> new TurbineBlock(BlockBehaviour.Properties.of()

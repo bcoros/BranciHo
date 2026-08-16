@@ -97,6 +97,39 @@ public final class CityData extends SavedData {
         return city;
     }
 
+    /**
+     * Wind a city up completely: its buildings, its land and the city itself.
+     *
+     * <p>Deleting the city hall used to leave the city standing with no seat, still holding its
+     * treasury and its claims, and — because there is one city per player per world — with no way to
+     * found another. Nothing about that was recoverable in game, so the city hall now takes the city
+     * with it, and the player is asked before it does.
+     *
+     * @return how many registrations went with it
+     */
+    public int deleteCity(City city) {
+        int removed = 0;
+        for (UUID structureId : List.copyOf(city.structures())) {
+            if (removeStructure(structureId)) {
+                removed++;
+            }
+        }
+
+        Map<Long, UUID> territory = territoryIndex.get(city.dimension());
+        if (territory != null) {
+            for (long chunkKey : city.claimedChunks().toLongArray()) {
+                territory.remove(chunkKey);
+            }
+            if (territory.isEmpty()) {
+                territoryIndex.remove(city.dimension());
+            }
+        }
+
+        cities.remove(city.id());
+        setDirty();
+        return removed;
+    }
+
     // -------------------------------------------------------------- territory
 
     public @Nullable City cityAtChunk(ResourceKey<Level> dimension, long chunkKey) {

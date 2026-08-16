@@ -4,6 +4,7 @@
     "citiesinlife:solar_panel",
     "citiesinlife:transit_station",
     "citiesinlife:boiler",
-    "citiesinlife:turbine"
+    "citiesinlife:turbine",
+    "citiesinlife:chimney"
   ]
 }

@@ -1,6 +1,7 @@
 package com.branciho.citiesinlife.net;
 
 import com.branciho.citiesinlife.net.payload.CitySyncPayload;
+import com.branciho.citiesinlife.net.payload.ConfirmDeleteCityPayload;
 import com.branciho.citiesinlife.net.payload.PowerLinesPayload;
 import com.branciho.citiesinlife.net.payload.StructureSyncPayload;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
@@ -27,6 +28,7 @@ public final class ClientCityCache {
     private static List<StructureSyncPayload.Entry> structures = List.of();
     private static List<long[]> powerLines = List.of();
     private static LongSet claimedChunks = new LongOpenHashSet();
+    private static @Nullable ConfirmDeleteCityPayload pendingDeleteConfirm;
 
     private ClientCityCache() {
     }
@@ -46,6 +48,24 @@ public final class ClientCityCache {
 
     public static void accept(PowerLinesPayload payload) {
         powerLines = payload.lines();
+    }
+
+    /**
+     * Park a confirmation request until the client can act on it.
+     *
+     * <p>Opening a screen means touching client-only classes, and this class is deliberately free of
+     * them so that registering its handlers does not drag the client onto a dedicated server. So the
+     * request is left here and the client tick picks it up.
+     */
+    public static void accept(ConfirmDeleteCityPayload payload) {
+        pendingDeleteConfirm = payload;
+    }
+
+    /** Take the pending confirmation request, if there is one. */
+    public static @Nullable ConfirmDeleteCityPayload takeDeleteConfirm() {
+        ConfirmDeleteCityPayload pending = pendingDeleteConfirm;
+        pendingDeleteConfirm = null;
+        return pending;
     }
 
     /** Power lines near the player, as pairs of packed positions. */
@@ -84,5 +104,6 @@ public final class ClientCityCache {
         structures = List.of();
         powerLines = List.of();
         claimedChunks = new LongOpenHashSet();
+        pendingDeleteConfirm = null;
     }
 }

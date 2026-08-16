@@ -1,9 +1,13 @@
 package com.branciho.citiesinlife.blockentity;
 
 import com.branciho.citiesinlife.block.BoilerBlock;
+import com.branciho.citiesinlife.block.ChimneyBlock;
 import com.branciho.citiesinlife.block.TurbineBlock;
+import com.branciho.citiesinlife.city.CityData;
 import com.branciho.citiesinlife.menu.BoilerMenu;
 import com.branciho.citiesinlife.registry.ModBlockEntities;
+import com.branciho.citiesinlife.structure.Structure;
+import com.branciho.citiesinlife.structure.StructureType;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import net.minecraft.core.BlockPos;
@@ -13,6 +17,7 @@ import net.minecraft.core.NonNullList;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Container;
 import net.minecraft.world.ContainerHelper;
@@ -34,11 +39,15 @@ import org.jetbrains.annotations.Nullable;
 /**
  * The boiler's insides: a firebox, a water tank, and the survey of the room it stands in.
  *
- * <p>The rule that makes this a build rather than a block is that it only runs inside a sealed
- * chamber with a single opening directly above it. That opening is the whole design: emissions leave
- * through it whatever happens, and steam either leaves through it and is wasted or goes into a
- * turbine sitting on it and becomes electricity. Nothing here is plumbing you route — it is a room
- * you build correctly or do not.
+ * <p>The rule that makes this a build rather than a block is that it only runs sealed in, with
+ * somewhere for the smoke to go. Emissions leave whatever happens; the steam either leaves with them
+ * and is wasted, or goes into a turbine and becomes electricity. Nothing here is plumbing you route —
+ * it is a room you build correctly or do not.
+ *
+ * <p>There are two ways it finds the turbine and the flue. The good one is to draw a box round the
+ * whole building with the Planner Wand and call it a Turbine Power Plant, after which the machinery
+ * can be anywhere inside it. Failing that it falls back to looking straight up, which is how this
+ * worked before and is why a shaft with a turbine on top still runs.
  *
  * <p>Water is not consumed in the long run. The empty bucket left behind fills itself back up after a
  * while, which stands in for the condenser a real plant would need. Coal is the running cost; water
@@ -84,7 +93,7 @@ public class BoilerBlockEntity extends BlockEntity implements WorldlyContainer, 
     public static final int STATUS_RUNNING_TURBINE = 0;
     public static final int STATUS_RUNNING_VENTING = 1;
     public static final int STATUS_NO_CHAMBER = 2;
-    public static final int STATUS_VENT_BLOCKED = 3;
+    public static final int STATUS_NO_OUTLET = 3;
     public static final int STATUS_NO_WATER = 4;
     public static final int STATUS_NO_FUEL = 5;
 
@@ -96,15 +105,8 @@ public class BoilerBlockEntity extends BlockEntity implements WorldlyContainer, 
     public static final int DATA_STATUS = 4;
     public static final int DATA_SIZE = 5;
 
-    /** Where the steam goes once it leaves the boiler. */
-    private enum Vent {
-        /** Sealed above: the boiler will not run, because the smoke has nowhere to go. */
-        BLOCKED,
-        /** An opening to the sky. Emissions and steam both escape and the steam is wasted. */
-        OPEN,
-        /** A turbine sits on the opening. The steam goes into it. */
-        TURBINE
-    }
+    /** Biggest power plant box the machinery scan will walk before giving up. */
+    private static final int MAX_PLANT_VOLUME = 32768;
 
     private final NonNullList<ItemStack> items = NonNullList.withSize(TOTAL_SLOTS, ItemStack.EMPTY);
 
@@ -117,9 +119,12 @@ public class BoilerBlockEntity extends BlockEntity implements WorldlyContainer, 
 
     /** Results of the last room survey, refreshed every {@link #SURVEY_INTERVAL} ticks. */
     private boolean chamberSealed;
-    private Vent vent = Vent.BLOCKED;
+
+    /** The turbine the steam goes into, if there is one to find. */
     private @Nullable BlockPos turbinePos;
-    private @Nullable BlockPos ventOut;
+
+    /** Where the smoke leaves: a chimney's mouth, or the top of an open shaft above the boiler. */
+    private @Nullable BlockPos smokeOut;
 
     private int ticksRun;
     private boolean changed;
@@ -165,7 +170,7 @@ public class BoilerBlockEntity extends BlockEntity implements WorldlyContainer, 
         }
         boiler.tickWater();
 
-        boolean canRun = boiler.chamberSealed && boiler.vent != Vent.BLOCKED;
+        boolean canRun = boiler.chamberSealed && boiler.smokeOut != null;
         if (canRun && boiler.burnTime <= 0 && boiler.water >= WATER_PER_TICK) {
             boiler.lightFire();
         }
@@ -241,36 +246,35 @@ public class BoilerBlockEntity extends BlockEntity implements WorldlyContainer, 
         }
     }
 
-    /** Hand the steam to a turbine if one is sitting on the vent; otherwise let it escape. */
+    /** Hand the steam to the turbine if one was found; otherwise let it escape with the smoke. */
     private void pushSteam(Level level) {
         if (steam <= 0) {
             return;
         }
-        if (vent == Vent.TURBINE && turbinePos != null
+        if (turbinePos != null
                 && level.getBlockEntity(turbinePos) instanceof TurbineBlockEntity turbine) {
             int moved = turbine.acceptSteam(steam);
             if (moved > 0) {
                 steam -= moved;
                 changed = true;
             }
+            return;
         }
-        if (steam > 0 && vent != Vent.TURBINE) {
-            steam = Math.max(0, steam - VENT_LOSS);
-            changed = true;
-        }
+        steam = Math.max(0, steam - VENT_LOSS);
+        changed = true;
     }
 
     private void updateStatus(boolean canRun) {
         int previous = status;
         if (!chamberSealed) {
             status = STATUS_NO_CHAMBER;
-        } else if (vent == Vent.BLOCKED) {
-            status = STATUS_VENT_BLOCKED;
+        } else if (smokeOut == null) {
+            status = STATUS_NO_OUTLET;
         } else if (water < WATER_PER_TICK) {
             status = STATUS_NO_WATER;
         } else if (burnTime <= 0) {
             status = STATUS_NO_FUEL;
-        } else if (canRun && vent == Vent.TURBINE) {
+        } else if (canRun && turbinePos != null) {
             status = STATUS_RUNNING_TURBINE;
         } else {
             status = STATUS_RUNNING_VENTING;
@@ -287,50 +291,108 @@ public class BoilerBlockEntity extends BlockEntity implements WorldlyContainer, 
      * emissions are the one part of the plant that is visible from outside the building.
      */
     private void emit(Level level, boolean burning) {
-        if (!burning || ticksRun % 8 != 0 || !(level instanceof ServerLevel serverLevel)) {
+        if (!burning || ticksRun % 8 != 0 || smokeOut == null
+                || !(level instanceof ServerLevel serverLevel)) {
             return;
         }
-        BlockPos out = vent == Vent.TURBINE && turbinePos != null ? turbinePos.above(2) : ventOut;
-        if (out == null) {
-            return;
-        }
-        double x = out.getX() + 0.5D;
-        double y = out.getY() + 0.5D;
-        double z = out.getZ() + 0.5D;
+        double x = smokeOut.getX() + 0.5D;
+        double y = smokeOut.getY() + 0.9D;
+        double z = smokeOut.getZ() + 0.5D;
         serverLevel.sendParticles(ParticleTypes.LARGE_SMOKE, x, y, z, 3, 0.12D, 0.0D, 0.12D, 0.02D);
-        if (vent == Vent.OPEN && steam > 0) {
+        if (turbinePos == null && steam > 0) {
+            // Steam nobody is catching, going up the flue with the smoke.
             serverLevel.sendParticles(ParticleTypes.CLOUD, x, y, z, 4, 0.2D, 0.0D, 0.2D, 0.05D);
         }
     }
 
     // ----------------------------------------------------------------- survey
 
-    /** Work out where the steam goes and whether the room around the boiler holds it in. */
+    /** Work out where the steam and the smoke go, and whether the room holds the fire in. */
     private void survey(Level level, BlockPos pos) {
-        surveyVent(level, pos);
+        turbinePos = null;
+        smokeOut = null;
+
+        surveyPlant(level, pos);
+        if (turbinePos == null || smokeOut == null) {
+            // Nothing registered, or a plant that is still being built. Fall back to the original
+            // rule: a shaft straight up, with or without a turbine capping it.
+            surveyShaft(level, pos);
+        }
         chamberSealed = surveyChamber(level, pos);
     }
 
-    private void surveyVent(Level level, BlockPos pos) {
-        vent = Vent.BLOCKED;
-        turbinePos = null;
-        ventOut = null;
+    /**
+     * Look inside the Turbine Power Plant this boiler stands in.
+     *
+     * <p>This is the reason that structure type exists. Requiring the turbine to sit in the exact
+     * column above the boiler is a rule that is easy to write and unpleasant to build to — you end up
+     * arranging a power station around one invisible line. Drawing a box round the building and
+     * saying "the machinery is in here" is the same information and none of the fuss.
+     */
+    private void surveyPlant(Level level, BlockPos pos) {
+        MinecraftServer server = level.getServer();
+        if (server == null) {
+            return;
+        }
+        Structure plant = CityData.get(server).structureAt(level.dimension(), pos);
+        if (plant == null || plant.type() != StructureType.POWER_PLANT) {
+            return;
+        }
 
+        BlockPos min = plant.min();
+        BlockPos max = plant.max();
+        long volume = (long) (max.getX() - min.getX() + 1)
+                * (max.getY() - min.getY() + 1)
+                * (max.getZ() - min.getZ() + 1);
+        if (volume > MAX_PLANT_VOLUME) {
+            return;
+        }
+
+        final BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+        for (int y = min.getY(); y <= max.getY(); y++) {
+            for (int z = min.getZ(); z <= max.getZ(); z++) {
+                for (int x = min.getX(); x <= max.getX(); x++) {
+                    cursor.set(x, y, z);
+                    Block block = level.getBlockState(cursor).getBlock();
+                    if (turbinePos == null && block instanceof TurbineBlock) {
+                        turbinePos = cursor.immutable();
+                    } else if (smokeOut == null && block instanceof ChimneyBlock
+                            && ChimneyBlock.isOpen(level, cursor)) {
+                        smokeOut = cursor.immutable();
+                    }
+                    if (turbinePos != null && smokeOut != null) {
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
+    /** The original rule: look straight up for a turbine, or for open air to vent through. */
+    private void surveyShaft(Level level, BlockPos pos) {
+        BlockPos highestOpen = null;
         for (int up = 1; up <= VENT_REACH; up++) {
             BlockPos above = pos.above(up);
             BlockState state = level.getBlockState(above);
             if (state.getBlock() instanceof TurbineBlock) {
-                vent = Vent.TURBINE;
-                turbinePos = above;
+                if (turbinePos == null) {
+                    turbinePos = above;
+                }
+                // A turbine caps the shaft, so its own stack is where the smoke comes out.
+                if (smokeOut == null) {
+                    smokeOut = above.above();
+                }
                 return;
             }
             if (state.blocksMotion()) {
-                // A ceiling with no hole in it. The boiler will not light.
+                // A ceiling with no hole in it, and no chimney elsewhere. The boiler will not light.
                 return;
             }
-            ventOut = above;
+            highestOpen = above;
         }
-        vent = Vent.OPEN;
+        if (smokeOut == null) {
+            smokeOut = highestOpen;
+        }
     }
 
     /**
@@ -473,7 +535,7 @@ public class BoilerBlockEntity extends BlockEntity implements WorldlyContainer, 
     public AbstractContainerMenu createMenu(int id, Inventory playerInventory, Player player) {
         if (level != null) {
             survey(level, worldPosition);
-            updateStatus(chamberSealed && vent != Vent.BLOCKED);
+            updateStatus(chamberSealed && smokeOut != null);
         }
         return new BoilerMenu(id, playerInventory, this, data);
     }

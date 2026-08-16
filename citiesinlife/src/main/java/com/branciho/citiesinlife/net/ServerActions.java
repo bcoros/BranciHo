@@ -4,6 +4,7 @@ import com.branciho.citiesinlife.city.City;
 import com.branciho.citiesinlife.city.CityData;
 import com.branciho.citiesinlife.net.payload.ClaimChunkPayload;
 import com.branciho.citiesinlife.net.payload.CitySyncPayload;
+import com.branciho.citiesinlife.net.payload.ConfirmDeleteCityPayload;
 import com.branciho.citiesinlife.net.payload.DeleteAreaPayload;
 import com.branciho.citiesinlife.net.payload.LinkPowerPayload;
 import com.branciho.citiesinlife.net.payload.PowerLinesPayload;
@@ -124,6 +125,15 @@ public final class ServerActions {
         // panel straight afterwards shows what just happened instead of the previous numbers.
         CitySimulation.refresh(data, city);
 
+        if (!type.measured()) {
+            // A power plant is a marker, so residents and jobs would both read zero and look broken.
+            // Say what it is actually for instead.
+            player.sendSystemMessage(Component.translatable(
+                    "message.citiesinlife.registered_plant", name));
+            sync(player);
+            return;
+        }
+
         player.sendSystemMessage(Component.translatable(
                 "message.citiesinlife.registered",
                 name, structure.residents(), structure.jobs()));
@@ -241,6 +251,31 @@ public final class ServerActions {
             reject(player, "nothing_in_area");
             return;
         }
+
+        // The city hall is not just another registration: taking it away takes the city with it, so
+        // the box has to be answered for before anything happens.
+        boolean takesTheCity = false;
+        for (Structure structure : doomed) {
+            if (structure.type() == StructureType.CITY_CORE) {
+                takesTheCity = true;
+                break;
+            }
+        }
+        if (takesTheCity && !payload.confirmed()) {
+            CitiesInLifeNetwork.sendTo(player, new ConfirmDeleteCityPayload(
+                    a, b, city.name(), city.structures().size(),
+                    city.claimedChunks().size(), city.treasury()));
+            return;
+        }
+
+        if (takesTheCity) {
+            int removed = data.deleteCity(city);
+            player.sendSystemMessage(Component.translatable(
+                    "message.citiesinlife.city_deleted", city.name(), removed));
+            sync(player);
+            return;
+        }
+
         for (Structure structure : doomed) {
             data.removeStructure(structure.id());
         }

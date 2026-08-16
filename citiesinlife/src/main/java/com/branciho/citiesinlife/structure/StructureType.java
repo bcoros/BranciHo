@@ -31,7 +31,20 @@ public enum StructureType implements StringRepresentable {
     /** Offices. Denser than shops because a desk needs less room than a shop floor. */
     BUSINESS("business", 0x4DD9E6, 3),
 
-    FACTORY("factory", 0xFFD859, 4);
+    FACTORY("factory", 0xFFD859, 4),
+
+    /**
+     * A building the mod should look inside for power machinery.
+     *
+     * <p>It houses nobody and employs nobody. Its whole job is to tell the boiler where to look:
+     * without it the boiler could only find a turbine sitting in the exact column above itself, which
+     * is a rule that is easy to state and miserable to build around. Drawing a box round the whole
+     * plant says "the turbine and the chimney are somewhere in here", and that is enough.
+     *
+     * <p>Solar panels need no equivalent because a panel is one block that is either wired up or not.
+     * Windmills and reactors will be buildings, so they will use this too.
+     */
+    POWER_PLANT("power_plant", 0xE0662F, 0);
 
     /** Floor cells consumed by one dwelling. */
     public static final double CELLS_PER_DWELLING = 16.0D;
@@ -77,6 +90,16 @@ public enum StructureType implements StringRepresentable {
 
     public boolean employsPeople() {
         return cellsPerJob > 0;
+    }
+
+    /**
+     * Whether measuring the inside of this building tells us anything.
+     *
+     * <p>A power plant is a marker rather than a capacity, so reporting "no usable floors found" for
+     * a boiler house would be advice about a problem it does not have.
+     */
+    public boolean measured() {
+        return this != POWER_PLANT;
     }
 
     public Component displayName() {

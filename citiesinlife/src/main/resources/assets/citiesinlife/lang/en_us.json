@@ -111,9 +111,18 @@
   "block.citiesinlife.boiler": "Coal Boiler",
   "block.citiesinlife.turbine": "Steam Turbine",
   "screen.citiesinlife.boiler_powering": "Running - steam going to the turbine",
-  "screen.citiesinlife.boiler_venting": "Running - steam wasted, no turbine on the vent",
+  "screen.citiesinlife.boiler_venting": "Running - no turbine found, steam wasted",
   "screen.citiesinlife.boiler_no_chamber": "Not sealed in - wall the boiler in on all sides",
-  "screen.citiesinlife.boiler_vent_blocked": "No vent - leave one hole straight above",
   "screen.citiesinlife.boiler_no_water": "No water - put a water bucket in the top slot",
-  "screen.citiesinlife.boiler_no_fuel": "No fuel - put coal in the bottom slot"
+  "screen.citiesinlife.boiler_no_fuel": "No fuel - put coal in the bottom slot",
+  "structure.citiesinlife.power_plant": "Turbine Power Plant",
+  "block.citiesinlife.chimney": "Chimney",
+  "message.citiesinlife.registered_plant": "Registered %s - the boiler inside will now look here for a turbine and a chimney",
+  "screen.citiesinlife.boiler_no_outlet": "Smoke has nowhere to go - add a Chimney with open sky above it, or leave a hole straight above",
+  "screen.citiesinlife.delete_city": "Delete City",
+  "screen.citiesinlife.delete_city_title": "Delete %s?",
+  "screen.citiesinlife.delete_city_body": "That box has your city hall in it. Deleting it deletes the whole city: %s buildings, %s claimed chunks and %s in the treasury. You can found a new city afterwards, but nothing here comes back.",
+  "screen.citiesinlife.keep_city": "Keep it",
+  "screen.citiesinlife.delete_city_confirm": "Delete the city",
+  "message.citiesinlife.city_deleted": "%s is gone, along with %s registration(s)"
 }

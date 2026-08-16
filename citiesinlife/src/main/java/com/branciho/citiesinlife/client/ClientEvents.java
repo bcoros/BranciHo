@@ -2,9 +2,11 @@ package com.branciho.citiesinlife.client;
 
 import com.branciho.citiesinlife.CitiesInLife;
 import com.branciho.citiesinlife.client.screen.CityScreen;
+import com.branciho.citiesinlife.client.screen.ConfirmDeleteCityScreen;
 import com.branciho.citiesinlife.client.screen.NameCityScreen;
 import com.branciho.citiesinlife.net.CitiesInLifeNetwork;
 import com.branciho.citiesinlife.net.ClientCityCache;
+import com.branciho.citiesinlife.net.payload.ConfirmDeleteCityPayload;
 import com.branciho.citiesinlife.net.payload.DeleteAreaPayload;
 import com.branciho.citiesinlife.net.payload.LinkPowerPayload;
 import com.branciho.citiesinlife.net.payload.RegisterStructurePayload;
@@ -58,6 +60,12 @@ public final class ClientEvents {
         }
 
         ClientSelection.tick();
+
+        // The server refuses to delete a city hall without being asked twice; this is the asking.
+        ConfirmDeleteCityPayload pendingDelete = ClientCityCache.takeDeleteConfirm();
+        if (pendingDelete != null) {
+            minecraft.setScreen(new ConfirmDeleteCityScreen(pendingDelete));
+        }
 
         while (KeyBindings.OPEN_CITY.consumeClick()) {
             CitiesInLifeNetwork.sendToServer(new RequestCityPayload());
@@ -226,7 +234,7 @@ public final class ClientEvents {
         // In structure mode a box removes registrations instead of creating one. Same gesture, and
         // the box is drawn red so there is no doubt which it is about to do.
         if (StructureMode.active()) {
-            CitiesInLifeNetwork.sendToServer(new DeleteAreaPayload(a, b));
+            CitiesInLifeNetwork.sendToServer(new DeleteAreaPayload(a, b, false));
             ClientSelection.cancel();
             return;
         }

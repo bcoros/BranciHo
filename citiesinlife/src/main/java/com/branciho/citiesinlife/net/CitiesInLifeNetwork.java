@@ -3,6 +3,7 @@ package com.branciho.citiesinlife.net;
 import com.branciho.citiesinlife.CitiesInLife;
 import com.branciho.citiesinlife.net.payload.ClaimChunkPayload;
 import com.branciho.citiesinlife.net.payload.CitySyncPayload;
+import com.branciho.citiesinlife.net.payload.ConfirmDeleteCityPayload;
 import com.branciho.citiesinlife.net.payload.DeleteAreaPayload;
 import com.branciho.citiesinlife.net.payload.LinkPowerPayload;
 import com.branciho.citiesinlife.net.payload.PowerLinesPayload;
@@ -64,6 +65,9 @@ public final class CitiesInLifeNetwork {
                 (payload, context) -> context.enqueueWork(() -> ClientCityCache.accept(payload)));
 
         registrar.playToClient(PowerLinesPayload.TYPE, PowerLinesPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() -> ClientCityCache.accept(payload)));
+
+        registrar.playToClient(ConfirmDeleteCityPayload.TYPE, ConfirmDeleteCityPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(() -> ClientCityCache.accept(payload)));
     }
 
