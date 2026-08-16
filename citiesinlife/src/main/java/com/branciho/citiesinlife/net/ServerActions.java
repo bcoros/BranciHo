@@ -205,6 +205,7 @@ public final class ServerActions {
             case COMMERCIAL -> "Shop " + index;
             case BUSINESS -> "Office " + index;
             case FACTORY -> "Factory " + index;
+            case POWER_PLANT -> "Power Plant " + index;
         };
     }
 
