@@ -1,0 +1,13 @@
+{
+  "variants": {
+    "segment=0": {
+      "model": "citiesinlife:block/power_mast_post"
+    },
+    "segment=1": {
+      "model": "citiesinlife:block/power_mast_post"
+    },
+    "segment=2": {
+      "model": "citiesinlife:block/power_mast_top"
+    }
+  }
+}

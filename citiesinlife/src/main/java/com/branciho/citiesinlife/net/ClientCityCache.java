@@ -1,6 +1,7 @@
 package com.branciho.citiesinlife.net;
 
 import com.branciho.citiesinlife.net.payload.CitySyncPayload;
+import com.branciho.citiesinlife.net.payload.PowerLinesPayload;
 import com.branciho.citiesinlife.net.payload.StructureSyncPayload;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
@@ -24,6 +25,7 @@ public final class ClientCityCache {
 
     private static @Nullable CitySyncPayload city;
     private static List<StructureSyncPayload.Entry> structures = List.of();
+    private static List<long[]> powerLines = List.of();
     private static LongSet claimedChunks = new LongOpenHashSet();
 
     private ClientCityCache() {
@@ -40,6 +42,15 @@ public final class ClientCityCache {
 
     public static void accept(StructureSyncPayload payload) {
         structures = payload.structures();
+    }
+
+    public static void accept(PowerLinesPayload payload) {
+        powerLines = payload.lines();
+    }
+
+    /** Power lines near the player, as pairs of packed positions. */
+    public static List<long[]> powerLines() {
+        return powerLines;
     }
 
     public static @Nullable CitySyncPayload city() {
@@ -71,6 +82,7 @@ public final class ClientCityCache {
     public static void clear() {
         city = null;
         structures = List.of();
+        powerLines = List.of();
         claimedChunks = new LongOpenHashSet();
     }
 }

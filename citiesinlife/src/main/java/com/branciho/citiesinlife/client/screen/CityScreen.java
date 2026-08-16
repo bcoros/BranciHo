@@ -23,8 +23,8 @@ public class CityScreen extends Screen {
     static final int COLOUR_GOOD = 0xFF66E576;
     static final int COLOUR_BAD = 0xFFFF6B6B;
 
-    private static final int PANEL_WIDTH = 240;
-    private static final int PANEL_HEIGHT = 178;
+    private static final int PANEL_WIDTH = 244;
+    private static final int PANEL_HEIGHT = 206;
 
     private int left;
     private int top;
@@ -79,16 +79,30 @@ public class CityScreen extends Screen {
         y = row(graphics, y, "screen.citiesinlife.treasury",
                 Component.literal(format(city.treasury())),
                 city.treasury() >= 0 ? COLOUR_GOOD : COLOUR_BAD);
+
+        // Population against housing, because "44" alone looks broken next to a tower you just
+        // registered. Seeing 44 of 370 says plainly that the block is filling up.
         y = row(graphics, y, "screen.citiesinlife.population",
-                Component.literal(format(city.population())), COLOUR_TEXT);
-        y = row(graphics, y, "screen.citiesinlife.jobs",
-                Component.literal(format(city.jobs())), COLOUR_TEXT);
+                Component.literal(format(city.population()) + " / " + format(city.housing())),
+                COLOUR_TEXT);
         y = row(graphics, y, "screen.citiesinlife.employed",
-                Component.literal(city.employed() + " / " + city.population()), COLOUR_TEXT);
+                Component.literal(format(city.employed()) + " / " + format(city.jobs())), COLOUR_TEXT);
 
         int unemployed = Math.max(0, city.population() - city.employed());
         y = row(graphics, y, "screen.citiesinlife.unemployed",
                 Component.literal(format(unemployed)), unemployed > 0 ? COLOUR_BAD : COLOUR_GOOD);
+
+        boolean powered = city.powerNeeded() == 0 || city.powerProduced() >= city.powerNeeded();
+        y = row(graphics, y, "screen.citiesinlife.power",
+                Component.literal(format(city.powerProduced()) + " / " + format(city.powerNeeded())),
+                powered ? COLOUR_GOOD : COLOUR_BAD);
+        if (!powered) {
+            graphics.drawString(this.font,
+                    Component.translatable("screen.citiesinlife.power_short"),
+                    left + 12, y, COLOUR_BAD, false);
+        }
+        y += 14;
+
         y = row(graphics, y, "screen.citiesinlife.territory",
                 Component.translatable("screen.citiesinlife.chunks", ClientCityCache.claimedCount()),
                 COLOUR_TEXT);

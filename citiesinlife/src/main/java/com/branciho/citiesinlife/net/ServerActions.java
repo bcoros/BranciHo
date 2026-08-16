@@ -4,10 +4,15 @@ import com.branciho.citiesinlife.city.City;
 import com.branciho.citiesinlife.city.CityData;
 import com.branciho.citiesinlife.net.payload.ClaimChunkPayload;
 import com.branciho.citiesinlife.net.payload.CitySyncPayload;
-import com.branciho.citiesinlife.net.payload.DeleteStructurePayload;
+import com.branciho.citiesinlife.net.payload.DeleteAreaPayload;
+import com.branciho.citiesinlife.net.payload.LinkPowerPayload;
+import com.branciho.citiesinlife.net.payload.PowerLinesPayload;
 import com.branciho.citiesinlife.net.payload.RegisterStructurePayload;
 import com.branciho.citiesinlife.net.payload.StructureSyncPayload;
+import com.branciho.citiesinlife.power.PowerBlock;
+import com.branciho.citiesinlife.power.PowerGrid;
 import com.branciho.citiesinlife.scan.StructureScanner;
+import com.branciho.citiesinlife.sim.CitySimulation;
 import com.branciho.citiesinlife.structure.MeasureMode;
 import com.branciho.citiesinlife.structure.Structure;
 import com.branciho.citiesinlife.structure.StructureType;
@@ -17,6 +22,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.block.state.BlockState;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -114,9 +120,13 @@ public final class ServerActions {
         structure.setMeasurement(mode, measured.floors(), measured.usableCells());
         data.addStructure(city, structure);
 
+        // Bring the totals up to date now rather than at the next growth tick, so opening the city
+        // panel straight afterwards shows what just happened instead of the previous numbers.
+        CitySimulation.refresh(data, city);
+
         player.sendSystemMessage(Component.translatable(
                 "message.citiesinlife.registered",
-                name, measured.floors().size(), structure.usableCells()));
+                name, structure.residents(), structure.jobs()));
 
         // Point at the other mode rather than just reporting nothing: an empty measurement is
         // almost always a shape the storey detector cannot read, not a mistake by the player.
@@ -190,26 +200,121 @@ public final class ServerActions {
 
     // ---------------------------------------------------------------- deleting
 
-    public static void deleteStructure(ServerPlayer player, DeleteStructurePayload payload) {
+    /**
+     * Remove every registration of the player's own city that the box touches.
+     *
+     * <p>By area rather than by pointing at one: a registration has no blocks, so aiming at it with
+     * the crosshair means aiming at nothing, and it never worked reliably. Drawing a box is the same
+     * gesture that created the registration in the first place.
+     */
+    public static void deleteArea(ServerPlayer player, DeleteAreaPayload payload) {
         MinecraftServer server = player.getServer();
         if (server == null) {
             return;
         }
+        ServerLevel level = player.serverLevel();
         CityData data = CityData.get(server);
-        Structure structure = data.structure(payload.structureId());
-        if (structure == null) {
-            reject(player, "structure_missing");
-            return;
-        }
-        City city = data.city(structure.cityId());
-        if (city == null || (!city.owner().equals(player.getUUID()) && !player.hasPermissions(2))) {
-            reject(player, "not_yours");
+        City city = data.cityOf(player.getUUID(), level.dimension());
+        if (city == null) {
+            reject(player, "no_city");
             return;
         }
 
-        String name = structure.name();
-        data.removeStructure(structure.id());
-        player.sendSystemMessage(Component.translatable("message.citiesinlife.deleted", name));
+        BlockPos a = payload.pointA();
+        BlockPos b = payload.pointB();
+        if (tooFar(player, a) || tooFar(player, b)) {
+            reject(player, "too_far");
+            return;
+        }
+        BlockPos min = new BlockPos(
+                Math.min(a.getX(), b.getX()), Math.min(a.getY(), b.getY()), Math.min(a.getZ(), b.getZ()));
+        BlockPos max = new BlockPos(
+                Math.max(a.getX(), b.getX()), Math.max(a.getY(), b.getY()), Math.max(a.getZ(), b.getZ()));
+
+        final List<Structure> doomed = new ArrayList<>();
+        for (Structure structure : data.structuresOf(city)) {
+            if (structure.dimension().equals(level.dimension()) && structure.intersects(min, max)) {
+                doomed.add(structure);
+            }
+        }
+        if (doomed.isEmpty()) {
+            reject(player, "nothing_in_area");
+            return;
+        }
+        for (Structure structure : doomed) {
+            data.removeStructure(structure.id());
+        }
+        CitySimulation.refresh(data, city);
+        player.sendSystemMessage(Component.translatable(
+                "message.citiesinlife.deleted_area", doomed.size()));
+        sync(player);
+    }
+
+    // ------------------------------------------------------------------ power
+
+    /**
+     * Run or cut a power line between two blocks.
+     *
+     * <p>Range is the shorter of the two ends' reaches, so a mast's long throw only counts when it is
+     * talking to another mast — which is what makes masts the thing you build a transmission run out
+     * of rather than an upgrade to everything.
+     */
+    public static void linkPower(ServerPlayer player, LinkPowerPayload payload) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        ServerLevel level = player.serverLevel();
+
+        BlockPos from = payload.from();
+        BlockPos to = payload.to();
+        if (tooFar(player, from) || tooFar(player, to)) {
+            reject(player, "too_far");
+            return;
+        }
+
+        BlockState fromState = level.getBlockState(from);
+        BlockState toState = level.getBlockState(to);
+        if (!(fromState.getBlock() instanceof PowerBlock fromBlock)
+                || !(toState.getBlock() instanceof PowerBlock toBlock)) {
+            reject(player, "not_power_block");
+            return;
+        }
+
+        BlockPos fromNode = fromBlock.networkPos(level, from, fromState);
+        BlockPos toNode = toBlock.networkPos(level, to, toState);
+        if (fromNode.equals(toNode)) {
+            reject(player, "same_node");
+            return;
+        }
+
+        PowerGrid grid = PowerGrid.get(server);
+
+        if (payload.disconnect()) {
+            if (grid.unlink(level.dimension(), fromNode, toNode)) {
+                player.sendSystemMessage(Component.translatable("message.citiesinlife.line_removed"));
+                sync(player);
+            } else {
+                reject(player, "not_linked");
+            }
+            return;
+        }
+
+        int range = Math.min(fromBlock.linkRange(), toBlock.linkRange());
+        double distance = Math.sqrt(fromNode.distSqr(toNode));
+        if (distance > range) {
+            player.sendSystemMessage(Component.translatable(
+                    "message.citiesinlife.too_far_apart", (int) distance, range));
+            return;
+        }
+        if (grid.linked(level.dimension(), fromNode, toNode)) {
+            reject(player, "already_linked");
+            return;
+        }
+
+        grid.link(level.dimension(), fromNode, toNode);
+        player.sendSystemMessage(Component.translatable(
+                "message.citiesinlife.line_built", (int) distance));
         sync(player);
     }
 
@@ -283,13 +388,17 @@ public final class ServerActions {
                         true,
                         city.name(),
                         city.treasury(),
+                        city.housing(),
                         city.population(),
                         city.jobs(),
                         city.employed(),
+                        city.powerProduced(),
+                        city.powerNeeded(),
                         city.nextClaimCost(),
                         city.claimedChunks().toLongArray()));
 
         CitiesInLifeNetwork.sendTo(player, new StructureSyncPayload(nearbyStructures(data, player)));
+        CitiesInLifeNetwork.sendTo(player, new PowerLinesPayload(nearbyLines(server, player)));
     }
 
     private static List<StructureSyncPayload.Entry> nearbyStructures(CityData data, ServerPlayer player) {
@@ -324,6 +433,34 @@ public final class ServerActions {
             }
         }
         return entries;
+    }
+
+    /**
+     * Power lines close enough to be worth drawing.
+     *
+     * <p>Filtered by distance to either end, because a line is worth seeing as soon as one of its
+     * poles is in view even if the other end is far off across the desert.
+     */
+    private static List<long[]> nearbyLines(MinecraftServer server, ServerPlayer player) {
+        final int radius = SYNC_RADIUS_CHUNKS * 16 + 64;
+        final BlockPos here = player.blockPosition();
+        final List<long[]> visible = new ArrayList<>();
+
+        for (long[] line : PowerGrid.get(server).allLines(player.serverLevel().dimension())) {
+            if (visible.size() >= PowerLinesPayload.MAX_LINES) {
+                break;
+            }
+            if (withinRadius(here, line[0], radius) || withinRadius(here, line[1], radius)) {
+                visible.add(line);
+            }
+        }
+        return visible;
+    }
+
+    private static boolean withinRadius(BlockPos here, long packed, int radius) {
+        int dx = BlockPos.getX(packed) - here.getX();
+        int dz = BlockPos.getZ(packed) - here.getZ();
+        return Math.abs(dx) <= radius && Math.abs(dz) <= radius;
     }
 
     // ----------------------------------------------------------------- helpers

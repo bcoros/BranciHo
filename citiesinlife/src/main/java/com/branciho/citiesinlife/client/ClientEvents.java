@@ -2,17 +2,18 @@ package com.branciho.citiesinlife.client;
 
 import com.branciho.citiesinlife.CitiesInLife;
 import com.branciho.citiesinlife.client.screen.CityScreen;
-import com.branciho.citiesinlife.client.screen.ConfirmDeleteScreen;
 import com.branciho.citiesinlife.client.screen.NameCityScreen;
 import com.branciho.citiesinlife.net.CitiesInLifeNetwork;
 import com.branciho.citiesinlife.net.ClientCityCache;
+import com.branciho.citiesinlife.net.payload.DeleteAreaPayload;
+import com.branciho.citiesinlife.net.payload.LinkPowerPayload;
 import com.branciho.citiesinlife.net.payload.RegisterStructurePayload;
 import com.branciho.citiesinlife.net.payload.RequestCityPayload;
-import com.branciho.citiesinlife.net.payload.StructureSyncPayload;
 import com.branciho.citiesinlife.registry.ModItems;
 import com.branciho.citiesinlife.structure.StructureType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -24,7 +25,7 @@ import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 
 /**
- * All client input for the planner.
+ * All client input for the planner and the power line tool.
  *
  * <p>Every handler here changes something visible. That is not a given — the predecessor to this mod
  * shipped a keybind wired to a boolean nothing read, which looked correct and did nothing. If a
@@ -38,6 +39,10 @@ public final class ClientEvents {
 
     private static boolean holdingWand(LocalPlayer player) {
         return player.getMainHandItem().is(ModItems.PLANNER_WAND.get());
+    }
+
+    private static boolean holdingLineTool(LocalPlayer player) {
+        return player.getMainHandItem().is(ModItems.POWER_LINE_TOOL.get());
     }
 
     // ------------------------------------------------------------------ ticks
@@ -59,9 +64,10 @@ public final class ClientEvents {
 
         while (KeyBindings.TOGGLE_STRUCTURE_MODE.consumeClick()) {
             StructureMode.toggle();
+            // A half-drawn box left over from the other mode would be confusing: in structure mode a
+            // box deletes, outside it a box creates.
+            ClientSelection.cancel();
             if (StructureMode.active()) {
-                // Ask for a fresh snapshot: outlining stale data would draw buildings that are not
-                // there any more, which is worse than drawing nothing.
                 CitiesInLifeNetwork.sendToServer(new RequestCityPayload());
             }
             player.displayClientMessage(Component.translatable(StructureMode.active()
@@ -100,54 +106,59 @@ public final class ClientEvents {
         if (!event.getLevel().isClientSide()) {
             return;
         }
-        if (!(event.getEntity() instanceof LocalPlayer player) || !holdingWand(player)) {
+        if (!(event.getEntity() instanceof LocalPlayer player)) {
             return;
         }
-        handleRightClick(player);
-        // Stop the block underneath being opened or activated while planning.
-        event.setCanceled(true);
+        if (holdingWand(player)) {
+            handlePlannerRightClick(player);
+            event.setCanceled(true);
+        } else if (holdingLineTool(player)) {
+            handleLineRightClick(player, event.getPos());
+            event.setCanceled(true);
+        }
     }
 
     @SubscribeEvent
     public static void onRightClickEmpty(PlayerInteractEvent.RightClickEmpty event) {
-        if (event.getEntity() instanceof LocalPlayer player && holdingWand(player)) {
-            handleRightClick(player);
+        if (!(event.getEntity() instanceof LocalPlayer player)) {
+            return;
+        }
+        if (holdingWand(player)) {
+            handlePlannerRightClick(player);
+        } else if (holdingLineTool(player) && player.isShiftKeyDown()) {
+            ClientPowerTool.clear();
+            player.displayClientMessage(Component.translatable("hud.citiesinlife.line_cleared"), true);
         }
     }
 
-    /**
-     * Right click does everything: place corners, clear a selection, and delete a registration.
-     *
-     * <p>Deleting used to be on Shift + left click and did not work reliably — the attack key is
-     * fought over by several things at once. Right click is the same path that already places
-     * corners, so it is known to fire, and sneaking plus structure mode is a specific enough
-     * combination that it cannot happen by accident.
-     */
-    private static void handleRightClick(LocalPlayer player) {
-        if (player.isShiftKeyDown()) {
-            if (StructureMode.active()) {
-                deleteTargeted(player);
-                return;
-            }
-            if (ClientSelection.active()) {
-                ClientSelection.cancel();
-                player.displayClientMessage(
-                        Component.translatable("hud.citiesinlife.selection_cleared"), true);
-                return;
-            }
+    private static void handlePlannerRightClick(LocalPlayer player) {
+        if (player.isShiftKeyDown() && ClientSelection.active()) {
+            ClientSelection.cancel();
+            player.displayClientMessage(
+                    Component.translatable("hud.citiesinlife.selection_cleared"), true);
+            return;
         }
         ClientSelection.advance();
     }
 
-    private static void deleteTargeted(LocalPlayer player) {
-        Minecraft minecraft = Minecraft.getInstance();
-        StructureSyncPayload.Entry target = StructureMode.lookingAt();
-        if (target == null) {
-            player.displayClientMessage(
-                    Component.translatable("hud.citiesinlife.nothing_targeted"), true);
+    /**
+     * Click one power block, then another, and the line goes in.
+     *
+     * <p>Sneaking while clicking the second one cuts an existing line instead of building one, so
+     * undoing a mistake does not need a separate tool.
+     */
+    private static void handleLineRightClick(LocalPlayer player, BlockPos clicked) {
+        BlockPos pending = ClientPowerTool.pending();
+        if (pending == null) {
+            ClientPowerTool.setPending(clicked);
+            player.displayClientMessage(Component.translatable(
+                    "hud.citiesinlife.line_started",
+                    clicked.getX(), clicked.getY(), clicked.getZ()), true);
             return;
         }
-        minecraft.setScreen(new ConfirmDeleteScreen(target));
+        CitiesInLifeNetwork.sendToServer(
+                new LinkPowerPayload(pending, clicked, player.isShiftKeyDown()));
+        ClientPowerTool.clear();
     }
 
     // ------------------------------------------------------------- left click
@@ -172,10 +183,21 @@ public final class ClientEvents {
     }
 
     private static void confirmSelection(Minecraft minecraft, LocalPlayer player) {
-        StructureType type = ClientSelection.type();
-        if (ClientSelection.pointA() == null || ClientSelection.pointB() == null) {
+        BlockPos a = ClientSelection.pointA();
+        BlockPos b = ClientSelection.pointB();
+        if (a == null || b == null) {
             return;
         }
+
+        // In structure mode a box removes registrations instead of creating one. Same gesture, and
+        // the box is drawn red so there is no doubt which it is about to do.
+        if (StructureMode.active()) {
+            CitiesInLifeNetwork.sendToServer(new DeleteAreaPayload(a, b));
+            ClientSelection.cancel();
+            return;
+        }
+
+        StructureType type = ClientSelection.type();
 
         // Founding needs a name, so the one case that opens a screen is the first structure ever.
         if (type == StructureType.CITY_CORE && !ClientCityCache.hasCity()) {
@@ -184,11 +206,7 @@ public final class ClientEvents {
         }
 
         CitiesInLifeNetwork.sendToServer(new RegisterStructurePayload(
-                ClientSelection.pointA(),
-                ClientSelection.pointB(),
-                type.id(),
-                ClientSelection.measureMode().id(),
-                ""));
+                a, b, type.id(), ClientSelection.measureMode().id(), ""));
         ClientSelection.cancel();
     }
 
@@ -200,6 +218,7 @@ public final class ClientEvents {
         // previous one's city and half-drawn selection.
         ClientCityCache.clear();
         ClientSelection.reset();
+        ClientPowerTool.clear();
         StructureMode.deactivate();
     }
 

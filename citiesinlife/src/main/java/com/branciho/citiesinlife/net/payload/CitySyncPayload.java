@@ -15,9 +15,12 @@ public record CitySyncPayload(
         boolean hasCity,
         String cityName,
         long treasury,
+        int housing,
         int population,
         int jobs,
         int employed,
+        int powerProduced,
+        int powerNeeded,
         long nextClaimCost,
         long[] claimedChunks
 ) implements CustomPacketPayload {
@@ -26,7 +29,7 @@ public record CitySyncPayload(
 
     /** What a player with no city yet receives, so the screens have something well-formed to draw. */
     public static CitySyncPayload none() {
-        return new CitySyncPayload(false, "", 0L, 0, 0, 0, 0L, new long[0]);
+        return new CitySyncPayload(false, "", 0L, 0, 0, 0, 0, 0, 0, 0L, new long[0]);
     }
 
     public static final CustomPacketPayload.Type<CitySyncPayload> TYPE =
@@ -39,9 +42,12 @@ public record CitySyncPayload(
         buf.writeBoolean(hasCity);
         buf.writeUtf(cityName, 32);
         buf.writeLong(treasury);
+        buf.writeVarInt(housing);
         buf.writeVarInt(population);
         buf.writeVarInt(jobs);
         buf.writeVarInt(employed);
+        buf.writeVarInt(powerProduced);
+        buf.writeVarInt(powerNeeded);
         buf.writeLong(nextClaimCost);
 
         int count = Math.min(claimedChunks.length, MAX_CHUNKS);
@@ -55,9 +61,12 @@ public record CitySyncPayload(
         boolean hasCity = buf.readBoolean();
         String name = buf.readUtf(32);
         long treasury = buf.readLong();
+        int housing = buf.readVarInt();
         int population = buf.readVarInt();
         int jobs = buf.readVarInt();
         int employed = buf.readVarInt();
+        int powerProduced = buf.readVarInt();
+        int powerNeeded = buf.readVarInt();
         long claimCost = buf.readLong();
 
         int count = buf.readVarInt();
@@ -68,7 +77,8 @@ public record CitySyncPayload(
         for (int i = 0; i < count; i++) {
             chunks[i] = buf.readLong();
         }
-        return new CitySyncPayload(hasCity, name, treasury, population, jobs, employed, claimCost, chunks);
+        return new CitySyncPayload(hasCity, name, treasury, housing, population, jobs, employed,
+                powerProduced, powerNeeded, claimCost, chunks);
     }
 
     @Override

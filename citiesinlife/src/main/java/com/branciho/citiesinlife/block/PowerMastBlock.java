@@ -1,0 +1,155 @@
+package com.branciho.citiesinlife.block;
+
+import com.branciho.citiesinlife.power.PowerBlock;
+import com.branciho.citiesinlife.power.PowerGrid;
+import com.branciho.citiesinlife.power.PowerRole;
+import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.context.BlockPlaceContext;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelAccessor;
+import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.IntegerProperty;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.VoxelShape;
+import org.jetbrains.annotations.Nullable;
+
+/**
+ * A wooden power mast, three blocks tall — the kind that lines a road in half of Europe.
+ *
+ * <p>Three blocks because a line has to clear the buildings it runs past. It is one node on the
+ * network occupying three positions, so clicking any segment with the line tool resolves to the foot
+ * and a line never attaches to the middle of one mast and the base of another.
+ *
+ * <p>Masts carry power and nothing else. Their long reach is the reason a solar farm can sit out in
+ * the desert and still feed a city.
+ */
+public class PowerMastBlock extends Block implements PowerBlock {
+
+    /** 0 is the foot, 2 is the crossarm at the top. */
+    public static final IntegerProperty SEGMENT = IntegerProperty.create("segment", 0, 2);
+
+    public static final int HEIGHT = 3;
+
+    /** How far one mast can throw a line to another. */
+    public static final int MAST_RANGE = 64;
+
+    private static final VoxelShape POST = Block.box(6.0D, 0.0D, 6.0D, 10.0D, 16.0D, 10.0D);
+    private static final VoxelShape CROSSARM = Block.box(1.0D, 6.0D, 6.0D, 15.0D, 16.0D, 10.0D);
+
+    public PowerMastBlock(Properties properties) {
+        super(properties);
+        registerDefaultState(stateDefinition.any().setValue(SEGMENT, 0));
+    }
+
+    @Override
+    protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+        builder.add(SEGMENT);
+    }
+
+    @Override
+    public @Nullable BlockState getStateForPlacement(BlockPlaceContext context) {
+        BlockPos pos = context.getClickedPos();
+        Level level = context.getLevel();
+        // Refuse rather than place a stump: a one-block mast that looks broken is worse than being
+        // told there is no room.
+        for (int offset = 1; offset < HEIGHT; offset++) {
+            if (!level.getBlockState(pos.above(offset)).canBeReplaced()) {
+                return null;
+            }
+        }
+        if (pos.getY() + HEIGHT > level.getMaxBuildHeight()) {
+            return null;
+        }
+        return defaultBlockState().setValue(SEGMENT, 0);
+    }
+
+    @Override
+    public void setPlacedBy(Level level, BlockPos pos, BlockState state, @Nullable net.minecraft.world.entity.LivingEntity placer,
+                            net.minecraft.world.item.ItemStack stack) {
+        for (int offset = 1; offset < HEIGHT; offset++) {
+            level.setBlock(pos.above(offset), defaultBlockState().setValue(SEGMENT, offset), Block.UPDATE_ALL);
+        }
+    }
+
+    @Override
+    protected boolean canSurvive(BlockState state, LevelReader level, BlockPos pos) {
+        int segment = state.getValue(SEGMENT);
+        if (segment == 0) {
+            return true;
+        }
+        BlockState below = level.getBlockState(pos.below());
+        return below.getBlock() instanceof PowerMastBlock && below.getValue(SEGMENT) == segment - 1;
+    }
+
+    @Override
+    protected BlockState updateShape(BlockState state, net.minecraft.core.Direction direction,
+                                     BlockState neighbour, LevelAccessor level,
+                                     BlockPos pos, BlockPos neighbourPos) {
+        if (!canSurvive(state, level, pos)) {
+            return Blocks.AIR.defaultBlockState();
+        }
+        return state;
+    }
+
+    @Override
+    public BlockState playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {
+        // Break any segment and the whole mast goes: leaving a floating crossarm behind would be a
+        // structure the player has no obvious way to remove.
+        BlockPos base = baseOf(level, pos, state);
+        for (int offset = 0; offset < HEIGHT; offset++) {
+            BlockPos segmentPos = base.above(offset);
+            BlockState segmentState = level.getBlockState(segmentPos);
+            if (segmentState.getBlock() instanceof PowerMastBlock && !segmentPos.equals(pos)) {
+                level.setBlock(segmentPos, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
+            }
+        }
+        return super.playerWillDestroy(level, pos, state, player);
+    }
+
+    @Override
+    protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean moved) {
+        if (!state.is(newState.getBlock()) && state.getValue(SEGMENT) == 0
+                && level instanceof ServerLevel serverLevel) {
+            PowerGrid.get(serverLevel.getServer()).removeNode(level.dimension(), pos);
+        }
+        super.onRemove(state, level, pos, newState, moved);
+    }
+
+    @Override
+    protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+        return state.getValue(SEGMENT) == HEIGHT - 1 ? CROSSARM : POST;
+    }
+
+    @Override
+    public PowerRole powerRole() {
+        return PowerRole.RELAY;
+    }
+
+    @Override
+    public int linkRange() {
+        return MAST_RANGE;
+    }
+
+    @Override
+    public BlockPos networkPos(BlockGetter level, BlockPos pos, BlockState state) {
+        return baseOf(level, pos, state);
+    }
+
+    /** The foot of the mast this position belongs to. */
+    private static BlockPos baseOf(BlockGetter level, BlockPos pos, BlockState state) {
+        int segment = state.getBlock() instanceof PowerMastBlock ? state.getValue(SEGMENT) : 0;
+        return pos.below(segment);
+    }
+
+    /** Where a line attaches visually: the crossarm, not the foot. */
+    public static BlockPos attachPoint(BlockPos base) {
+        return base.above(HEIGHT - 1);
+    }
+}

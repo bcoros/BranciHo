@@ -34,10 +34,21 @@ public final class City {
     private final LongSet claimedChunks = new LongOpenHashSet();
     private final List<UUID> structures = new ArrayList<>();
 
-    /** Last simulated totals, so screens do not have to recompute them per frame. */
-    private int population;
+    /**
+     * Capacity the city's buildings offer, and how much of it is taken up.
+     *
+     * <p>Housing and jobs are what the buildings <em>could</em> hold; population and employed are what
+     * they currently do. Showing both is what makes a half-empty city legible instead of looking like
+     * the numbers are simply wrong.
+     */
+    private int housing;
     private int jobs;
+    private int population;
     private int employed;
+
+    /** What the city's buildings draw, and what its network actually delivers. */
+    private int powerNeeded;
+    private int powerProduced;
 
     public City(UUID id, String name, UUID owner, ResourceKey<Level> dimension) {
         this.id = id;
@@ -127,22 +138,46 @@ public final class City {
         structures.remove(structureId);
     }
 
-    public int population() {
-        return population;
+    public int housing() {
+        return housing;
     }
 
     public int jobs() {
         return jobs;
     }
 
+    public int population() {
+        return population;
+    }
+
     public int employed() {
         return employed;
     }
 
-    public void setTotals(int population, int jobs, int employed) {
-        this.population = population;
+    public void setCapacity(int housing, int jobs) {
+        this.housing = housing;
         this.jobs = jobs;
-        this.employed = employed;
+    }
+
+    public void setPopulation(int population) {
+        this.population = Math.max(0, population);
+    }
+
+    public void setEmployed(int employed) {
+        this.employed = Math.max(0, employed);
+    }
+
+    public int powerNeeded() {
+        return powerNeeded;
+    }
+
+    public int powerProduced() {
+        return powerProduced;
+    }
+
+    public void setPower(int produced, int needed) {
+        this.powerProduced = Math.max(0, produced);
+        this.powerNeeded = Math.max(0, needed);
     }
 
     public CompoundTag save() {
@@ -162,9 +197,12 @@ public final class City {
         }
         tag.put("structures", structureList);
 
-        tag.putInt("population", population);
+        tag.putInt("housing", housing);
         tag.putInt("jobs", jobs);
+        tag.putInt("population", population);
         tag.putInt("employed", employed);
+        tag.putInt("powerNeeded", powerNeeded);
+        tag.putInt("powerProduced", powerProduced);
         return tag;
     }
 
@@ -180,9 +218,12 @@ public final class City {
         for (int i = 0; i < structureList.size(); i++) {
             city.structures.add(structureList.getCompound(i).getUUID("id"));
         }
-        city.population = tag.getInt("population");
+        city.housing = tag.getInt("housing");
         city.jobs = tag.getInt("jobs");
+        city.population = tag.getInt("population");
         city.employed = tag.getInt("employed");
+        city.powerNeeded = tag.getInt("powerNeeded");
+        city.powerProduced = tag.getInt("powerProduced");
         return city;
     }
 }

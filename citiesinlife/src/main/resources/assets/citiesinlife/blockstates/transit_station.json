@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "citiesinlife:block/transit_station"
+    },
+    "facing=east": {
+      "model": "citiesinlife:block/transit_station",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "citiesinlife:block/transit_station",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "citiesinlife:block/transit_station",
+      "y": 270
+    }
+  }
+}

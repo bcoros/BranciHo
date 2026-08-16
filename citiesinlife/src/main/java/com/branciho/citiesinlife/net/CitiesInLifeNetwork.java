@@ -3,7 +3,9 @@ package com.branciho.citiesinlife.net;
 import com.branciho.citiesinlife.CitiesInLife;
 import com.branciho.citiesinlife.net.payload.ClaimChunkPayload;
 import com.branciho.citiesinlife.net.payload.CitySyncPayload;
-import com.branciho.citiesinlife.net.payload.DeleteStructurePayload;
+import com.branciho.citiesinlife.net.payload.DeleteAreaPayload;
+import com.branciho.citiesinlife.net.payload.LinkPowerPayload;
+import com.branciho.citiesinlife.net.payload.PowerLinesPayload;
 import com.branciho.citiesinlife.net.payload.RegisterStructurePayload;
 import com.branciho.citiesinlife.net.payload.RequestCityPayload;
 import com.branciho.citiesinlife.net.payload.StructureSyncPayload;
@@ -39,9 +41,13 @@ public final class CitiesInLifeNetwork {
                 (payload, context) -> context.enqueueWork(
                         () -> onServer(context, player -> ServerActions.registerStructure(player, payload))));
 
-        registrar.playToServer(DeleteStructurePayload.TYPE, DeleteStructurePayload.STREAM_CODEC,
+        registrar.playToServer(DeleteAreaPayload.TYPE, DeleteAreaPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(
-                        () -> onServer(context, player -> ServerActions.deleteStructure(player, payload))));
+                        () -> onServer(context, player -> ServerActions.deleteArea(player, payload))));
+
+        registrar.playToServer(LinkPowerPayload.TYPE, LinkPowerPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(
+                        () -> onServer(context, player -> ServerActions.linkPower(player, payload))));
 
         registrar.playToServer(ClaimChunkPayload.TYPE, ClaimChunkPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(
@@ -55,6 +61,9 @@ public final class CitiesInLifeNetwork {
                 (payload, context) -> context.enqueueWork(() -> ClientCityCache.accept(payload)));
 
         registrar.playToClient(StructureSyncPayload.TYPE, StructureSyncPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() -> ClientCityCache.accept(payload)));
+
+        registrar.playToClient(PowerLinesPayload.TYPE, PowerLinesPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(() -> ClientCityCache.accept(payload)));
     }
 

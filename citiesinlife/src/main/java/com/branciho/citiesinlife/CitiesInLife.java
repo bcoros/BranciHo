@@ -1,5 +1,6 @@
 package com.branciho.citiesinlife;
 
+import com.branciho.citiesinlife.registry.ModBlocks;
 import com.branciho.citiesinlife.registry.ModCreativeTabs;
 import com.branciho.citiesinlife.registry.ModItems;
 import com.mojang.logging.LogUtils;
@@ -30,6 +31,7 @@ public final class CitiesInLife {
     public static final Logger LOGGER = LogUtils.getLogger();
 
     public CitiesInLife(IEventBus modBus, ModContainer container) {
+        ModBlocks.register(modBus);
         ModItems.register(modBus);
         ModCreativeTabs.register(modBus);
 

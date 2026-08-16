@@ -18,7 +18,13 @@ public final class ModCreativeTabs {
             () -> CreativeModeTab.builder()
                     .title(Component.translatable("itemGroup." + CitiesInLife.MOD_ID))
                     .icon(() -> new ItemStack(ModItems.PLANNER_WAND.get()))
-                    .displayItems((parameters, output) -> output.accept(ModItems.PLANNER_WAND.get()))
+                    .displayItems((parameters, output) -> {
+                        output.accept(ModItems.PLANNER_WAND.get());
+                        output.accept(ModItems.POWER_LINE_TOOL.get());
+                        output.accept(ModItems.SOLAR_PANEL.get());
+                        output.accept(ModItems.POWER_MAST.get());
+                        output.accept(ModItems.TRANSIT_STATION.get());
+                    })
                     .build());
 
     private ModCreativeTabs() {

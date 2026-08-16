@@ -8,7 +8,7 @@ floors you actually built and turns them into residents, jobs and tax revenue.
 
 ---
 
-## Alpha 1.5
+## Alpha 2 — Utilities
 
 ### The Planner Wand
 
@@ -63,12 +63,38 @@ Treasury, population, jobs, employed, unemployed, territory and what the next ch
 
 ### The land map
 
-From the city panel → **Land & Territory**. Your territory as a grid of chunks, over a
-see-through panel so you can still see where you are standing.
+From the city panel → **Land & Territory**. A real map of the terrain from above, one tile per
+chunk, sampled from the world so you can see the lake or ridge you are claiming around.
+
+**It follows you.** Walk a thousand blocks and the map opens centred on you, so a city can grow in
+any direction — claims just have to stay joined up.
 
 - **Left click** an unclaimed chunk to buy it — claims must touch land you already own
 - **Right click** one of yours to release it
 - Claims get more expensive as the city grows
+
+### Electricity
+
+Build a chain and a city lights up:
+
+```
+Solar Panel  →  Transit Station  →  Power Mast  →  …  →  Power Mast  →  Transit Station (in your city)
+```
+
+Every arrow is a line you draw with the **Power Line Tool**: right click one block, right click the
+other. Sneak + right click the second one to cut a line instead.
+
+| Block | Does | Reach |
+| --- | --- | --- |
+| **Solar Panel** | Produces 8 power in daylight with a clear view of the sky, less in rain, none at night | 24 |
+| **Power Mast** | Carries power and nothing else. Three blocks tall, wooden | **64** |
+| **Transit Station** | Hands power to the city — but only if it stands on ground the city owns | 32 |
+
+The masts' long reach is why a solar farm can sit out in the desert and still feed a town. The
+station's territory requirement is what keeps power tied to land you actually claimed.
+
+A city short of power **stops growing** rather than emptying out. The city panel shows produced vs
+needed.
 
 ### Structure mode — `Shift + L`
 
@@ -76,8 +102,9 @@ Registered structures are server-side boxes with no blocks of their own, so with
 invisible. Structure mode outlines every one near you, coloured by type, with the one you are
 looking at picked out in white.
 
-**Sneak + right click** it to delete its registration. You get a confirmation first, and the blocks
-are never touched — only the claim on them goes away.
+**To delete, draw a box.** In structure mode the Planner Wand's box turns red and removes every
+registration of yours that it touches. Same gesture that created them, and it works on something you
+cannot point a crosshair at. The blocks are never touched — only the claim on them goes away.
 
 ---
 
@@ -95,7 +122,7 @@ Needs **JDK 21**.
 
 ```bash
 cd citiesinlife
-./gradlew build        # -> build/libs/citiesinlife-0.1.5-alpha.1.jar
+./gradlew build        # -> build/libs/citiesinlife-0.2.0-alpha.1.jar
 ./gradlew runClient    # launch a dev client with the mod loaded
 ```
 
