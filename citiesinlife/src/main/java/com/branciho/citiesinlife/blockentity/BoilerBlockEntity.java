@@ -36,6 +36,10 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+
 /**
  * The boiler's insides: a firebox, a water tank, and the survey of the room it stands in.
  *
@@ -73,6 +77,9 @@ public class BoilerBlockEntity extends BlockEntity implements WorldlyContainer, 
     /** Steam lost per tick when there is no turbine to take it. */
     private static final int VENT_LOSS = 2;
 
+    /** Soot forced into the turbine each tick a boiler burns with no flue of its own. */
+    private static final int SOOT_PER_TICK = 1;
+
     /** Ticks an empty bucket sits in the slot before the condensate refills it. */
     private static final int CONDENSE_TICKS = 300;
 
@@ -96,6 +103,8 @@ public class BoilerBlockEntity extends BlockEntity implements WorldlyContainer, 
     public static final int STATUS_NO_OUTLET = 3;
     public static final int STATUS_NO_WATER = 4;
     public static final int STATUS_NO_FUEL = 5;
+    public static final int STATUS_FOULING = 6;
+    public static final int STATUS_NO_TURBINE = 7;
 
     /** Indices into the block of numbers the screen reads. */
     public static final int DATA_BURN_TIME = 0;
@@ -125,6 +134,9 @@ public class BoilerBlockEntity extends BlockEntity implements WorldlyContainer, 
 
     /** Where the smoke leaves: a chimney's mouth, or the top of an open shaft above the boiler. */
     private @Nullable BlockPos smokeOut;
+
+    /** Whether this boiler stands in a registered plant at all. */
+    private boolean insidePlant;
 
     private int ticksRun;
     private boolean changed;
@@ -170,7 +182,11 @@ public class BoilerBlockEntity extends BlockEntity implements WorldlyContainer, 
         }
         boiler.tickWater();
 
-        boolean canRun = boiler.chamberSealed && boiler.smokeOut != null;
+        // A boiler with no flue still burns. The emissions have to go somewhere, and if there is no
+        // chimney and no shaft they go through the turbine and foul it - which is the whole reason
+        // to build a chimney rather than a rule telling you to.
+        boolean canRun = boiler.chamberSealed
+                && (boiler.smokeOut != null || boiler.turbinePos != null);
         if (canRun && boiler.burnTime <= 0 && boiler.water >= WATER_PER_TICK) {
             boiler.lightFire();
         }
@@ -253,7 +269,7 @@ public class BoilerBlockEntity extends BlockEntity implements WorldlyContainer, 
         }
         if (turbinePos != null
                 && level.getBlockEntity(turbinePos) instanceof TurbineBlockEntity turbine) {
-            int moved = turbine.acceptSteam(steam);
+            int moved = turbine.accept(steam, TurbineBlockEntity.COAL_OUTPUT);
             if (moved > 0) {
                 steam -= moved;
                 changed = true;
@@ -268,14 +284,17 @@ public class BoilerBlockEntity extends BlockEntity implements WorldlyContainer, 
         int previous = status;
         if (!chamberSealed) {
             status = STATUS_NO_CHAMBER;
-        } else if (smokeOut == null) {
+        } else if (smokeOut == null && turbinePos == null) {
             status = STATUS_NO_OUTLET;
+        } else if (insidePlant && turbinePos == null) {
+            status = STATUS_NO_TURBINE;
         } else if (water < WATER_PER_TICK) {
             status = STATUS_NO_WATER;
         } else if (burnTime <= 0) {
             status = STATUS_NO_FUEL;
         } else if (canRun && turbinePos != null) {
-            status = STATUS_RUNNING_TURBINE;
+            // Running, but say so differently when the smoke is going through the machine.
+            status = smokeOut == null ? STATUS_FOULING : STATUS_RUNNING_TURBINE;
         } else {
             status = STATUS_RUNNING_VENTING;
         }
@@ -291,8 +310,18 @@ public class BoilerBlockEntity extends BlockEntity implements WorldlyContainer, 
      * emissions are the one part of the plant that is visible from outside the building.
      */
     private void emit(Level level, boolean burning) {
-        if (!burning || ticksRun % 8 != 0 || smokeOut == null
-                || !(level instanceof ServerLevel serverLevel)) {
+        if (!burning) {
+            return;
+        }
+        if (smokeOut == null) {
+            // No flue at all. Everything the firebox makes goes into the turbine.
+            if (turbinePos != null
+                    && level.getBlockEntity(turbinePos) instanceof TurbineBlockEntity turbine) {
+                turbine.foul(SOOT_PER_TICK);
+            }
+            return;
+        }
+        if (ticksRun % 8 != 0 || !(level instanceof ServerLevel serverLevel)) {
             return;
         }
         double x = smokeOut.getX() + 0.5D;
@@ -311,12 +340,17 @@ public class BoilerBlockEntity extends BlockEntity implements WorldlyContainer, 
     private void survey(Level level, BlockPos pos) {
         turbinePos = null;
         smokeOut = null;
+        insidePlant = false;
 
         surveyPlant(level, pos);
-        if (turbinePos == null || smokeOut == null) {
-            // Nothing registered, or a plant that is still being built. Fall back to the original
-            // rule: a shaft straight up, with or without a turbine capping it.
+        if (!insidePlant) {
+            // Nothing registered. Fall back to the original rule: a shaft straight up, with or
+            // without a turbine capping it.
             surveyShaft(level, pos);
+        } else if (smokeOut == null) {
+            // Registered, but with no chimney in it. A shaft above the boiler still counts as a
+            // flue; if there is not one either, the smoke goes through the turbine.
+            surveyShaftForSmokeOnly(level, pos);
         }
         chamberSealed = surveyChamber(level, pos);
     }
@@ -348,24 +382,61 @@ public class BoilerBlockEntity extends BlockEntity implements WorldlyContainer, 
             return;
         }
 
+        insidePlant = true;
+
+        final List<BlockPos> turbines = new ArrayList<>();
+        final List<BlockPos> boilers = new ArrayList<>();
+
         final BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
         for (int y = min.getY(); y <= max.getY(); y++) {
             for (int z = min.getZ(); z <= max.getZ(); z++) {
                 for (int x = min.getX(); x <= max.getX(); x++) {
                     cursor.set(x, y, z);
                     Block block = level.getBlockState(cursor).getBlock();
-                    if (turbinePos == null && block instanceof TurbineBlock) {
-                        turbinePos = cursor.immutable();
+                    if (block instanceof TurbineBlock) {
+                        turbines.add(cursor.immutable());
+                    } else if (block instanceof BoilerBlock) {
+                        boilers.add(cursor.immutable());
                     } else if (smokeOut == null && block instanceof ChimneyBlock
                             && ChimneyBlock.isOpen(level, cursor)) {
                         smokeOut = cursor.immutable();
                     }
-                    if (turbinePos != null && smokeOut != null) {
-                        return;
-                    }
                 }
             }
         }
+
+        // Pair each boiler with its own turbine, so a plant scales by adding matched pairs. Both
+        // lists are sorted the same way, so every boiler agrees on who has which turbine without
+        // any of them having to talk to each other or store a claim.
+        turbines.sort(Comparator.comparingLong(BlockPos::asLong));
+        boilers.sort(Comparator.comparingLong(BlockPos::asLong));
+        int mine = boilers.indexOf(pos);
+        if (mine >= 0 && mine < turbines.size()) {
+            turbinePos = turbines.get(mine);
+        }
+    }
+
+    /**
+     * Inside a plant, the shaft above can still be the flue - but never the turbine.
+     *
+     * <p>The plant's own pairing decides which turbine is this boiler's. Letting the shaft rule
+     * grab one as well would hand a second boiler the turbine that already belongs to the first.
+     */
+    private void surveyShaftForSmokeOnly(Level level, BlockPos pos) {
+        BlockPos highestOpen = null;
+        for (int up = 1; up <= VENT_REACH; up++) {
+            BlockPos above = pos.above(up);
+            BlockState state = level.getBlockState(above);
+            if (state.getBlock() instanceof TurbineBlock) {
+                smokeOut = above.above();
+                return;
+            }
+            if (state.blocksMotion()) {
+                return;
+            }
+            highestOpen = above;
+        }
+        smokeOut = highestOpen;
     }
 
     /** The original rule: look straight up for a turbine, or for open air to vent through. */
