@@ -3,6 +3,13 @@ package com.branciho.citiesinlife.registry;
 import com.branciho.citiesinlife.CitiesInLife;
 import com.branciho.citiesinlife.block.BoilerBlock;
 import com.branciho.citiesinlife.block.ChimneyBlock;
+import com.branciho.citiesinlife.block.EndPumpBlock;
+import com.branciho.citiesinlife.block.PipeConnectorBlock;
+import com.branciho.citiesinlife.block.PumpBlock;
+import com.branciho.citiesinlife.block.StarterPumpBlock;
+import com.branciho.citiesinlife.block.ValveBlock;
+import com.branciho.citiesinlife.block.WaterPipeBlock;
+import com.branciho.citiesinlife.block.WaterStorageBlock;
 import com.branciho.citiesinlife.block.FactoryOutputBlock;
 import com.branciho.citiesinlife.block.PowerMastBlock;
 import com.branciho.citiesinlife.block.SolarPanelBlock;
@@ -72,6 +79,59 @@ public final class ModBlocks {
                     .mapColor(MapColor.WOOD)
                     .strength(2.5F, 5.0F)
                     .sound(SoundType.WOOD)));
+
+    // ------------------------------------------------------------------ water
+
+    public static final DeferredBlock<StarterPumpBlock> STARTER_PUMP = BLOCKS.register("starter_pump",
+            () -> new StarterPumpBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_LIGHT_BLUE)
+                    .strength(3.0F, 6.0F)
+                    .requiresCorrectToolForDrops()
+                    .sound(SoundType.METAL)));
+
+    public static final DeferredBlock<PumpBlock> PUMP = BLOCKS.register("pump",
+            () -> new PumpBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.METAL)
+                    .strength(3.0F, 6.0F)
+                    .requiresCorrectToolForDrops()
+                    .sound(SoundType.METAL)));
+
+    public static final DeferredBlock<EndPumpBlock> END_PUMP = BLOCKS.register("end_pump",
+            () -> new EndPumpBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.WARPED_NYLIUM)
+                    .strength(3.0F, 6.0F)
+                    .requiresCorrectToolForDrops()
+                    .sound(SoundType.METAL)));
+
+    public static final DeferredBlock<WaterPipeBlock> WATER_PIPE = BLOCKS.register("water_pipe",
+            () -> new WaterPipeBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.METAL)
+                    .strength(1.5F, 3.0F)
+                    .requiresCorrectToolForDrops()
+                    .sound(SoundType.METAL)
+                    .noOcclusion()));
+
+    public static final DeferredBlock<PipeConnectorBlock> PIPE_CONNECTOR = BLOCKS.register("pipe_connector",
+            () -> new PipeConnectorBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.METAL)
+                    .strength(1.5F, 3.0F)
+                    .requiresCorrectToolForDrops()
+                    .sound(SoundType.METAL)));
+
+    public static final DeferredBlock<ValveBlock> VALVE = BLOCKS.register("valve",
+            () -> new ValveBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_RED)
+                    .strength(1.5F, 3.0F)
+                    .requiresCorrectToolForDrops()
+                    .sound(SoundType.METAL)
+                    .noOcclusion()));
+
+    public static final DeferredBlock<WaterStorageBlock> WATER_STORAGE = BLOCKS.register("water_storage",
+            () -> new WaterStorageBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_BLUE)
+                    .strength(3.0F, 6.0F)
+                    .requiresCorrectToolForDrops()
+                    .sound(SoundType.METAL)));
 
     private ModBlocks() {
     }

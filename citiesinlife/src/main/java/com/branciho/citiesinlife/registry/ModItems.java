@@ -2,6 +2,7 @@ package com.branciho.citiesinlife.registry;
 
 import com.branciho.citiesinlife.CitiesInLife;
 import com.branciho.citiesinlife.item.PlannerWandItem;
+import com.branciho.citiesinlife.item.PipeLineToolItem;
 import com.branciho.citiesinlife.item.PowerLineToolItem;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
@@ -42,6 +43,30 @@ public final class ModItems {
 
     public static final DeferredItem<BlockItem> TURBINE =
             ITEMS.registerSimpleBlockItem("turbine", ModBlocks.TURBINE);
+
+    public static final DeferredItem<PipeLineToolItem> PIPE_LINE_TOOL = ITEMS.register("pipe_line_tool",
+            () -> new PipeLineToolItem(new Item.Properties().stacksTo(1)));
+
+    public static final DeferredItem<BlockItem> STARTER_PUMP =
+            ITEMS.registerSimpleBlockItem("starter_pump", ModBlocks.STARTER_PUMP);
+
+    public static final DeferredItem<BlockItem> PUMP =
+            ITEMS.registerSimpleBlockItem("pump", ModBlocks.PUMP);
+
+    public static final DeferredItem<BlockItem> END_PUMP =
+            ITEMS.registerSimpleBlockItem("end_pump", ModBlocks.END_PUMP);
+
+    public static final DeferredItem<BlockItem> WATER_PIPE =
+            ITEMS.registerSimpleBlockItem("water_pipe", ModBlocks.WATER_PIPE);
+
+    public static final DeferredItem<BlockItem> PIPE_CONNECTOR =
+            ITEMS.registerSimpleBlockItem("pipe_connector", ModBlocks.PIPE_CONNECTOR);
+
+    public static final DeferredItem<BlockItem> VALVE =
+            ITEMS.registerSimpleBlockItem("valve", ModBlocks.VALVE);
+
+    public static final DeferredItem<BlockItem> WATER_STORAGE =
+            ITEMS.registerSimpleBlockItem("water_storage", ModBlocks.WATER_STORAGE);
 
     private ModItems() {
     }

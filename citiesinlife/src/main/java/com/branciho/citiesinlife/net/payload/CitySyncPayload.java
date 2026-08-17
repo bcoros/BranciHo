@@ -21,6 +21,8 @@ public record CitySyncPayload(
         int employed,
         int powerProduced,
         int powerNeeded,
+        int waterSupplied,
+        int waterNeeded,
         long nextClaimCost,
         long[] claimedChunks
 ) implements CustomPacketPayload {
@@ -29,7 +31,7 @@ public record CitySyncPayload(
 
     /** What a player with no city yet receives, so the screens have something well-formed to draw. */
     public static CitySyncPayload none() {
-        return new CitySyncPayload(false, "", 0L, 0, 0, 0, 0, 0, 0, 0L, new long[0]);
+        return new CitySyncPayload(false, "", 0L, 0, 0, 0, 0, 0, 0, 0, 0, 0L, new long[0]);
     }
 
     public static final CustomPacketPayload.Type<CitySyncPayload> TYPE =
@@ -48,6 +50,8 @@ public record CitySyncPayload(
         buf.writeVarInt(employed);
         buf.writeVarInt(powerProduced);
         buf.writeVarInt(powerNeeded);
+        buf.writeVarInt(waterSupplied);
+        buf.writeVarInt(waterNeeded);
         buf.writeLong(nextClaimCost);
 
         int count = Math.min(claimedChunks.length, MAX_CHUNKS);
@@ -67,6 +71,8 @@ public record CitySyncPayload(
         int employed = buf.readVarInt();
         int powerProduced = buf.readVarInt();
         int powerNeeded = buf.readVarInt();
+        int waterSupplied = buf.readVarInt();
+        int waterNeeded = buf.readVarInt();
         long claimCost = buf.readLong();
 
         int count = buf.readVarInt();
@@ -78,7 +84,7 @@ public record CitySyncPayload(
             chunks[i] = buf.readLong();
         }
         return new CitySyncPayload(hasCity, name, treasury, housing, population, jobs, employed,
-                powerProduced, powerNeeded, claimCost, chunks);
+                powerProduced, powerNeeded, waterSupplied, waterNeeded, claimCost, chunks);
     }
 
     @Override

@@ -9,6 +9,7 @@ import com.branciho.citiesinlife.net.ClientCityCache;
 import com.branciho.citiesinlife.net.payload.ConfirmDeleteCityPayload;
 import com.branciho.citiesinlife.net.payload.DeleteAreaPayload;
 import com.branciho.citiesinlife.net.payload.LinkPowerPayload;
+import com.branciho.citiesinlife.net.payload.LinkWaterPayload;
 import com.branciho.citiesinlife.net.payload.RegisterStructurePayload;
 import com.branciho.citiesinlife.net.payload.RequestCityPayload;
 import com.branciho.citiesinlife.registry.ModItems;
@@ -47,6 +48,10 @@ public final class ClientEvents {
 
     private static boolean holdingLineTool(LocalPlayer player) {
         return player.getMainHandItem().is(ModItems.POWER_LINE_TOOL.get());
+    }
+
+    static boolean holdingPipeTool(LocalPlayer player) {
+        return player.getMainHandItem().is(ModItems.PIPE_LINE_TOOL.get());
     }
 
     // ------------------------------------------------------------------ ticks
@@ -132,6 +137,9 @@ public final class ClientEvents {
         } else if (holdingLineTool(player)) {
             handleLineRightClick(player, event.getPos());
             event.setCanceled(true);
+        } else if (holdingPipeTool(player)) {
+            handlePipeRightClick(player, event.getPos());
+            event.setCanceled(true);
         }
     }
 
@@ -166,6 +174,9 @@ public final class ClientEvents {
         } else if (holdingLineTool(player) && player.isShiftKeyDown()) {
             ClientPowerTool.clear();
             player.displayClientMessage(Component.translatable("hud.citiesinlife.line_cleared"), true);
+        } else if (holdingPipeTool(player) && player.isShiftKeyDown()) {
+            ClientPipeTool.clear();
+            player.displayClientMessage(Component.translatable("hud.citiesinlife.pipe_cleared"), true);
         } else {
             return;
         }
@@ -201,6 +212,26 @@ public final class ClientEvents {
         CitiesInLifeNetwork.sendToServer(
                 new LinkPowerPayload(pending, clicked, player.isShiftKeyDown()));
         ClientPowerTool.clear();
+    }
+
+    /**
+     * The same gesture for water.
+     *
+     * <p>Deliberately identical to the power line tool, down to sneaking to cut instead of build.
+     * Two tools that look the same and behave differently would be worse than one tool doing both.
+     */
+    private static void handlePipeRightClick(LocalPlayer player, BlockPos clicked) {
+        BlockPos pending = ClientPipeTool.pending();
+        if (pending == null) {
+            ClientPipeTool.setPending(clicked);
+            player.displayClientMessage(Component.translatable(
+                    "hud.citiesinlife.pipe_started",
+                    clicked.getX(), clicked.getY(), clicked.getZ()), true);
+            return;
+        }
+        CitiesInLifeNetwork.sendToServer(
+                new LinkWaterPayload(pending, clicked, player.isShiftKeyDown()));
+        ClientPipeTool.clear();
     }
 
     // ------------------------------------------------------------- left click

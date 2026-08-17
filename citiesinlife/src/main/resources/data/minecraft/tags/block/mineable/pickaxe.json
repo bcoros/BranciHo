@@ -5,6 +5,13 @@
     "citiesinlife:transit_station",
     "citiesinlife:boiler",
     "citiesinlife:turbine",
-    "citiesinlife:chimney"
+    "citiesinlife:chimney",
+    "citiesinlife:starter_pump",
+    "citiesinlife:pump",
+    "citiesinlife:end_pump",
+    "citiesinlife:water_pipe",
+    "citiesinlife:pipe_connector",
+    "citiesinlife:valve",
+    "citiesinlife:water_storage"
   ]
 }

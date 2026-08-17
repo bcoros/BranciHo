@@ -4,6 +4,7 @@ import com.branciho.citiesinlife.CitiesInLife;
 import com.branciho.citiesinlife.blockentity.BoilerBlockEntity;
 import com.branciho.citiesinlife.blockentity.FactoryOutputBlockEntity;
 import com.branciho.citiesinlife.blockentity.TurbineBlockEntity;
+import com.branciho.citiesinlife.blockentity.WaterStorageBlockEntity;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.neoforged.bus.api.IEventBus;
@@ -31,6 +32,12 @@ public final class ModBlockEntities {
             TURBINE = BLOCK_ENTITIES.register("turbine",
                     () -> BlockEntityType.Builder
                             .of(TurbineBlockEntity::new, ModBlocks.TURBINE.get())
+                            .build(null));
+
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<WaterStorageBlockEntity>>
+            WATER_STORAGE = BLOCK_ENTITIES.register("water_storage",
+                    () -> BlockEntityType.Builder
+                            .of(WaterStorageBlockEntity::new, ModBlocks.WATER_STORAGE.get())
                             .build(null));
 
     private ModBlockEntities() {

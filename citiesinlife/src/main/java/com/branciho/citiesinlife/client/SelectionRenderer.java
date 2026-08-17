@@ -51,9 +51,14 @@ public final class SelectionRenderer {
             return;
         }
 
+        // Pipe links have no model at all, so the only time they are drawn is while the tool that
+        // made them is in hand. That is the whole compromise: invisible in play, checkable on demand.
+        boolean showingPipes = ClientEvents.holdingPipeTool(minecraft.player)
+                && !ClientCityCache.waterLines().isEmpty();
+
         AABB selection = ClientSelection.bounds();
         boolean anything = selection != null || StructureMode.active()
-                || !ClientCityCache.powerLines().isEmpty();
+                || !ClientCityCache.powerLines().isEmpty() || showingPipes;
         if (!anything) {
             return;
         }
@@ -65,6 +70,9 @@ public final class SelectionRenderer {
         poseStack.translate(-camera.x, -camera.y, -camera.z);
 
         drawPowerLines(poseStack, consumer, minecraft.level, minecraft.player.position());
+        if (showingPipes) {
+            drawPipeLinks(poseStack, consumer, minecraft.player.position());
+        }
         if (StructureMode.active()) {
             drawRegisteredStructures(poseStack, consumer, minecraft.player.position());
         }
@@ -150,6 +158,30 @@ public final class SelectionRenderer {
         }
     }
 
+    /**
+     * The pipe links, drawn dead straight.
+     *
+     * <p>No sag, unlike a power line. These are not cables strung between poles - they stand for
+     * plumbing that runs under the ground, and drawing them as catenaries would say the wrong thing
+     * about what they are.
+     */
+    private static void drawPipeLinks(PoseStack poseStack, VertexConsumer consumer, Vec3 eye) {
+        for (long[] line : ClientCityCache.waterLines()) {
+            Vec3 from = pipePoint(line[0]);
+            Vec3 to = pipePoint(line[1]);
+            if (from.distanceToSqr(eye) > MAX_LINE_DISTANCE_SQR
+                    && to.distanceToSqr(eye) > MAX_LINE_DISTANCE_SQR) {
+                continue;
+            }
+            segment(poseStack, consumer, from, to, 0.30F, 0.70F, 1.00F);
+        }
+    }
+
+    private static Vec3 pipePoint(long packed) {
+        BlockPos pos = BlockPos.of(packed);
+        return new Vec3(pos.getX() + 0.5D, pos.getY() + 0.5D, pos.getZ() + 0.5D);
+    }
+
     /** A single sagging wire, drawn as a short chain of segments. */
     private static void drawWire(PoseStack poseStack, VertexConsumer consumer, Vec3 from, Vec3 to) {
         double sag = from.distanceTo(to) * SAG_FACTOR;
@@ -166,7 +198,13 @@ public final class SelectionRenderer {
         }
     }
 
+    /** A power wire's segment: near-black, the colour of a cable against the sky. */
     private static void segment(PoseStack poseStack, VertexConsumer consumer, Vec3 from, Vec3 to) {
+        segment(poseStack, consumer, from, to, 0.10F, 0.10F, 0.12F);
+    }
+
+    private static void segment(PoseStack poseStack, VertexConsumer consumer, Vec3 from, Vec3 to,
+                                float red, float green, float blue) {
         PoseStack.Pose pose = poseStack.last();
         float nx = (float) (to.x - from.x);
         float ny = (float) (to.y - from.y);
@@ -177,10 +215,10 @@ public final class SelectionRenderer {
         nz /= length;
 
         consumer.addVertex(pose, (float) from.x, (float) from.y, (float) from.z)
-                .setColor(0.10F, 0.10F, 0.12F, 1.0F)
+                .setColor(red, green, blue, 1.0F)
                 .setNormal(pose, nx, ny, nz);
         consumer.addVertex(pose, (float) to.x, (float) to.y, (float) to.z)
-                .setColor(0.10F, 0.10F, 0.12F, 1.0F)
+                .setColor(red, green, blue, 1.0F)
                 .setNormal(pose, nx, ny, nz);
     }
 

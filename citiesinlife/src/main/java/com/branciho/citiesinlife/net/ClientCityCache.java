@@ -4,6 +4,7 @@ import com.branciho.citiesinlife.net.payload.CitySyncPayload;
 import com.branciho.citiesinlife.net.payload.ConfirmDeleteCityPayload;
 import com.branciho.citiesinlife.net.payload.PowerLinesPayload;
 import com.branciho.citiesinlife.net.payload.StructureSyncPayload;
+import com.branciho.citiesinlife.net.payload.WaterLinesPayload;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import org.jetbrains.annotations.Nullable;
@@ -27,6 +28,7 @@ public final class ClientCityCache {
     private static @Nullable CitySyncPayload city;
     private static List<StructureSyncPayload.Entry> structures = List.of();
     private static List<long[]> powerLines = List.of();
+    private static List<long[]> waterLines = List.of();
     private static LongSet claimedChunks = new LongOpenHashSet();
     private static @Nullable ConfirmDeleteCityPayload pendingDeleteConfirm;
 
@@ -48,6 +50,15 @@ public final class ClientCityCache {
 
     public static void accept(PowerLinesPayload payload) {
         powerLines = payload.lines();
+    }
+
+    public static void accept(WaterLinesPayload payload) {
+        waterLines = payload.lines();
+    }
+
+    /** Pipe links near the player. Drawn only while the pipe tool is held; invisible otherwise. */
+    public static List<long[]> waterLines() {
+        return waterLines;
     }
 
     /**
@@ -103,6 +114,7 @@ public final class ClientCityCache {
         city = null;
         structures = List.of();
         powerLines = List.of();
+        waterLines = List.of();
         claimedChunks = new LongOpenHashSet();
         pendingDeleteConfirm = null;
     }

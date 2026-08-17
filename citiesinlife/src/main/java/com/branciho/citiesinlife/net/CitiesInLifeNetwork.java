@@ -6,10 +6,12 @@ import com.branciho.citiesinlife.net.payload.CitySyncPayload;
 import com.branciho.citiesinlife.net.payload.ConfirmDeleteCityPayload;
 import com.branciho.citiesinlife.net.payload.DeleteAreaPayload;
 import com.branciho.citiesinlife.net.payload.LinkPowerPayload;
+import com.branciho.citiesinlife.net.payload.LinkWaterPayload;
 import com.branciho.citiesinlife.net.payload.PowerLinesPayload;
 import com.branciho.citiesinlife.net.payload.RegisterStructurePayload;
 import com.branciho.citiesinlife.net.payload.RequestCityPayload;
 import com.branciho.citiesinlife.net.payload.StructureSyncPayload;
+import com.branciho.citiesinlife.net.payload.WaterLinesPayload;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -50,6 +52,10 @@ public final class CitiesInLifeNetwork {
                 (payload, context) -> context.enqueueWork(
                         () -> onServer(context, player -> ServerActions.linkPower(player, payload))));
 
+        registrar.playToServer(LinkWaterPayload.TYPE, LinkWaterPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(
+                        () -> onServer(context, player -> ServerActions.linkWater(player, payload))));
+
         registrar.playToServer(ClaimChunkPayload.TYPE, ClaimChunkPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(
                         () -> onServer(context, player -> ServerActions.claimChunk(player, payload))));
@@ -65,6 +71,9 @@ public final class CitiesInLifeNetwork {
                 (payload, context) -> context.enqueueWork(() -> ClientCityCache.accept(payload)));
 
         registrar.playToClient(PowerLinesPayload.TYPE, PowerLinesPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() -> ClientCityCache.accept(payload)));
+
+        registrar.playToClient(WaterLinesPayload.TYPE, WaterLinesPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(() -> ClientCityCache.accept(payload)));
 
         registrar.playToClient(ConfirmDeleteCityPayload.TYPE, ConfirmDeleteCityPayload.STREAM_CODEC,

@@ -24,7 +24,9 @@ public class CityScreen extends Screen {
     static final int COLOUR_BAD = 0xFFFF6B6B;
 
     private static final int PANEL_WIDTH = 244;
-    private static final int PANEL_HEIGHT = 206;
+    // Two more rows than it started with: power gained a water twin, and both need room for the
+    // line that appears underneath when they fall short.
+    private static final int PANEL_HEIGHT = 234;
 
     private int left;
     private int top;
@@ -99,6 +101,17 @@ public class CityScreen extends Screen {
         if (!powered) {
             graphics.drawString(this.font,
                     Component.translatable("screen.citiesinlife.power_short"),
+                    left + 12, y, COLOUR_BAD, false);
+        }
+        y += 14;
+
+        boolean watered = city.waterNeeded() == 0 || city.waterSupplied() >= city.waterNeeded();
+        y = row(graphics, y, "screen.citiesinlife.water",
+                Component.literal(format(city.waterSupplied()) + " / " + format(city.waterNeeded())),
+                watered ? COLOUR_GOOD : COLOUR_BAD);
+        if (!watered) {
+            graphics.drawString(this.font,
+                    Component.translatable("screen.citiesinlife.water_short"),
                     left + 12, y, COLOUR_BAD, false);
         }
         y += 14;

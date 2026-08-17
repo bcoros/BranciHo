@@ -50,6 +50,10 @@ public final class City {
     private int powerNeeded;
     private int powerProduced;
 
+    /** The same for water: what the people need, and what actually came out of the tanks. */
+    private int waterNeeded;
+    private int waterSupplied;
+
     public City(UUID id, String name, UUID owner, ResourceKey<Level> dimension) {
         this.id = id;
         this.name = name;
@@ -180,6 +184,19 @@ public final class City {
         this.powerNeeded = Math.max(0, needed);
     }
 
+    public int waterNeeded() {
+        return waterNeeded;
+    }
+
+    public int waterSupplied() {
+        return waterSupplied;
+    }
+
+    public void setWater(int supplied, int needed) {
+        this.waterSupplied = Math.max(0, supplied);
+        this.waterNeeded = Math.max(0, needed);
+    }
+
     public CompoundTag save() {
         CompoundTag tag = new CompoundTag();
         tag.putUUID("id", id);
@@ -203,6 +220,8 @@ public final class City {
         tag.putInt("employed", employed);
         tag.putInt("powerNeeded", powerNeeded);
         tag.putInt("powerProduced", powerProduced);
+        tag.putInt("waterNeeded", waterNeeded);
+        tag.putInt("waterSupplied", waterSupplied);
         return tag;
     }
 
@@ -224,6 +243,8 @@ public final class City {
         city.employed = tag.getInt("employed");
         city.powerNeeded = tag.getInt("powerNeeded");
         city.powerProduced = tag.getInt("powerProduced");
+        city.waterNeeded = tag.getInt("waterNeeded");
+        city.waterSupplied = tag.getInt("waterSupplied");
         return city;
     }
 }

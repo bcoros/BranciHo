@@ -7,9 +7,11 @@ import com.branciho.citiesinlife.net.payload.CitySyncPayload;
 import com.branciho.citiesinlife.net.payload.ConfirmDeleteCityPayload;
 import com.branciho.citiesinlife.net.payload.DeleteAreaPayload;
 import com.branciho.citiesinlife.net.payload.LinkPowerPayload;
+import com.branciho.citiesinlife.net.payload.LinkWaterPayload;
 import com.branciho.citiesinlife.net.payload.PowerLinesPayload;
 import com.branciho.citiesinlife.net.payload.RegisterStructurePayload;
 import com.branciho.citiesinlife.net.payload.StructureSyncPayload;
+import com.branciho.citiesinlife.net.payload.WaterLinesPayload;
 import com.branciho.citiesinlife.power.PowerBlock;
 import com.branciho.citiesinlife.power.PowerGrid;
 import com.branciho.citiesinlife.scan.StructureScanner;
@@ -17,6 +19,9 @@ import com.branciho.citiesinlife.sim.CitySimulation;
 import com.branciho.citiesinlife.structure.MeasureMode;
 import com.branciho.citiesinlife.structure.Structure;
 import com.branciho.citiesinlife.structure.StructureType;
+import com.branciho.citiesinlife.water.WaterBlock;
+import com.branciho.citiesinlife.water.WaterGrid;
+import com.branciho.citiesinlife.water.WaterRole;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
@@ -24,6 +29,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.state.BlockState;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -100,7 +106,11 @@ public final class ServerActions {
                 reject(player, "no_city");
                 return;
             }
-            if (!ownsGroundUnder(data, city, min, max)) {
+            // Power plants are the one exception to owning the ground. A coal plant belongs at the
+            // edge of a river or out where the smoke is somebody else's problem, and claiming a
+            // corridor of chunks out to it before you can even mark the building would be a tax on
+            // building it in the sensible place. Windmills and reactors will want the same.
+            if (type != StructureType.POWER_PLANT && !ownsGroundUnder(data, city, min, max)) {
                 reject(player, "not_your_land");
                 return;
             }
@@ -354,6 +364,123 @@ public final class ServerActions {
         sync(player);
     }
 
+    // ------------------------------------------------------------------ water
+
+    /**
+     * Run or cut a pipe link between two blocks.
+     *
+     * <p>The rules about what may join what are the whole design of the water system, so they live
+     * here in one place rather than being spread across the blocks. In short: pumps talk to pumps,
+     * only the end pump reaches the pipework, and pipes are nobody's business but their own.
+     */
+    public static void linkWater(ServerPlayer player, LinkWaterPayload payload) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        ServerLevel level = player.serverLevel();
+
+        BlockPos from = payload.from();
+        BlockPos to = payload.to();
+        if (tooFar(player, from) || tooFar(player, to)) {
+            reject(player, "too_far");
+            return;
+        }
+
+        BlockState fromState = level.getBlockState(from);
+        BlockState toState = level.getBlockState(to);
+        if (!(fromState.getBlock() instanceof WaterBlock fromBlock)
+                || !(toState.getBlock() instanceof WaterBlock toBlock)) {
+            reject(player, "not_water_block");
+            return;
+        }
+
+        BlockPos fromNode = fromBlock.networkPos(level, from, fromState);
+        BlockPos toNode = toBlock.networkPos(level, to, toState);
+        if (fromNode.equals(toNode)) {
+            reject(player, "same_node");
+            return;
+        }
+
+        WaterGrid grid = WaterGrid.get(server);
+
+        if (payload.disconnect()) {
+            if (grid.unlink(level.dimension(), fromNode, toNode)) {
+                player.sendSystemMessage(Component.translatable("message.citiesinlife.pipe_removed"));
+                sync(player);
+            } else {
+                reject(player, "not_linked");
+            }
+            return;
+        }
+
+        String refusal = pairingProblem(fromBlock.waterRole(), toBlock.waterRole());
+        if (refusal != null) {
+            reject(player, refusal);
+            return;
+        }
+
+        int range = Math.min(fromBlock.linkRange(), toBlock.linkRange());
+        double distance = Math.sqrt(fromNode.distSqr(toNode));
+        if (distance > range) {
+            player.sendSystemMessage(Component.translatable(
+                    "message.citiesinlife.too_far_apart", (int) distance, range));
+            return;
+        }
+        if (grid.linked(level.dimension(), fromNode, toNode)) {
+            reject(player, "already_linked");
+            return;
+        }
+
+        // One starter pump per station. Checked when the link is drawn, because a second intake that
+        // silently counts for nothing is a bug the player has no way to see.
+        WaterGrid.Survey fromSide = grid.survey(level, fromNode);
+        if (!fromSide.reaches(toNode)) {
+            // Two separate stations about to become one. If joining them would put two intakes on
+            // the result, say so now. (A link inside one station is redundant, never illegal.)
+            WaterGrid.Survey toSide = grid.survey(level, toNode);
+            if (fromSide.sources() + toSide.sources() > 1) {
+                reject(player, "two_sources");
+                return;
+            }
+        }
+
+        grid.link(level.dimension(), fromNode, toNode);
+        player.sendSystemMessage(Component.translatable(
+                "message.citiesinlife.pipe_built", (int) distance));
+        sync(player);
+    }
+
+    /**
+     * Whether these two roles are allowed to be joined by hand, and why not if they are not.
+     *
+     * @return a message key, or null when the pair is fine
+     */
+    private static @Nullable String pairingProblem(WaterRole from, WaterRole to) {
+        if (from == WaterRole.SOURCE && to == WaterRole.SOURCE) {
+            return "two_sources";
+        }
+        if (from == WaterRole.CONDUIT && to == WaterRole.CONDUIT) {
+            return "pipes_self_join";
+        }
+        if (from == WaterRole.STORAGE && to == WaterRole.STORAGE) {
+            return "two_tanks";
+        }
+        if (from.isPump() && to.isPump()) {
+            return null;
+        }
+        // Anything else is a pump meeting the pipework, and only the end pump may do that.
+        boolean fromEnd = from == WaterRole.OUTLET;
+        boolean toEnd = to == WaterRole.OUTLET;
+        if (from.isPump() && !fromEnd) {
+            return "only_end_pump";
+        }
+        if (to.isPump() && !toEnd) {
+            return "only_end_pump";
+        }
+        return null;
+    }
+
     // ---------------------------------------------------------------- claiming
 
     public static void claimChunk(ServerPlayer player, ClaimChunkPayload payload) {
@@ -422,6 +549,7 @@ public final class ServerActions {
         CitiesInLifeNetwork.sendTo(player,
                 new StructureSyncPayload(nearbyStructures(CityData.get(server), player)));
         CitiesInLifeNetwork.sendTo(player, new PowerLinesPayload(nearbyLines(server, player)));
+        CitiesInLifeNetwork.sendTo(player, new WaterLinesPayload(nearbyWaterLines(server, player)));
     }
 
     /** Push the player's city and the structures around them. */
@@ -446,11 +574,14 @@ public final class ServerActions {
                         city.employed(),
                         city.powerProduced(),
                         city.powerNeeded(),
+                        city.waterSupplied(),
+                        city.waterNeeded(),
                         city.nextClaimCost(),
                         city.claimedChunks().toLongArray()));
 
         CitiesInLifeNetwork.sendTo(player, new StructureSyncPayload(nearbyStructures(data, player)));
         CitiesInLifeNetwork.sendTo(player, new PowerLinesPayload(nearbyLines(server, player)));
+        CitiesInLifeNetwork.sendTo(player, new WaterLinesPayload(nearbyWaterLines(server, player)));
     }
 
     private static List<StructureSyncPayload.Entry> nearbyStructures(CityData data, ServerPlayer player) {
@@ -493,6 +624,23 @@ public final class ServerActions {
      * <p>Filtered by distance to either end, because a line is worth seeing as soon as one of its
      * poles is in view even if the other end is far off across the desert.
      */
+    /** The same for water. Kept separate so the client can draw them only while the tool is held. */
+    private static List<long[]> nearbyWaterLines(MinecraftServer server, ServerPlayer player) {
+        final int radius = SYNC_RADIUS_CHUNKS * 16 + 64;
+        final BlockPos here = player.blockPosition();
+        final List<long[]> visible = new ArrayList<>();
+
+        for (long[] line : WaterGrid.get(server).allLines(player.serverLevel().dimension())) {
+            if (visible.size() >= WaterLinesPayload.MAX_LINES) {
+                break;
+            }
+            if (withinRadius(here, line[0], radius) || withinRadius(here, line[1], radius)) {
+                visible.add(line);
+            }
+        }
+        return visible;
+    }
+
     private static List<long[]> nearbyLines(MinecraftServer server, ServerPlayer player) {
         final int radius = SYNC_RADIUS_CHUNKS * 16 + 64;
         final BlockPos here = player.blockPosition();

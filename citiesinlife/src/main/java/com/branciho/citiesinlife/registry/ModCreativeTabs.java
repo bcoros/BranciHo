@@ -28,6 +28,14 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.CHIMNEY.get());
                         output.accept(ModItems.TRANSIT_STATION.get());
                         output.accept(ModItems.FACTORY_OUTPUT.get());
+                        output.accept(ModItems.PIPE_LINE_TOOL.get());
+                        output.accept(ModItems.STARTER_PUMP.get());
+                        output.accept(ModItems.PUMP.get());
+                        output.accept(ModItems.END_PUMP.get());
+                        output.accept(ModItems.WATER_PIPE.get());
+                        output.accept(ModItems.PIPE_CONNECTOR.get());
+                        output.accept(ModItems.VALVE.get());
+                        output.accept(ModItems.WATER_STORAGE.get());
                     })
                     .build());
 
