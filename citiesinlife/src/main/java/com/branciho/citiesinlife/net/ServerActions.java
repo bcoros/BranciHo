@@ -11,6 +11,7 @@ import com.branciho.citiesinlife.net.payload.DeleteAreaPayload;
 import com.branciho.citiesinlife.net.payload.DiplomacyPayload;
 import com.branciho.citiesinlife.net.payload.ForeignLandPayload;
 import com.branciho.citiesinlife.net.payload.LinkPowerPayload;
+import com.branciho.citiesinlife.net.payload.LinkOutletPayload;
 import com.branciho.citiesinlife.net.payload.LinkWaterPayload;
 import com.branciho.citiesinlife.net.payload.MarkPathPayload;
 import com.branciho.citiesinlife.net.payload.NeighbourCitiesPayload;
@@ -19,6 +20,8 @@ import com.branciho.citiesinlife.net.payload.PowerLinesPayload;
 import com.branciho.citiesinlife.net.payload.RegisterStructurePayload;
 import com.branciho.citiesinlife.net.payload.StructureSyncPayload;
 import com.branciho.citiesinlife.net.payload.WaterLinesPayload;
+import com.branciho.citiesinlife.block.EndPipeBlock;
+import com.branciho.citiesinlife.blockentity.EndPipeBlockEntity;
 import com.branciho.citiesinlife.path.PathNetwork;
 import com.branciho.citiesinlife.plant.PlantSurvey;
 import com.branciho.citiesinlife.power.PowerBlock;
@@ -38,6 +41,7 @@ import net.minecraft.server.players.GameProfileCache;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.Container;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
 
@@ -629,6 +633,75 @@ public final class ServerActions {
         player.sendSystemMessage(Component.translatable(
                 "message.citiesinlife.claimed", chunk.x, chunk.z, cost));
         sync(player);
+    }
+
+    /**
+     * Plumb an end pipe into something that holds buckets.
+     *
+     * <p>Its own gesture — sneak and left click with the Pipe Connect Tool — because the ordinary
+     * one is a right click, and right-clicking a chest opens the chest. Two clicks that mean
+     * different things are better than one click that sometimes means the wrong one.
+     */
+    public static void linkOutlet(ServerPlayer player, LinkOutletPayload payload) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        ServerLevel level = player.serverLevel();
+        BlockPos from = payload.from();
+        BlockPos to = payload.to();
+
+        if (tooFar(player, from) || tooFar(player, to)) {
+            reject(player, "too_far");
+            return;
+        }
+        if (!Diplomacy.mayInterfere(server, player, from) || !Diplomacy.mayInterfere(server, player, to)) {
+            reject(player, "protected_land_tool");
+            return;
+        }
+
+        // Either order. Which end is the tap is a fact about the world, not about the click.
+        BlockPos tapPos;
+        BlockPos containerPos;
+        if (level.getBlockState(from).getBlock() instanceof EndPipeBlock) {
+            tapPos = from;
+            containerPos = to;
+        } else if (level.getBlockState(to).getBlock() instanceof EndPipeBlock) {
+            tapPos = to;
+            containerPos = from;
+        } else {
+            reject(player, "no_end_pipe");
+            return;
+        }
+
+        if (!(level.getBlockEntity(tapPos) instanceof EndPipeBlockEntity tap)) {
+            reject(player, "no_end_pipe");
+            return;
+        }
+
+        // Naming the same tap twice means "unplumb this one".
+        if (tapPos.equals(containerPos)) {
+            if (tap.outlet() == null) {
+                reject(player, "outlet_not_linked");
+                return;
+            }
+            tap.setOutlet(null);
+            player.sendSystemMessage(Component.translatable("message.citiesinlife.outlet_unlinked"));
+            return;
+        }
+        if (!(level.getBlockEntity(containerPos) instanceof Container)) {
+            reject(player, "not_a_container");
+            return;
+        }
+        double distance = Math.sqrt(tapPos.distSqr(containerPos));
+        if (distance > EndPipeBlockEntity.LINK_RANGE) {
+            player.sendSystemMessage(Component.translatable("message.citiesinlife.too_far_apart",
+                    (int) distance, EndPipeBlockEntity.LINK_RANGE));
+            return;
+        }
+
+        tap.setOutlet(containerPos);
+        player.sendSystemMessage(Component.translatable("message.citiesinlife.outlet_linked"));
     }
 
     // ------------------------------------------------------------------ paths

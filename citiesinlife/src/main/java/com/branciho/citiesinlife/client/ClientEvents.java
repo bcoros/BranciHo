@@ -9,6 +9,7 @@ import com.branciho.citiesinlife.net.ClientCityCache;
 import com.branciho.citiesinlife.net.payload.ConfirmDeleteCityPayload;
 import com.branciho.citiesinlife.net.payload.DeleteAreaPayload;
 import com.branciho.citiesinlife.net.payload.LinkPowerPayload;
+import com.branciho.citiesinlife.net.payload.LinkOutletPayload;
 import com.branciho.citiesinlife.net.payload.LinkWaterPayload;
 import com.branciho.citiesinlife.net.payload.MarkPathPayload;
 import com.branciho.citiesinlife.net.payload.RegisterStructurePayload;
@@ -20,6 +21,7 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -258,6 +260,19 @@ public final class ClientEvents {
         if (player == null) {
             return;
         }
+
+        // Sneak + left click with the pipe tool plumbs an end pipe into a container. It has to be a
+        // different gesture from the ordinary pipe link, because that one is a right click and right
+        // clicking a chest opens the chest.
+        if (holdingPipeTool(player)) {
+            if (player.isShiftKeyDown()) {
+                handleOutletClick(minecraft, player);
+                event.setSwingHand(false);
+                event.setCanceled(true);
+            }
+            return;
+        }
+
         boolean wand = holdingWand(player);
         boolean pathTool = holdingPathTool(player);
         if (!wand && !pathTool) {
@@ -274,6 +289,32 @@ public final class ClientEvents {
         // Neither tool ever breaks anything, so swallow the swing either way.
         event.setSwingHand(false);
         event.setCanceled(true);
+    }
+
+    /**
+     * Click the end pipe, then the chest — or the other way round; the server works out which is
+     * which. Sneaking on the second click unplumbs instead.
+     */
+    private static void handleOutletClick(Minecraft minecraft, LocalPlayer player) {
+        if (!(minecraft.hitResult instanceof BlockHitResult hit)
+                || minecraft.hitResult.getType() != HitResult.Type.BLOCK) {
+            // Pointing at nothing is how you abandon a half-made link.
+            ClientPipeTool.clear();
+            player.displayClientMessage(
+                    Component.translatable("hud.citiesinlife.outlet_cleared"), true);
+            return;
+        }
+        BlockPos clicked = hit.getBlockPos();
+        BlockPos pending = ClientPipeTool.pendingOutlet();
+        if (pending == null) {
+            ClientPipeTool.setPendingOutlet(clicked);
+            player.displayClientMessage(Component.translatable(
+                    "hud.citiesinlife.outlet_started",
+                    clicked.getX(), clicked.getY(), clicked.getZ()), true);
+            return;
+        }
+        CitiesInLifeNetwork.sendToServer(new LinkOutletPayload(pending, clicked));
+        ClientPipeTool.clear();
     }
 
     /**

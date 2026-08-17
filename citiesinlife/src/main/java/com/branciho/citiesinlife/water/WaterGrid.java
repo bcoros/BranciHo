@@ -264,6 +264,22 @@ public final class WaterGrid extends SavedData {
         return deliveries;
     }
 
+    /**
+     * What actually reaches one particular block of plumbing.
+     *
+     * <p>Same walk the city's tanks get, started from somewhere else. An end pipe is not a tank and
+     * belongs to no city, but the question it asks is identical: is there a pump on the other end of
+     * all this, and is it winning against the leaks.
+     */
+    public int supplyReaching(ServerLevel level, BlockPos start) {
+        final int[] supply = {0};
+        LongArrayList seed = new LongArrayList();
+        seed.add(start.asLong());
+        walk(level, seed, (pos, state, block) ->
+                supply[0] += block.waterOutput(level, pos, state) - block.waterLoss(level, pos, state));
+        return Math.max(0, supply[0]);
+    }
+
     /** Everything the city's plumbing delivers, added up, for the city panel. */
     public int supplyFor(ServerLevel level, City city) {
         int total = 0;

@@ -8,6 +8,7 @@ import com.branciho.citiesinlife.net.payload.DeleteAreaPayload;
 import com.branciho.citiesinlife.net.payload.DiplomacyPayload;
 import com.branciho.citiesinlife.net.payload.ForeignLandPayload;
 import com.branciho.citiesinlife.net.payload.LinkPowerPayload;
+import com.branciho.citiesinlife.net.payload.LinkOutletPayload;
 import com.branciho.citiesinlife.net.payload.LinkWaterPayload;
 import com.branciho.citiesinlife.net.payload.MarkPathPayload;
 import com.branciho.citiesinlife.net.payload.NeighbourCitiesPayload;
@@ -60,6 +61,10 @@ public final class CitiesInLifeNetwork {
         registrar.playToServer(LinkWaterPayload.TYPE, LinkWaterPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(
                         () -> onServer(context, player -> ServerActions.linkWater(player, payload))));
+
+        registrar.playToServer(LinkOutletPayload.TYPE, LinkOutletPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(
+                        () -> onServer(context, player -> ServerActions.linkOutlet(player, payload))));
 
         registrar.playToServer(MarkPathPayload.TYPE, MarkPathPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(

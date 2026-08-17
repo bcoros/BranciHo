@@ -3,6 +3,7 @@ package com.branciho.citiesinlife.registry;
 import com.branciho.citiesinlife.CitiesInLife;
 import com.branciho.citiesinlife.blockentity.AlarmBlockEntity;
 import com.branciho.citiesinlife.blockentity.BoilerBlockEntity;
+import com.branciho.citiesinlife.blockentity.EndPipeBlockEntity;
 import com.branciho.citiesinlife.blockentity.FactoryOutputBlockEntity;
 import com.branciho.citiesinlife.blockentity.TurbineBlockEntity;
 import com.branciho.citiesinlife.blockentity.ChimneyBlockEntity;
@@ -75,6 +76,12 @@ public final class ModBlockEntities {
             ALARM = BLOCK_ENTITIES.register("alarm",
                     () -> BlockEntityType.Builder
                             .of(AlarmBlockEntity::new, ModBlocks.ALARM.get())
+                            .build(null));
+
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<EndPipeBlockEntity>>
+            END_PIPE = BLOCK_ENTITIES.register("end_pipe",
+                    () -> BlockEntityType.Builder
+                            .of(EndPipeBlockEntity::new, ModBlocks.END_PIPE.get())
                             .build(null));
 
     private ModBlockEntities() {

@@ -1,0 +1,76 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "particle": "citiesinlife:block/end_pipe",
+    "body": "citiesinlife:block/end_pipe",
+    "mouth": "citiesinlife:block/end_pipe_mouth"
+  },
+  "elements": [
+    {
+      "name": "body",
+      "from": [
+        4,
+        4,
+        4
+      ],
+      "to": [
+        12,
+        12,
+        14
+      ],
+      "faces": {
+        "north": {
+          "texture": "#body"
+        },
+        "south": {
+          "texture": "#body"
+        },
+        "east": {
+          "texture": "#body"
+        },
+        "west": {
+          "texture": "#body"
+        },
+        "up": {
+          "texture": "#body"
+        },
+        "down": {
+          "texture": "#body"
+        }
+      }
+    },
+    {
+      "name": "spout",
+      "from": [
+        5,
+        5,
+        1
+      ],
+      "to": [
+        11,
+        11,
+        4
+      ],
+      "faces": {
+        "north": {
+          "texture": "#mouth"
+        },
+        "south": {
+          "texture": "#body"
+        },
+        "east": {
+          "texture": "#body"
+        },
+        "west": {
+          "texture": "#body"
+        },
+        "up": {
+          "texture": "#body"
+        },
+        "down": {
+          "texture": "#body"
+        }
+      }
+    }
+  ]
+}

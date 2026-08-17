@@ -44,6 +44,7 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.INDESTRUCTIBLE_PIPE.get());
                         output.accept(ModItems.PIPE_CONNECTOR.get());
                         output.accept(ModItems.VALVE.get());
+                        output.accept(ModItems.END_PIPE.get());
                         output.accept(ModItems.WATER_STORAGE.get());
                         output.accept(ModItems.OFFICE_SPACE.get());
                         output.accept(ModItems.REGISTER_COUNTER.get());

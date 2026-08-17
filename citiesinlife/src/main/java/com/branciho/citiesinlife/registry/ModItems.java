@@ -104,6 +104,9 @@ public final class ModItems {
     public static final DeferredItem<BlockItem> ALARM =
             ITEMS.registerSimpleBlockItem("alarm", ModBlocks.ALARM);
 
+    public static final DeferredItem<BlockItem> END_PIPE =
+            ITEMS.registerSimpleBlockItem("end_pipe", ModBlocks.END_PIPE);
+
     private ModItems() {
     }
 

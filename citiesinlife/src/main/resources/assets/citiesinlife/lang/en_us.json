@@ -113,7 +113,7 @@
   "screen.citiesinlife.boiler_powering": "Running - steam going to the turbine",
   "screen.citiesinlife.boiler_venting": "Running - no turbine found, steam wasted",
   "screen.citiesinlife.boiler_no_chamber": "Not sealed in - wall the boiler in on all sides",
-  "screen.citiesinlife.boiler_no_water": "No water - put a water bucket in the top slot",
+  "screen.citiesinlife.boiler_no_water": "Out of water - put a water bucket in the top slot, or plumb an End Pipe into it",
   "screen.citiesinlife.boiler_no_fuel": "No fuel - put coal in the bottom slot",
   "structure.citiesinlife.power_plant": "Turbine Power Plant",
   "block.citiesinlife.chimney": "Chimney",
@@ -230,5 +230,17 @@
   "message.citiesinlife.alarm_no_plant": "Not inside a Turbine Power Plant - draw a box round the plant with the Planner Wand",
   "message.citiesinlife.alarm_clear": "All turbines running clean",
   "message.citiesinlife.alarm_fouled": "%s turbine(s) clogged - use the wrench",
-  "message.citiesinlife.alarm_fire": "%s turbine(s) ON FIRE - use the extinguisher, then the wrench"
+  "message.citiesinlife.alarm_fire": "%s turbine(s) ON FIRE - use the extinguisher, then the wrench",
+  "block.citiesinlife.end_pipe": "End Pipe",
+  "tooltip.citiesinlife.pipe_5": "Sneak + left click an End Pipe, then a chest, to fill buckets",
+  "hud.citiesinlife.outlet_started": "End Pipe outlet from %s, %s, %s - now click what it fills",
+  "hud.citiesinlife.outlet_cleared": "Outlet link cleared",
+  "message.citiesinlife.outlet_linked": "End Pipe plumbed in - it will keep buckets full",
+  "message.citiesinlife.outlet_unlinked": "End Pipe unplumbed",
+  "message.citiesinlife.outlet_not_linked": "That End Pipe is not filling anything",
+  "message.citiesinlife.no_end_pipe": "One end has to be an End Pipe",
+  "message.citiesinlife.not_a_container": "That does not hold anything - try a chest, barrel, hopper or boiler",
+  "message.citiesinlife.tap_dry": "No water reaching this End Pipe - check the pumps",
+  "message.citiesinlife.tap_flowing": "Flowing - %s units reaching it",
+  "message.citiesinlife.tap_filling": "Filling buckets at %s, %s, %s"
 }

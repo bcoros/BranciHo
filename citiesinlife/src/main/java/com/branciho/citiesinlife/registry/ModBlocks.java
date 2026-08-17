@@ -9,6 +9,7 @@ import com.branciho.citiesinlife.block.OfficeSpaceBlock;
 import com.branciho.citiesinlife.block.RegisterCounterBlock;
 import com.branciho.citiesinlife.block.WindmillBlock;
 import com.branciho.citiesinlife.block.WindmillColour;
+import com.branciho.citiesinlife.block.EndPipeBlock;
 import com.branciho.citiesinlife.block.EndPumpBlock;
 import com.branciho.citiesinlife.block.PipeConnectorBlock;
 import com.branciho.citiesinlife.block.PumpBlock;
@@ -211,6 +212,18 @@ public final class ModBlocks {
                     .requiresCorrectToolForDrops()
                     .sound(SoundType.METAL)
                     .lightLevel(AlarmBlock::lightFor)
+                    .noOcclusion()));
+
+    /**
+     * The tap. Not the End Pump - that is the seam where drawn links become pipe; this is the far
+     * end of the pipes, where the number turns back into water.
+     */
+    public static final DeferredBlock<EndPipeBlock> END_PIPE = BLOCKS.register("end_pipe",
+            () -> new EndPipeBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_LIGHT_BLUE)
+                    .strength(2.0F, 4.0F)
+                    .requiresCorrectToolForDrops()
+                    .sound(SoundType.COPPER)
                     .noOcclusion()));
 
     private ModBlocks() {

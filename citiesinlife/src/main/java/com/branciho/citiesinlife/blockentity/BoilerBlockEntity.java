@@ -46,9 +46,10 @@ import org.jetbrains.annotations.Nullable;
  * can be anywhere inside it. Failing that it falls back to looking straight up, which is how this
  * worked before and is why a shaft with a turbine on top still runs.
  *
- * <p>Water is not consumed in the long run. The empty bucket left behind fills itself back up after a
- * while, which stands in for the condenser a real plant would need. Coal is the running cost; water
- * is a delay.
+ * <p>Water is a running cost, exactly like coal. A bucket is swallowed whole and the plant runs until
+ * it is gone; there is no condenser handing it back. That is what makes plumbing a plant into the
+ * water network worth the trouble — an End Pipe over the boiler keeps it fed, and without one
+ * somebody has to walk out there with a bucket.
  */
 public class BoilerBlockEntity extends BlockEntity implements WorldlyContainer, MenuProvider {
 
@@ -72,9 +73,6 @@ public class BoilerBlockEntity extends BlockEntity implements WorldlyContainer, 
 
     /** Soot forced into the turbine each tick a boiler burns with no flue of its own. */
     private static final int SOOT_PER_TICK = 1;
-
-    /** Ticks an empty bucket sits in the slot before the condensate refills it. */
-    private static final int CONDENSE_TICKS = 300;
 
     /** How often the room is re-surveyed. Every two seconds; it is a flood fill, not a lookup. */
     private static final int SURVEY_INTERVAL = 40;
@@ -115,7 +113,6 @@ public class BoilerBlockEntity extends BlockEntity implements WorldlyContainer, 
     private int burnDuration;
     private int water;
     private int steam;
-    private int refillTimer;
     private int status = STATUS_NO_FUEL;
 
     /** Results of the last room survey, refreshed every {@link #SURVEY_INTERVAL} ticks. */
@@ -246,26 +243,23 @@ public class BoilerBlockEntity extends BlockEntity implements WorldlyContainer, 
     }
 
     /**
-     * Move water out of the bucket in the top slot, and put it back once it has condensed.
+     * Take the water out of the bucket in the top slot. The bucket goes with it.
      *
-     * <p>This is the whole water system for now: one bucket, refilled for free after a pause. It is
-     * not free time — the boiler stalls while the bucket is empty, which is what makes a real water
-     * supply worth building later.
+     * <p>It used to leave the empty bucket behind and quietly refill it after a pause, which stood in
+     * for a condenser back when there was no water system to plumb a plant into. There is one now, and
+     * a boiler that tops itself up for free makes the whole of it pointless — the plant never stops,
+     * so nothing you build for it ever matters. A boiler now runs until the water is gone and then
+     * sits there, and getting more into it is either a walk with a bucket or an End Pipe.
      */
     private void tickWater() {
         ItemStack held = items.get(WATER_SLOT);
         if (held.is(Items.WATER_BUCKET) && water + BUCKET <= WATER_CAPACITY) {
             water += BUCKET;
-            items.set(WATER_SLOT, new ItemStack(Items.BUCKET));
-            refillTimer = CONDENSE_TICKS;
-            changed = true;
-        } else if (held.is(Items.BUCKET)) {
-            if (refillTimer > 0) {
-                refillTimer--;
-            } else {
-                items.set(WATER_SLOT, new ItemStack(Items.WATER_BUCKET));
-                changed = true;
+            held.shrink(1);
+            if (held.isEmpty()) {
+                items.set(WATER_SLOT, ItemStack.EMPTY);
             }
+            changed = true;
         }
     }
 
@@ -515,7 +509,9 @@ public class BoilerBlockEntity extends BlockEntity implements WorldlyContainer, 
     @Override
     public boolean canPlaceItem(int slot, ItemStack stack) {
         if (slot == WATER_SLOT) {
-            return stack.is(Items.WATER_BUCKET) || stack.is(Items.BUCKET);
+            // Full buckets only. There is nothing useful an empty one could do in here now that the
+            // boiler no longer hands them back.
+            return stack.is(Items.WATER_BUCKET);
         }
         return stack.getBurnTime(RecipeType.SMELTING) > 0;
     }
@@ -577,7 +573,6 @@ public class BoilerBlockEntity extends BlockEntity implements WorldlyContainer, 
         burnDuration = tag.getInt("burnDuration");
         water = tag.getInt("water");
         steam = tag.getInt("steam");
-        refillTimer = tag.getInt("refill");
         status = tag.getInt("status");
     }
 
@@ -589,7 +584,6 @@ public class BoilerBlockEntity extends BlockEntity implements WorldlyContainer, 
         tag.putInt("burnDuration", burnDuration);
         tag.putInt("water", water);
         tag.putInt("steam", steam);
-        tag.putInt("refill", refillTimer);
         tag.putInt("status", status);
     }
 }

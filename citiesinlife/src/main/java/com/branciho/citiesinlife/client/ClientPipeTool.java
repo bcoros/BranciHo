@@ -13,6 +13,14 @@ public final class ClientPipeTool {
 
     private static @Nullable BlockPos pending;
 
+    /**
+     * The half-finished outlet link, kept apart from the pipe link above.
+     *
+     * <p>They are made with different gestures — right click for pipes, sneak and left click for an
+     * end pipe's outlet — so sharing one slot would let a player start one and finish the other.
+     */
+    private static @Nullable BlockPos pendingOutlet;
+
     private ClientPipeTool() {
     }
 
@@ -24,7 +32,16 @@ public final class ClientPipeTool {
         pending = pos;
     }
 
+    public static @Nullable BlockPos pendingOutlet() {
+        return pendingOutlet;
+    }
+
+    public static void setPendingOutlet(BlockPos pos) {
+        pendingOutlet = pos;
+    }
+
     public static void clear() {
         pending = null;
+        pendingOutlet = null;
     }
 }

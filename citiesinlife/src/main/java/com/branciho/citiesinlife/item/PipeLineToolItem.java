@@ -65,5 +65,6 @@ public class PipeLineToolItem extends Item {
         tooltip.add(Component.translatable("tooltip.citiesinlife.pipe_2").withStyle(ChatFormatting.DARK_GRAY));
         tooltip.add(Component.translatable("tooltip.citiesinlife.pipe_3").withStyle(ChatFormatting.DARK_GRAY));
         tooltip.add(Component.translatable("tooltip.citiesinlife.pipe_4").withStyle(ChatFormatting.DARK_GRAY));
+        tooltip.add(Component.translatable("tooltip.citiesinlife.pipe_5").withStyle(ChatFormatting.DARK_GRAY));
     }
 }
