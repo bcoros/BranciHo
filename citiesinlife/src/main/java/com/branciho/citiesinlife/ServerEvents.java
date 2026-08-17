@@ -1,6 +1,7 @@
 package com.branciho.citiesinlife;
 
 import com.branciho.citiesinlife.net.ServerActions;
+import com.branciho.citiesinlife.sim.CitizenDirector;
 import com.branciho.citiesinlife.sim.CitySimulation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -29,6 +30,7 @@ public final class ServerEvents {
     public static void onServerTick(ServerTickEvent.Post event) {
         MinecraftServer server = event.getServer();
         CitySimulation.tick(server);
+        CitizenDirector.tick(server);
 
         if (server.getTickCount() % SYNC_INTERVAL_TICKS == 0) {
             for (ServerPlayer player : server.getPlayerList().getPlayers()) {
@@ -54,6 +56,13 @@ public final class ServerEvents {
     public static void onChangeDimension(PlayerEvent.PlayerChangedDimensionEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             ServerActions.sync(player);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onPlayerLeave(PlayerEvent.PlayerLoggedOutEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            ServerActions.forget(player);
         }
     }
 

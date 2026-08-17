@@ -5,6 +5,8 @@ import com.branciho.citiesinlife.blockentity.BoilerBlockEntity;
 import com.branciho.citiesinlife.blockentity.FactoryOutputBlockEntity;
 import com.branciho.citiesinlife.blockentity.TurbineBlockEntity;
 import com.branciho.citiesinlife.blockentity.ChimneyBlockEntity;
+import com.branciho.citiesinlife.blockentity.OfficeSpaceBlockEntity;
+import com.branciho.citiesinlife.blockentity.RegisterCounterBlockEntity;
 import com.branciho.citiesinlife.blockentity.WaterStorageBlockEntity;
 import com.branciho.citiesinlife.blockentity.WindmillBlockEntity;
 import net.minecraft.core.registries.Registries;
@@ -54,6 +56,18 @@ public final class ModBlockEntities {
             CHIMNEY = BLOCK_ENTITIES.register("chimney",
                     () -> BlockEntityType.Builder
                             .of(ChimneyBlockEntity::new, ModBlocks.CHIMNEY.get())
+                            .build(null));
+
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<OfficeSpaceBlockEntity>>
+            OFFICE_SPACE = BLOCK_ENTITIES.register("office_space",
+                    () -> BlockEntityType.Builder
+                            .of(OfficeSpaceBlockEntity::new, ModBlocks.OFFICE_SPACE.get())
+                            .build(null));
+
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<RegisterCounterBlockEntity>>
+            REGISTER_COUNTER = BLOCK_ENTITIES.register("register_counter",
+                    () -> BlockEntityType.Builder
+                            .of(RegisterCounterBlockEntity::new, ModBlocks.REGISTER_COUNTER.get())
                             .build(null));
 
     private ModBlockEntities() {

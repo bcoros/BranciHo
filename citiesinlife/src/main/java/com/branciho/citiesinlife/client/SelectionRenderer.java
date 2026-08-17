@@ -42,6 +42,13 @@ public final class SelectionRenderer {
     /** How far a wire dips at mid-span, as a fraction of its length. */
     private static final double SAG_FACTOR = 0.06D;
 
+    /** How far pavement is drawn, and how much of it at once. */
+    private static final double MAX_PATH_DISTANCE_SQR = 64.0D * 64.0D;
+    private static final int MAX_PATHS_DRAWN = 2048;
+
+    /** How far above the marked block its outline floats, so it does not fight with the surface. */
+    private static final double PATH_LIFT = 1.015D;
+
     private SelectionRenderer() {
     }
 
@@ -56,9 +63,15 @@ public final class SelectionRenderer {
         boolean showingPipes = ClientEvents.holdingPipeTool(minecraft.player)
                 && !ClientCityCache.waterLines().isEmpty();
 
+        // Pavement is scenery once it is drawn, so it is only shown when the player is actually
+        // thinking about it: holding the tool that makes it, or in structure mode looking at what
+        // they have already laid out.
+        boolean showingPaths = (StructureMode.active() || ClientEvents.holdingPathTool(minecraft.player))
+                && ClientCityCache.paths().length > 0;
+
         AABB selection = ClientSelection.bounds();
         boolean anything = selection != null || StructureMode.active()
-                || !ClientCityCache.powerLines().isEmpty() || showingPipes;
+                || !ClientCityCache.powerLines().isEmpty() || showingPipes || showingPaths;
         if (!anything) {
             return;
         }
@@ -72,6 +85,9 @@ public final class SelectionRenderer {
         drawPowerLines(poseStack, consumer, minecraft.level, minecraft.player.position());
         if (showingPipes) {
             drawPipeLinks(poseStack, consumer, minecraft.player.position());
+        }
+        if (showingPaths) {
+            drawPaths(poseStack, consumer, minecraft.player.position());
         }
         if (StructureMode.active()) {
             drawRegisteredStructures(poseStack, consumer, minecraft.player.position());
@@ -91,8 +107,14 @@ public final class SelectionRenderer {
 
         // Red in structure mode, because there the box deletes rather than creates. Same gesture,
         // opposite consequence, so it must not look the same.
+        Minecraft minecraft = Minecraft.getInstance();
+        boolean pathTool = minecraft.player != null && ClientEvents.holdingPathTool(minecraft.player);
+
         float[] rgb;
-        if (StructureMode.active()) {
+        if (pathTool) {
+            // The same amber the marked ground is drawn in, so it is obvious what the box will become.
+            rgb = new float[]{1.00F, 0.82F, 0.32F};
+        } else if (StructureMode.active()) {
             rgb = new float[]{1.00F, 0.30F, 0.30F};
         } else if (complete) {
             rgb = unpack(ClientSelection.type().colour());
@@ -120,6 +142,32 @@ public final class SelectionRenderer {
                 new AABB(x - CORNER_SIZE, y - CORNER_SIZE, z - CORNER_SIZE,
                         x + CORNER_SIZE, y + CORNER_SIZE, z + CORNER_SIZE),
                 r, g, b, 1.0F);
+    }
+
+    /**
+     * The marked ground, drawn as a flat outline on top of each block.
+     *
+     * <p>Flat rather than a full cube, because pavement is a surface and a stack of wireframe cubes
+     * over a street reads as scaffolding rather than as a road.
+     */
+    private static void drawPaths(PoseStack poseStack, VertexConsumer consumer, Vec3 eye) {
+        int drawn = 0;
+        for (long packed : ClientCityCache.paths()) {
+            if (drawn >= MAX_PATHS_DRAWN) {
+                return;
+            }
+            double x = BlockPos.getX(packed);
+            double y = BlockPos.getY(packed);
+            double z = BlockPos.getZ(packed);
+            if (eye.distanceToSqr(x + 0.5D, y + 0.5D, z + 0.5D) > MAX_PATH_DISTANCE_SQR) {
+                continue;
+            }
+            drawn++;
+            LevelRenderer.renderLineBox(poseStack, consumer,
+                    new AABB(x + 0.02D, y + PATH_LIFT, z + 0.02D,
+                            x + 0.98D, y + PATH_LIFT, z + 0.98D),
+                    1.00F, 0.82F, 0.32F, 0.85F);
+        }
     }
 
     private static void drawRegisteredStructures(PoseStack poseStack, VertexConsumer consumer, Vec3 eye) {

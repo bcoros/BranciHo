@@ -1,0 +1,309 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "particle": "citiesinlife:block/office_space_side",
+    "top": "citiesinlife:block/office_space_top",
+    "side": "citiesinlife:block/office_space_side",
+    "screen": "citiesinlife:block/office_space_screen",
+    "chair": "citiesinlife:block/office_space_chair"
+  },
+  "elements": [
+    {
+      "name": "desk",
+      "from": [
+        0,
+        11,
+        0
+      ],
+      "to": [
+        16,
+        13,
+        16
+      ],
+      "faces": {
+        "north": {
+          "texture": "#top"
+        },
+        "south": {
+          "texture": "#top"
+        },
+        "east": {
+          "texture": "#top"
+        },
+        "west": {
+          "texture": "#top"
+        },
+        "up": {
+          "texture": "#top"
+        },
+        "down": {
+          "texture": "#top"
+        }
+      }
+    },
+    {
+      "name": "leg_left",
+      "from": [
+        0,
+        0,
+        2
+      ],
+      "to": [
+        2,
+        11,
+        15
+      ],
+      "faces": {
+        "north": {
+          "texture": "#side"
+        },
+        "south": {
+          "texture": "#side"
+        },
+        "east": {
+          "texture": "#side"
+        },
+        "west": {
+          "texture": "#side"
+        },
+        "up": {
+          "texture": "#side"
+        },
+        "down": {
+          "texture": "#side"
+        }
+      }
+    },
+    {
+      "name": "leg_right",
+      "from": [
+        14,
+        0,
+        2
+      ],
+      "to": [
+        16,
+        11,
+        15
+      ],
+      "faces": {
+        "north": {
+          "texture": "#side"
+        },
+        "south": {
+          "texture": "#side"
+        },
+        "east": {
+          "texture": "#side"
+        },
+        "west": {
+          "texture": "#side"
+        },
+        "up": {
+          "texture": "#side"
+        },
+        "down": {
+          "texture": "#side"
+        }
+      }
+    },
+    {
+      "name": "divider",
+      "from": [
+        0,
+        13,
+        14
+      ],
+      "to": [
+        16,
+        24,
+        16
+      ],
+      "faces": {
+        "north": {
+          "texture": "#side"
+        },
+        "south": {
+          "texture": "#side"
+        },
+        "east": {
+          "texture": "#side"
+        },
+        "west": {
+          "texture": "#side"
+        },
+        "up": {
+          "texture": "#side"
+        },
+        "down": {
+          "texture": "#side"
+        }
+      }
+    },
+    {
+      "name": "monitor_stand",
+      "from": [
+        7,
+        13,
+        8
+      ],
+      "to": [
+        9,
+        15,
+        10
+      ],
+      "faces": {
+        "north": {
+          "texture": "#side"
+        },
+        "south": {
+          "texture": "#side"
+        },
+        "east": {
+          "texture": "#side"
+        },
+        "west": {
+          "texture": "#side"
+        },
+        "up": {
+          "texture": "#side"
+        },
+        "down": {
+          "texture": "#side"
+        }
+      }
+    },
+    {
+      "name": "monitor",
+      "from": [
+        4,
+        15,
+        8
+      ],
+      "to": [
+        12,
+        23,
+        10
+      ],
+      "faces": {
+        "north": {
+          "texture": "#screen"
+        },
+        "south": {
+          "texture": "#side"
+        },
+        "east": {
+          "texture": "#side"
+        },
+        "west": {
+          "texture": "#side"
+        },
+        "up": {
+          "texture": "#side"
+        },
+        "down": {
+          "texture": "#side"
+        }
+      }
+    },
+    {
+      "name": "seat",
+      "from": [
+        3,
+        6,
+        -14
+      ],
+      "to": [
+        13,
+        9,
+        -2
+      ],
+      "faces": {
+        "north": {
+          "texture": "#chair"
+        },
+        "south": {
+          "texture": "#chair"
+        },
+        "east": {
+          "texture": "#chair"
+        },
+        "west": {
+          "texture": "#chair"
+        },
+        "up": {
+          "texture": "#chair"
+        },
+        "down": {
+          "texture": "#chair"
+        }
+      }
+    },
+    {
+      "name": "seat_back",
+      "from": [
+        3,
+        9,
+        -14
+      ],
+      "to": [
+        13,
+        19,
+        -12
+      ],
+      "faces": {
+        "north": {
+          "texture": "#chair"
+        },
+        "south": {
+          "texture": "#chair"
+        },
+        "east": {
+          "texture": "#chair"
+        },
+        "west": {
+          "texture": "#chair"
+        },
+        "up": {
+          "texture": "#chair"
+        },
+        "down": {
+          "texture": "#chair"
+        }
+      }
+    },
+    {
+      "name": "seat_post",
+      "from": [
+        7,
+        0,
+        -9
+      ],
+      "to": [
+        9,
+        6,
+        -7
+      ],
+      "faces": {
+        "north": {
+          "texture": "#side"
+        },
+        "south": {
+          "texture": "#side"
+        },
+        "east": {
+          "texture": "#side"
+        },
+        "west": {
+          "texture": "#side"
+        },
+        "up": {
+          "texture": "#side"
+        },
+        "down": {
+          "texture": "#side"
+        }
+      }
+    }
+  ]
+}

@@ -20,6 +20,7 @@ public final class ModCreativeTabs {
                     .icon(() -> new ItemStack(ModItems.PLANNER_WAND.get()))
                     .displayItems((parameters, output) -> {
                         output.accept(ModItems.PLANNER_WAND.get());
+                        output.accept(ModItems.PATH_TOOL.get());
                         output.accept(ModItems.POWER_LINE_TOOL.get());
                         output.accept(ModItems.SOLAR_PANEL.get());
                         output.accept(ModItems.POWER_MAST.get());
@@ -43,6 +44,8 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.PIPE_CONNECTOR.get());
                         output.accept(ModItems.VALVE.get());
                         output.accept(ModItems.WATER_STORAGE.get());
+                        output.accept(ModItems.OFFICE_SPACE.get());
+                        output.accept(ModItems.REGISTER_COUNTER.get());
                     })
                     .build());
 

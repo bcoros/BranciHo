@@ -1,13 +1,17 @@
 package com.branciho.citiesinlife.client;
 
 import com.branciho.citiesinlife.CitiesInLife;
+import com.branciho.citiesinlife.client.render.CitizenModel;
+import com.branciho.citiesinlife.client.render.CitizenRenderer;
 import com.branciho.citiesinlife.client.render.TurbineModel;
 import com.branciho.citiesinlife.client.render.WindmillModel;
 import com.branciho.citiesinlife.client.render.WindmillRenderer;
 import com.branciho.citiesinlife.client.render.TurbineRenderer;
 import com.branciho.citiesinlife.client.screen.BoilerScreen;
 import com.branciho.citiesinlife.client.screen.FactoryOutputScreen;
+import com.branciho.citiesinlife.client.screen.RegisterCounterScreen;
 import com.branciho.citiesinlife.registry.ModBlockEntities;
+import com.branciho.citiesinlife.registry.ModEntities;
 import com.branciho.citiesinlife.registry.ModMenus;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -43,12 +47,14 @@ public final class CitiesInLifeClient {
     public static void registerMenuScreens(RegisterMenuScreensEvent event) {
         event.register(ModMenus.FACTORY_OUTPUT.get(), FactoryOutputScreen::new);
         event.register(ModMenus.BOILER.get(), BoilerScreen::new);
+        event.register(ModMenus.REGISTER_COUNTER.get(), RegisterCounterScreen::new);
     }
 
     @SubscribeEvent
     public static void registerLayerDefinitions(EntityRenderersEvent.RegisterLayerDefinitions event) {
         event.registerLayerDefinition(TurbineModel.LAYER, TurbineModel::create);
         event.registerLayerDefinition(WindmillModel.LAYER, WindmillModel::create);
+        event.registerLayerDefinition(CitizenModel.LAYER, CitizenModel::createBodyLayer);
     }
 
     @SubscribeEvent
@@ -57,6 +63,7 @@ public final class CitiesInLifeClient {
         // model. All of it is drawn here.
         event.registerBlockEntityRenderer(ModBlockEntities.TURBINE.get(), TurbineRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.WINDMILL.get(), WindmillRenderer::new);
+        event.registerEntityRenderer(ModEntities.CITIZEN.get(), CitizenRenderer::new);
     }
 
     @SubscribeEvent

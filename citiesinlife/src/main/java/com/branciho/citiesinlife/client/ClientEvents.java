@@ -10,6 +10,7 @@ import com.branciho.citiesinlife.net.payload.ConfirmDeleteCityPayload;
 import com.branciho.citiesinlife.net.payload.DeleteAreaPayload;
 import com.branciho.citiesinlife.net.payload.LinkPowerPayload;
 import com.branciho.citiesinlife.net.payload.LinkWaterPayload;
+import com.branciho.citiesinlife.net.payload.MarkPathPayload;
 import com.branciho.citiesinlife.net.payload.RegisterStructurePayload;
 import com.branciho.citiesinlife.net.payload.RequestCityPayload;
 import com.branciho.citiesinlife.registry.ModItems;
@@ -52,6 +53,17 @@ public final class ClientEvents {
 
     static boolean holdingPipeTool(LocalPlayer player) {
         return player.getMainHandItem().is(ModItems.PIPE_LINE_TOOL.get());
+    }
+
+    /**
+     * The path tool draws a box exactly like the wand does.
+     *
+     * <p>That is the entire reason it is a tool rather than a block. The player was blunt about path
+     * nodes and entrance markers being bad, and they were right: placing a block every metre of every
+     * street is not planning, it is data entry. Drawing a box round the street is planning.
+     */
+    static boolean holdingPathTool(LocalPlayer player) {
+        return player.getMainHandItem().is(ModItems.PATH_TOOL.get());
     }
 
     // ------------------------------------------------------------------ ticks
@@ -131,7 +143,7 @@ public final class ClientEvents {
         if (!(event.getEntity() instanceof LocalPlayer player)) {
             return;
         }
-        if (holdingWand(player)) {
+        if (holdingWand(player) || holdingPathTool(player)) {
             handlePlannerRightClick(player);
             event.setCanceled(true);
         } else if (holdingLineTool(player)) {
@@ -169,7 +181,7 @@ public final class ClientEvents {
             return;
         }
 
-        if (holdingWand(player)) {
+        if (holdingWand(player) || holdingPathTool(player)) {
             handlePlannerRightClick(player);
         } else if (holdingLineTool(player) && player.isShiftKeyDown()) {
             ClientPowerTool.clear();
@@ -243,16 +255,41 @@ public final class ClientEvents {
         }
         Minecraft minecraft = Minecraft.getInstance();
         LocalPlayer player = minecraft.player;
-        if (player == null || !holdingWand(player)) {
+        if (player == null) {
+            return;
+        }
+        boolean wand = holdingWand(player);
+        boolean pathTool = holdingPathTool(player);
+        if (!wand && !pathTool) {
             return;
         }
 
         if (ClientSelection.phase() == ClientSelection.Phase.COMPLETE) {
-            confirmSelection(minecraft, player);
+            if (pathTool) {
+                confirmPath(player);
+            } else {
+                confirmSelection(minecraft, player);
+            }
         }
-        // The wand never breaks anything, so swallow the swing either way.
+        // Neither tool ever breaks anything, so swallow the swing either way.
         event.setSwingHand(false);
         event.setCanceled(true);
+    }
+
+    /**
+     * Turn the box into pavement, or take pavement away.
+     *
+     * <p>Sneaking flips it, the same way sneaking flips the two line tools from building to cutting.
+     * One tool that does a thing and undoes it beats two tools that each do half.
+     */
+    private static void confirmPath(LocalPlayer player) {
+        BlockPos a = ClientSelection.pointA();
+        BlockPos b = ClientSelection.pointB();
+        if (a == null || b == null) {
+            return;
+        }
+        CitiesInLifeNetwork.sendToServer(new MarkPathPayload(a, b, player.isShiftKeyDown()));
+        ClientSelection.cancel();
     }
 
     private static void confirmSelection(Minecraft minecraft, LocalPlayer player) {

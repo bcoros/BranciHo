@@ -4,6 +4,8 @@ import com.branciho.citiesinlife.CitiesInLife;
 import com.branciho.citiesinlife.block.BoilerBlock;
 import com.branciho.citiesinlife.block.ChimneyBlock;
 import com.branciho.citiesinlife.block.IndestructiblePipeBlock;
+import com.branciho.citiesinlife.block.OfficeSpaceBlock;
+import com.branciho.citiesinlife.block.RegisterCounterBlock;
 import com.branciho.citiesinlife.block.WindmillBlock;
 import com.branciho.citiesinlife.block.WindmillColour;
 import com.branciho.citiesinlife.block.EndPumpBlock;
@@ -168,6 +170,28 @@ public final class ModBlocks {
                             .strength(3.0F, 9.0F)
                             .requiresCorrectToolForDrops()
                             .sound(SoundType.METAL)
+                            .noOcclusion()));
+
+    /**
+     * A desk with a chair in front of it. One citizen works here.
+     *
+     * <p>Wood rather than metal, and it does not need a pickaxe: an office is furniture, and having
+     * to fetch a tool to move a desk one square left would be a small misery repeated forever.
+     */
+    public static final DeferredBlock<OfficeSpaceBlock> OFFICE_SPACE = BLOCKS.register("office_space",
+            () -> new OfficeSpaceBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_LIGHT_BLUE)
+                    .strength(1.5F, 3.0F)
+                    .sound(SoundType.WOOD)
+                    .noOcclusion()));
+
+    /** A shop counter with a till on it. Two citizens work here, and this is where a shop earns. */
+    public static final DeferredBlock<RegisterCounterBlock> REGISTER_COUNTER =
+            BLOCKS.register("register_counter",
+                    () -> new RegisterCounterBlock(BlockBehaviour.Properties.of()
+                            .mapColor(MapColor.COLOR_LIGHT_GRAY)
+                            .strength(2.0F, 4.0F)
+                            .sound(SoundType.WOOD)
                             .noOcclusion()));
 
     private ModBlocks() {

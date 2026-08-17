@@ -8,10 +8,13 @@ import com.branciho.citiesinlife.net.payload.ConfirmDeleteCityPayload;
 import com.branciho.citiesinlife.net.payload.DeleteAreaPayload;
 import com.branciho.citiesinlife.net.payload.LinkPowerPayload;
 import com.branciho.citiesinlife.net.payload.LinkWaterPayload;
+import com.branciho.citiesinlife.net.payload.MarkPathPayload;
+import com.branciho.citiesinlife.net.payload.PathSyncPayload;
 import com.branciho.citiesinlife.net.payload.PowerLinesPayload;
 import com.branciho.citiesinlife.net.payload.RegisterStructurePayload;
 import com.branciho.citiesinlife.net.payload.StructureSyncPayload;
 import com.branciho.citiesinlife.net.payload.WaterLinesPayload;
+import com.branciho.citiesinlife.path.PathNetwork;
 import com.branciho.citiesinlife.plant.PlantSurvey;
 import com.branciho.citiesinlife.power.PowerBlock;
 import com.branciho.citiesinlife.power.PowerGrid;
@@ -32,8 +35,12 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
 
+import it.unimi.dsi.fastutil.longs.LongArrayList;
+
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -50,6 +57,12 @@ public final class ServerActions {
 
     /** How far around the player structures are sent for the overlay, in chunks. */
     private static final int SYNC_RADIUS_CHUNKS = 8;
+
+    /** How far around the player pavement is sent for the overlay. */
+    private static final int PATH_SYNC_RADIUS = SYNC_RADIUS_CHUNKS * 16;
+
+    /** The chunk each player was last sent pavement for, so it is not re-sent every tick. */
+    private static final Map<UUID, Long> lastPathChunk = new HashMap<>();
 
     private static final int MIN_NAME_LENGTH = 2;
     private static final int MAX_NAME_LENGTH = 32;
@@ -576,6 +589,74 @@ public final class ServerActions {
         sync(player);
     }
 
+    // ------------------------------------------------------------------ paths
+
+    /**
+     * Mark - or unmark - a box of ground as pavement.
+     *
+     * <p>Deliberately not tied to a city. Paths are not property: a road between two towns belongs
+     * to neither of them, and a player who wants to draw one should not have to buy the ground it
+     * crosses first. Nothing about a path grants or implies a claim, so there is nothing here worth
+     * stealing.
+     */
+    public static void markPath(ServerPlayer player, MarkPathPayload payload) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        BlockPos a = payload.pointA();
+        BlockPos b = payload.pointB();
+        if (tooFar(player, a) || tooFar(player, b)) {
+            reject(player, "too_far");
+            return;
+        }
+        BlockPos min = new BlockPos(
+                Math.min(a.getX(), b.getX()), Math.min(a.getY(), b.getY()), Math.min(a.getZ(), b.getZ()));
+        BlockPos max = new BlockPos(
+                Math.max(a.getX(), b.getX()), Math.max(a.getY(), b.getY()), Math.max(a.getZ(), b.getZ()));
+
+        int changed = PathNetwork.get(server).mark(
+                player.serverLevel().dimension(), min, max, payload.remove());
+        if (changed == 0) {
+            reject(player, payload.remove() ? "no_path_there" : "already_path");
+        } else {
+            player.sendSystemMessage(Component.translatable(payload.remove()
+                    ? "message.citiesinlife.path_cleared"
+                    : "message.citiesinlife.path_marked", changed));
+        }
+        syncPaths(player, true);
+    }
+
+    /**
+     * Send the pavement around the player, but only when it can have changed.
+     *
+     * <p>Four thousand positions is thirty kilobytes, and pushing that at every player twice a
+     * second for scenery that does not move would be the most expensive thing this mod does. It only
+     * goes out when the player crosses into a new chunk or has just drawn some.
+     */
+    public static void syncPaths(ServerPlayer player, boolean force) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        long chunkKey = ChunkPos.asLong(player.chunkPosition().x, player.chunkPosition().z);
+        Long last = lastPathChunk.get(player.getUUID());
+        if (!force && last != null && last == chunkKey) {
+            return;
+        }
+        lastPathChunk.put(player.getUUID(), chunkKey);
+
+        LongArrayList near = PathNetwork.get(server).near(
+                player.serverLevel().dimension(), player.blockPosition(),
+                PATH_SYNC_RADIUS, PathSyncPayload.MAX_MARKED);
+        CitiesInLifeNetwork.sendTo(player, new PathSyncPayload(near.toLongArray()));
+    }
+
+    /** Forget a player who has left, so this map does not grow for the life of the server. */
+    public static void forget(ServerPlayer player) {
+        lastPathChunk.remove(player.getUUID());
+    }
+
     // ---------------------------------------------------------------- syncing
 
     /**
@@ -593,6 +674,7 @@ public final class ServerActions {
                 new StructureSyncPayload(nearbyStructures(CityData.get(server), player)));
         CitiesInLifeNetwork.sendTo(player, new PowerLinesPayload(nearbyLines(server, player)));
         CitiesInLifeNetwork.sendTo(player, new WaterLinesPayload(nearbyWaterLines(server, player)));
+        syncPaths(player, false);
     }
 
     /** Push the player's city and the structures around them. */
@@ -625,6 +707,7 @@ public final class ServerActions {
         CitiesInLifeNetwork.sendTo(player, new StructureSyncPayload(nearbyStructures(data, player)));
         CitiesInLifeNetwork.sendTo(player, new PowerLinesPayload(nearbyLines(server, player)));
         CitiesInLifeNetwork.sendTo(player, new WaterLinesPayload(nearbyWaterLines(server, player)));
+        syncPaths(player, true);
     }
 
     private static List<StructureSyncPayload.Entry> nearbyStructures(CityData data, ServerPlayer player) {

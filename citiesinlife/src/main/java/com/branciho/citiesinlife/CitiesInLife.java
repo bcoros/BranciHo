@@ -1,8 +1,10 @@
 package com.branciho.citiesinlife;
 
+import com.branciho.citiesinlife.config.CitiesInLifeConfig;
 import com.branciho.citiesinlife.registry.ModBlockEntities;
 import com.branciho.citiesinlife.registry.ModBlocks;
 import com.branciho.citiesinlife.registry.ModCreativeTabs;
+import com.branciho.citiesinlife.registry.ModEntities;
 import com.branciho.citiesinlife.registry.ModItems;
 import com.branciho.citiesinlife.registry.ModMenus;
 import com.mojang.logging.LogUtils;
@@ -10,6 +12,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.config.ModConfig;
 import org.slf4j.Logger;
 
 /**
@@ -37,7 +40,12 @@ public final class CitiesInLife {
         ModItems.register(modBus);
         ModBlockEntities.register(modBus);
         ModMenus.register(modBus);
+        ModEntities.register(modBus);
         ModCreativeTabs.register(modBus);
+
+        // Server-side, because it decides what gets spawned rather than what gets drawn:
+        // turning citizens down is a fact about the world, not about one player's view of it.
+        container.registerConfig(ModConfig.Type.SERVER, CitiesInLifeConfig.SPEC);
 
         LOGGER.info("Cities In Life {} initialising", container.getModInfo().getVersion());
     }

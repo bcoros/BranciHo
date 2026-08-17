@@ -2,6 +2,7 @@ package com.branciho.citiesinlife.net;
 
 import com.branciho.citiesinlife.net.payload.CitySyncPayload;
 import com.branciho.citiesinlife.net.payload.ConfirmDeleteCityPayload;
+import com.branciho.citiesinlife.net.payload.PathSyncPayload;
 import com.branciho.citiesinlife.net.payload.PowerLinesPayload;
 import com.branciho.citiesinlife.net.payload.StructureSyncPayload;
 import com.branciho.citiesinlife.net.payload.WaterLinesPayload;
@@ -30,6 +31,7 @@ public final class ClientCityCache {
     private static List<long[]> powerLines = List.of();
     private static List<long[]> waterLines = List.of();
     private static LongSet claimedChunks = new LongOpenHashSet();
+    private static long[] paths = new long[0];
     private static @Nullable ConfirmDeleteCityPayload pendingDeleteConfirm;
 
     private ClientCityCache() {
@@ -54,6 +56,15 @@ public final class ClientCityCache {
 
     public static void accept(WaterLinesPayload payload) {
         waterLines = payload.lines();
+    }
+
+    public static void accept(PathSyncPayload payload) {
+        paths = payload.marked();
+    }
+
+    /** The pavement near the player, drawn only in structure mode or with the path tool in hand. */
+    public static long[] paths() {
+        return paths;
     }
 
     /** Pipe links near the player. Drawn only while the pipe tool is held; invisible otherwise. */
@@ -116,6 +127,7 @@ public final class ClientCityCache {
         powerLines = List.of();
         waterLines = List.of();
         claimedChunks = new LongOpenHashSet();
+        paths = new long[0];
         pendingDeleteConfirm = null;
     }
 }

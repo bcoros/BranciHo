@@ -3,6 +3,7 @@ package com.branciho.citiesinlife.registry;
 import com.branciho.citiesinlife.CitiesInLife;
 import com.branciho.citiesinlife.menu.BoilerMenu;
 import com.branciho.citiesinlife.menu.FactoryOutputMenu;
+import com.branciho.citiesinlife.menu.RegisterCounterMenu;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.flag.FeatureFlags;
 import net.minecraft.world.inventory.MenuType;
@@ -22,6 +23,10 @@ public final class ModMenus {
     public static final DeferredHolder<MenuType<?>, MenuType<BoilerMenu>> BOILER =
             MENUS.register("boiler",
                     () -> new MenuType<>(BoilerMenu::new, FeatureFlags.DEFAULT_FLAGS));
+
+    public static final DeferredHolder<MenuType<?>, MenuType<RegisterCounterMenu>> REGISTER_COUNTER =
+            MENUS.register("register_counter",
+                    () -> new MenuType<>(RegisterCounterMenu::new, FeatureFlags.DEFAULT_FLAGS));
 
     private ModMenus() {
     }
