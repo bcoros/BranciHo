@@ -9,6 +9,8 @@ import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -46,6 +48,19 @@ public class TurbineBlockEntity extends BlockEntity {
      */
     public static final int SOOT_LIMIT = 2000;
 
+    /**
+     * How long a seized turbine smoulders before it catches, and how long it burns before it goes.
+     *
+     * <p>Two minutes to catch and three more to explode. A clogged turbine is already a plant that
+     * has stopped earning, so the fire is not the punishment - the punishment is losing the machine,
+     * and five minutes is long enough that only ignoring it entirely costs you that.
+     */
+    private static final int TICKS_TO_IGNITE = 2400;
+    private static final int TICKS_TO_EXPLODE = 3600;
+
+    /** How hard it goes. Enough to take the turbine and make a mess, not to crater the plant. */
+    private static final float BLAST = 3.2F;
+
     /** Degrees the rotor advances per tick at full drive - about two thirds of a turn a second. */
     private static final float SPIN_PER_TICK = 12.0F;
 
@@ -57,6 +72,10 @@ public class TurbineBlockEntity extends BlockEntity {
     private int soot;
     private boolean running;
     private boolean clogged;
+
+    /** How long it has been seized, and whether that has turned into an actual fire. */
+    private int cloggedTicks;
+    private boolean burning;
 
     /** Client-side only: the rotor's angle, and where it was last tick so rendering can interpolate. */
     private float spin;
@@ -76,10 +95,28 @@ public class TurbineBlockEntity extends BlockEntity {
             // Seized. It keeps whatever is in the buffer, so clearing the soot brings it straight
             // back rather than making the player wait for the boiler to fill it again.
             turbine.running = false;
+            turbine.cloggedTicks++;
+
+            if (!turbine.burning && turbine.cloggedTicks >= TICKS_TO_IGNITE) {
+                turbine.burning = true;
+                turbine.cloggedTicks = 0;
+                level.playSound(null, pos, SoundEvents.FIRECHARGE_USE, SoundSource.BLOCKS, 1.2F, 0.7F);
+                turbine.setChanged();
+                level.sendBlockUpdated(pos, state, state, Block.UPDATE_CLIENTS);
+            } else if (turbine.burning && turbine.cloggedTicks >= TICKS_TO_EXPLODE) {
+                // Nobody came. The machine is gone.
+                level.removeBlock(pos, false);
+                level.explode(null, pos.getX() + 0.5D, pos.getY() + 0.5D, pos.getZ() + 0.5D,
+                        BLAST, Level.ExplosionInteraction.BLOCK);
+                return;
+            }
+
             if (level.getGameTime() % 20L == 0L && level instanceof ServerLevel serverLevel) {
-                serverLevel.sendParticles(ParticleTypes.LARGE_SMOKE,
+                serverLevel.sendParticles(
+                        turbine.burning ? ParticleTypes.FLAME : ParticleTypes.LARGE_SMOKE,
                         pos.getX() + 0.5D, pos.getY() + 1.4D, pos.getZ() + 0.5D,
-                        6, 0.4D, 0.2D, 0.4D, 0.01D);
+                        turbine.burning ? 12 : 6, 0.4D, 0.2D, 0.4D,
+                        turbine.burning ? 0.03D : 0.01D);
             }
         } else if (turbine.charge >= CHARGE_PER_TICK) {
             turbine.charge -= CHARGE_PER_TICK;
@@ -152,6 +189,25 @@ public class TurbineBlockEntity extends BlockEntity {
         setChanged();
     }
 
+    /** Whether it is actually on fire, which the wrench cannot help with. */
+    public boolean burning() {
+        return burning;
+    }
+
+    /** Put the fire out. The soot is still in there; that is the wrench's job. */
+    public boolean douse() {
+        if (!burning) {
+            return false;
+        }
+        burning = false;
+        cloggedTicks = 0;
+        setChanged();
+        if (level != null) {
+            level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
+        }
+        return true;
+    }
+
     /** Clean it out. Returns false if there was nothing to clean, so the tool can say so. */
     public boolean repair() {
         if (soot == 0 && !clogged) {
@@ -159,6 +215,8 @@ public class TurbineBlockEntity extends BlockEntity {
         }
         soot = 0;
         clogged = false;
+        cloggedTicks = 0;
+        burning = false;
         setChanged();
         if (level != null) {
             level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
@@ -194,6 +252,7 @@ public class TurbineBlockEntity extends BlockEntity {
         CompoundTag tag = super.getUpdateTag(registries);
         tag.putBoolean("running", running);
         tag.putBoolean("clogged", clogged);
+        tag.putBoolean("burning", burning);
         return tag;
     }
 
@@ -207,11 +266,16 @@ public class TurbineBlockEntity extends BlockEntity {
     @Override
     protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.loadAdditional(tag, registries);
-        charge = tag.getInt("charge");
-        rating = tag.getInt("rating");
+        // Turbines saved before the rework stored "steam" and had no rating at all. Reading a
+        // missing rating as zero left them spinning and producing nothing, which looks exactly like
+        // a broken turbine and is not the player's fault.
+        charge = tag.contains("charge") ? tag.getInt("charge") : tag.getInt("steam");
+        rating = tag.contains("rating") ? tag.getInt("rating") : COAL_OUTPUT;
         soot = tag.getInt("soot");
         running = tag.getBoolean("running");
         clogged = tag.getBoolean("clogged");
+        burning = tag.getBoolean("burning");
+        cloggedTicks = tag.getInt("cloggedTicks");
     }
 
     @Override
@@ -222,5 +286,7 @@ public class TurbineBlockEntity extends BlockEntity {
         tag.putInt("soot", soot);
         tag.putBoolean("running", running);
         tag.putBoolean("clogged", clogged);
+        tag.putBoolean("burning", burning);
+        tag.putInt("cloggedTicks", cloggedTicks);
     }
 }

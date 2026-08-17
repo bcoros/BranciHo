@@ -1,6 +1,7 @@
 package com.branciho.citiesinlife.registry;
 
 import com.branciho.citiesinlife.CitiesInLife;
+import com.branciho.citiesinlife.item.ExtinguisherItem;
 import com.branciho.citiesinlife.item.PlannerWandItem;
 import com.branciho.citiesinlife.item.PipeLineToolItem;
 import com.branciho.citiesinlife.item.PowerLineToolItem;
@@ -86,6 +87,9 @@ public final class ModItems {
 
     public static final DeferredItem<BlockItem> WINDMILL_GREEN =
             ITEMS.registerSimpleBlockItem("windmill_green", ModBlocks.WINDMILL_GREEN);
+
+    public static final DeferredItem<ExtinguisherItem> EXTINGUISHER = ITEMS.register("extinguisher",
+            () -> new ExtinguisherItem(new Item.Properties().stacksTo(1)));
 
     private ModItems() {
     }

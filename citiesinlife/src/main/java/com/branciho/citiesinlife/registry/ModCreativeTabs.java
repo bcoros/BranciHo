@@ -31,6 +31,7 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.WINDMILL_BLUE.get());
                         output.accept(ModItems.WINDMILL_GREEN.get());
                         output.accept(ModItems.REPAIR_TOOL.get());
+                        output.accept(ModItems.EXTINGUISHER.get());
                         output.accept(ModItems.TRANSIT_STATION.get());
                         output.accept(ModItems.FACTORY_OUTPUT.get());
                         output.accept(ModItems.PIPE_LINE_TOOL.get());

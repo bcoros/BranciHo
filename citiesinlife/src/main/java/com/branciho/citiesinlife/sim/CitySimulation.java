@@ -146,19 +146,28 @@ public final class CitySimulation {
             return;
         }
 
-        int incoming = grid.supplyFor(level, city);
         BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
 
-        for (long node : tanks) {
-            if (incoming <= 0) {
-                break;
-            }
-            cursor.set(BlockPos.getX(node), BlockPos.getY(node), BlockPos.getZ(node));
-            if (level.getBlockEntity(cursor) instanceof WaterStorageBlockEntity tank) {
-                incoming -= tank.fill(incoming);
+        // Fill each run of plumbing from its own supply. Pooling the city's water and pouring it
+        // into whichever tank happened to come first meant a tank behind a shut valve filled from a
+        // pump it was not connected to, while the tank the valve had opened stayed empty.
+        for (WaterGrid.Delivery delivery : grid.deliveriesFor(level, city)) {
+            int share = delivery.supply() / delivery.tanks().size();
+            int remainder = delivery.supply() % delivery.tanks().size();
+            for (long node : delivery.tanks()) {
+                int pour = share + (remainder-- > 0 ? 1 : 0);
+                if (pour <= 0) {
+                    continue;
+                }
+                cursor.set(BlockPos.getX(node), BlockPos.getY(node), BlockPos.getZ(node));
+                if (level.getBlockEntity(cursor) instanceof WaterStorageBlockEntity tank) {
+                    tank.fill(pour);
+                }
             }
         }
 
+        // The city drinks from every tank it owns, wherever they are - a tank that is full is a tank
+        // that can be drawn from, however it got that way.
         int drawn = 0;
         for (long node : tanks) {
             if (drawn >= demand) {

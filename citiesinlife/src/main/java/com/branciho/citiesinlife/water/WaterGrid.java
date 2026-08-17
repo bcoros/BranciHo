@@ -150,7 +150,7 @@ public final class WaterGrid extends SavedData {
      *
      * @param collector called once for every position reached, with the block found there
      */
-    private void walk(ServerLevel level, LongArrayList start, NodeVisitor collector) {
+    private LongOpenHashSet walk(ServerLevel level, LongArrayList start, NodeVisitor collector) {
         final LongOpenHashSet visited = new LongOpenHashSet();
         final LongArrayList queue = new LongArrayList();
         for (long node : start) {
@@ -201,6 +201,7 @@ public final class WaterGrid extends SavedData {
                 }
             }
         }
+        return visited;
     }
 
     private interface NodeVisitor {
@@ -216,17 +217,60 @@ public final class WaterGrid extends SavedData {
      * starter pumps it can get back to. A pump connected to nothing, or to a tank outside the
      * borders, is worth nothing - the same rule that ties power to territory.
      */
-    public int supplyFor(ServerLevel level, City city) {
+    /** One connected run of plumbing: the city tanks on it, and what reaches them. */
+    public record Delivery(LongArrayList tanks, int supply) {
+    }
+
+    /**
+     * What reaches each separate run of plumbing the city owns.
+     *
+     * <p>Per run, not per city, and that distinction is the whole point. Pooling every tank's water
+     * into one number and then pouring it into whichever tank came first meant a tank behind a shut
+     * valve filled up on water it had no connection to, while the tank the valve had opened sat
+     * empty — which is exactly what a valve is for, done backwards.
+     *
+     * <p>Tanks that share a run share its water. Tanks on separate runs get their own, and a tank
+     * cut off from every pump gets nothing, which is what closing a valve is supposed to mean.
+     */
+    public List<Delivery> deliveriesFor(ServerLevel level, City city) {
         LongArrayList tanks = storagesFor(level, city);
+        List<Delivery> deliveries = new ArrayList<>();
         if (tanks.isEmpty()) {
-            return 0;
+            return deliveries;
         }
-        // Leaks come off the top of the supply rather than cutting the run: the city gets less
-        // water and the pipe drips where you can find it, which is a problem you can chase.
-        final int[] supply = {0};
-        walk(level, tanks, (pos, state, block) ->
-                supply[0] += block.waterOutput(level, pos, state) - block.waterLoss(level, pos, state));
-        return Math.max(0, supply[0]);
+
+        LongOpenHashSet grouped = new LongOpenHashSet();
+        for (long tank : tanks) {
+            if (!grouped.add(tank)) {
+                continue;
+            }
+            // Leaks come off the top rather than cutting the run: the city gets less water and the
+            // pipe drips where you can find it, which is a problem you can chase.
+            final int[] supply = {0};
+            LongArrayList seed = new LongArrayList();
+            seed.add(tank);
+            LongOpenHashSet reached = walk(level, seed, (pos, state, block) ->
+                    supply[0] += block.waterOutput(level, pos, state) - block.waterLoss(level, pos, state));
+
+            LongArrayList sharing = new LongArrayList();
+            sharing.add(tank);
+            for (long other : tanks) {
+                if (other != tank && reached.contains(other) && grouped.add(other)) {
+                    sharing.add(other);
+                }
+            }
+            deliveries.add(new Delivery(sharing, Math.max(0, supply[0])));
+        }
+        return deliveries;
+    }
+
+    /** Everything the city's plumbing delivers, added up, for the city panel. */
+    public int supplyFor(ServerLevel level, City city) {
+        int total = 0;
+        for (Delivery delivery : deliveriesFor(level, city)) {
+            total += delivery.supply();
+        }
+        return total;
     }
 
     /** What a survey of one pumping station found. */

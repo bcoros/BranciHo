@@ -169,5 +169,10 @@
   "message.citiesinlife.wrench_pipe": "Pipe patched.",
   "message.citiesinlife.wrench_pipe_clean": "That pipe is not leaking.",
   "message.citiesinlife.wrench_nothing": "Nothing to repair there.",
-  "message.citiesinlife.mixed_generators": "You cannot have 2 different power generators in 1 plant - boilers or windmills, not both."
+  "message.citiesinlife.mixed_generators": "You cannot have 2 different power generators in 1 plant - boilers or windmills, not both.",
+  "item.citiesinlife.extinguisher": "Fire Extinguisher",
+  "tooltip.citiesinlife.extinguisher_1": "Right click a burning turbine to put it out",
+  "tooltip.citiesinlife.extinguisher_2": "The soot is still in there - use the wrench too, or it relights",
+  "message.citiesinlife.doused_turbine": "Fire out. Clean the soot with a wrench or it will catch again.",
+  "message.citiesinlife.nothing_burning": "Nothing burning there."
 }
