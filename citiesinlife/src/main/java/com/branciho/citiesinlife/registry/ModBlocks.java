@@ -39,6 +39,7 @@ public final class ModBlocks {
                     .mapColor(MapColor.COLOR_BLUE)
                     .strength(2.0F, 4.0F)
                     .sound(SoundType.METAL)
+                    .forceSolidOn()
                     .noOcclusion()));
 
     public static final DeferredBlock<PowerMastBlock> POWER_MAST = BLOCKS.register("power_mast",
@@ -46,6 +47,7 @@ public final class ModBlocks {
                     .mapColor(MapColor.WOOD)
                     .strength(1.5F, 3.0F)
                     .sound(SoundType.WOOD)
+                    .forceSolidOn()
                     .noOcclusion()));
 
     public static final DeferredBlock<TransitStationBlock> TRANSIT_STATION = BLOCKS.register("transit_station",
@@ -54,6 +56,7 @@ public final class ModBlocks {
                     .strength(3.0F, 6.0F)
                     .requiresCorrectToolForDrops()
                     .sound(SoundType.METAL)
+                    .forceSolidOn()
                     .noOcclusion()));
 
     public static final DeferredBlock<BoilerBlock> BOILER = BLOCKS.register("boiler",
@@ -74,6 +77,7 @@ public final class ModBlocks {
                     // Random ticks are only here to give a chimney built in an older version a
                     // chance to notice it now has insides. Nothing about a chimney is random.
                     .randomTicks()
+                    .forceSolidOn()
                     .noOcclusion()));
 
     public static final DeferredBlock<TurbineBlock> TURBINE = BLOCKS.register("turbine",
@@ -82,6 +86,7 @@ public final class ModBlocks {
                     .strength(4.0F, 8.0F)
                     .requiresCorrectToolForDrops()
                     .sound(SoundType.METAL)
+                    .forceSolidOn()
                     .noOcclusion()));
 
     public static final DeferredBlock<FactoryOutputBlock> FACTORY_OUTPUT = BLOCKS.register("factory_output",
@@ -121,6 +126,7 @@ public final class ModBlocks {
                     .sound(SoundType.METAL)
                     // Random ticks are how a pipe eventually splits.
                     .randomTicks()
+                    .forceSolidOn()
                     .noOcclusion()));
 
     public static final DeferredBlock<PipeConnectorBlock> PIPE_CONNECTOR = BLOCKS.register("pipe_connector",
@@ -136,6 +142,7 @@ public final class ModBlocks {
                     .strength(1.5F, 3.0F)
                     .requiresCorrectToolForDrops()
                     .sound(SoundType.METAL)
+                    .forceSolidOn()
                     .noOcclusion()));
 
     public static final DeferredBlock<WaterStorageBlock> WATER_STORAGE = BLOCKS.register("water_storage",
@@ -165,6 +172,7 @@ public final class ModBlocks {
                         .strength(4.0F, 8.0F)
                         .requiresCorrectToolForDrops()
                         .sound(SoundType.METAL)
+                        .forceSolidOn()
                         .noOcclusion(), colour));
     }
 
@@ -175,6 +183,7 @@ public final class ModBlocks {
                             .strength(3.0F, 9.0F)
                             .requiresCorrectToolForDrops()
                             .sound(SoundType.METAL)
+                            .forceSolidOn()
                             .noOcclusion()));
 
     /**
@@ -188,6 +197,7 @@ public final class ModBlocks {
                     .mapColor(MapColor.COLOR_LIGHT_BLUE)
                     .strength(1.5F, 3.0F)
                     .sound(SoundType.WOOD)
+                    .forceSolidOn()
                     .noOcclusion()));
 
     /** A shop counter with a till on it. Two citizens work here, and this is where a shop earns. */
@@ -197,6 +207,7 @@ public final class ModBlocks {
                             .mapColor(MapColor.COLOR_LIGHT_GRAY)
                             .strength(2.0F, 4.0F)
                             .sound(SoundType.WOOD)
+                            .forceSolidOn()
                             .noOcclusion()));
 
     /**
@@ -212,6 +223,7 @@ public final class ModBlocks {
                     .requiresCorrectToolForDrops()
                     .sound(SoundType.METAL)
                     .lightLevel(AlarmBlock::lightFor)
+                    .forceSolidOn()
                     .noOcclusion()));
 
     /**
@@ -224,6 +236,7 @@ public final class ModBlocks {
                     .strength(2.0F, 4.0F)
                     .requiresCorrectToolForDrops()
                     .sound(SoundType.COPPER)
+                    .forceSolidOn()
                     .noOcclusion()));
 
     private ModBlocks() {

@@ -1,27 +1,110 @@
 {
-  "variants": {
-    "facing=north": {
-      "model": "citiesinlife:block/end_pipe"
+  "multipart": [
+    {
+      "when": {
+        "facing": "north"
+      },
+      "apply": {
+        "model": "citiesinlife:block/end_pipe_core"
+      }
     },
-    "facing=east": {
-      "model": "citiesinlife:block/end_pipe",
-      "y": 90
+    {
+      "when": {
+        "facing": "east"
+      },
+      "apply": {
+        "model": "citiesinlife:block/end_pipe_core",
+        "y": 90
+      }
     },
-    "facing=south": {
-      "model": "citiesinlife:block/end_pipe",
-      "y": 180
+    {
+      "when": {
+        "facing": "south"
+      },
+      "apply": {
+        "model": "citiesinlife:block/end_pipe_core",
+        "y": 180
+      }
     },
-    "facing=west": {
-      "model": "citiesinlife:block/end_pipe",
-      "y": 270
+    {
+      "when": {
+        "facing": "west"
+      },
+      "apply": {
+        "model": "citiesinlife:block/end_pipe_core",
+        "y": 270
+      }
     },
-    "facing=up": {
-      "model": "citiesinlife:block/end_pipe",
-      "x": 270
+    {
+      "when": {
+        "facing": "up"
+      },
+      "apply": {
+        "model": "citiesinlife:block/end_pipe_core",
+        "x": 270
+      }
     },
-    "facing=down": {
-      "model": "citiesinlife:block/end_pipe",
-      "x": 90
+    {
+      "when": {
+        "facing": "down"
+      },
+      "apply": {
+        "model": "citiesinlife:block/end_pipe_core",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "north": "true"
+      },
+      "apply": {
+        "model": "citiesinlife:block/end_pipe_arm"
+      }
+    },
+    {
+      "when": {
+        "east": "true"
+      },
+      "apply": {
+        "model": "citiesinlife:block/end_pipe_arm",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "south": "true"
+      },
+      "apply": {
+        "model": "citiesinlife:block/end_pipe_arm",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "west": "true"
+      },
+      "apply": {
+        "model": "citiesinlife:block/end_pipe_arm",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "up": "true"
+      },
+      "apply": {
+        "model": "citiesinlife:block/end_pipe_arm",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "down": "true"
+      },
+      "apply": {
+        "model": "citiesinlife:block/end_pipe_arm",
+        "x": 90
+      }
     }
-  }
+  ]
 }
