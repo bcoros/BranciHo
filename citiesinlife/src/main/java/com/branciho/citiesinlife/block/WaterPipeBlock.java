@@ -52,9 +52,17 @@ public class WaterPipeBlock extends Block implements WaterBlock {
      */
     public static final BooleanProperty LEAKING = BooleanProperty.create("leaking");
 
-    /** Units a split pipe wastes per step, and the odds of one splitting on a random tick. */
-    public static final int LEAK_LOSS = 12;
-    private static final int LEAK_ODDS = 14;
+    /**
+     * Units a split pipe wastes per step, and the odds of one splitting on a random tick.
+     *
+     * <p>Both deliberately mild. The first pass at this had a leak cost twelve units — most of a
+     * starter pump's whole output — on odds that meant a network of any size sprang several a
+     * minute. Leaks arrived faster than anyone could walk the line with a wrench, so an ordinary
+     * pipe run drifted to permanently dry and the only winning move was to build the indestructible
+     * ones and never think about it again. A leak is meant to be a job to notice, not a countdown.
+     */
+    public static final int LEAK_LOSS = 4;
+    private static final int LEAK_ODDS = 48;
 
     private static final Map<Direction, BooleanProperty> BY_DIRECTION = new EnumMap<>(Direction.class);
 

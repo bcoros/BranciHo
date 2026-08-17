@@ -194,5 +194,6 @@
   "screen.citiesinlife.till_no_staff": "Nobody working here - the shop is shut",
   "screen.citiesinlife.till_no_stock": "Nothing on sale - put an item above",
   "screen.citiesinlife.till_staff": "Staff: %s of %s",
-  "screen.citiesinlife.citizens": "Citizens"
+  "screen.citiesinlife.citizens": "Citizens",
+  "screen.citiesinlife.boiler_turbine_clogged": "Stopped - the turbine is clogged solid, mend it with the wrench"
 }

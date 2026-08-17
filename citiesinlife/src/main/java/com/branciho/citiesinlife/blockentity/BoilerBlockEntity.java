@@ -99,6 +99,7 @@ public class BoilerBlockEntity extends BlockEntity implements WorldlyContainer, 
     public static final int STATUS_FOULING = 6;
     public static final int STATUS_NO_TURBINE = 7;
     public static final int STATUS_MIXED_PLANT = 8;
+    public static final int STATUS_TURBINE_CLOGGED = 9;
 
     /** Indices into the block of numbers the screen reads. */
     public static final int DATA_BURN_TIME = 0;
@@ -122,6 +123,16 @@ public class BoilerBlockEntity extends BlockEntity implements WorldlyContainer, 
 
     /** The turbine the steam goes into, if there is one to find. */
     private @Nullable BlockPos turbinePos;
+
+    /**
+     * Whether that turbine has already seized.
+     *
+     * <p>Once it has, there is nothing useful left for this boiler to do: the steam has nowhere to
+     * go and the soot it would add is already at the limit. Burning on regardless meant a plant that
+     * had visibly stopped earning quietly ate a stack of coal while the screen still said it was
+     * fouling the turbine up - which it was not, because there was nothing left to foul.
+     */
+    private boolean turbineClogged;
 
     /** Where the smoke leaves: a chimney's mouth, or the top of an open shaft above the boiler. */
     private @Nullable BlockPos smokeOut;
@@ -177,7 +188,11 @@ public class BoilerBlockEntity extends BlockEntity implements WorldlyContainer, 
         // A boiler with no flue still burns. The emissions have to go somewhere, and if there is no
         // chimney and no shaft they go through the turbine and foul it - which is the whole reason
         // to build a chimney rather than a rule telling you to.
-        boolean canRun = boiler.chamberSealed && !boiler.mixedPlant
+        boiler.turbineClogged = boiler.turbinePos != null
+                && level.getBlockEntity(boiler.turbinePos) instanceof TurbineBlockEntity turbine
+                && turbine.clogged();
+
+        boolean canRun = boiler.chamberSealed && !boiler.mixedPlant && !boiler.turbineClogged
                 && (boiler.smokeOut != null || boiler.turbinePos != null);
         if (canRun && boiler.burnTime <= 0 && boiler.water >= WATER_PER_TICK) {
             boiler.lightFire();
@@ -282,6 +297,8 @@ public class BoilerBlockEntity extends BlockEntity implements WorldlyContainer, 
             status = STATUS_NO_OUTLET;
         } else if (insidePlant && turbinePos == null) {
             status = STATUS_NO_TURBINE;
+        } else if (turbineClogged) {
+            status = STATUS_TURBINE_CLOGGED;
         } else if (water < WATER_PER_TICK) {
             status = STATUS_NO_WATER;
         } else if (burnTime <= 0) {

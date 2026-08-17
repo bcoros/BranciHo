@@ -69,6 +69,9 @@ public final class ModBlocks {
                     .strength(2.0F, 6.0F)
                     .requiresCorrectToolForDrops()
                     .sound(SoundType.STONE)
+                    // Random ticks are only here to give a chimney built in an older version a
+                    // chance to notice it now has insides. Nothing about a chimney is random.
+                    .randomTicks()
                     .noOcclusion()));
 
     public static final DeferredBlock<TurbineBlock> TURBINE = BLOCKS.register("turbine",

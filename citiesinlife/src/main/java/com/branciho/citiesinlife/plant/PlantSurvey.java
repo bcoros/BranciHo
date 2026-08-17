@@ -5,6 +5,7 @@ import com.branciho.citiesinlife.block.ChimneyBlock;
 import com.branciho.citiesinlife.block.TurbineBlock;
 import com.branciho.citiesinlife.block.WindmillBlock;
 import com.branciho.citiesinlife.city.CityData;
+import com.branciho.citiesinlife.scan.StructureScanner;
 import com.branciho.citiesinlife.structure.Structure;
 import com.branciho.citiesinlife.structure.StructureType;
 import net.minecraft.core.BlockPos;
@@ -15,7 +16,9 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * What is inside a registered Turbine Power Plant.
@@ -31,8 +34,33 @@ import java.util.List;
  */
 public final class PlantSurvey {
 
-    /** Biggest plant box the scan will walk before giving up. */
-    private static final int MAX_VOLUME = 32768;
+    /**
+     * Biggest plant box the scan will walk before giving up.
+     *
+     * <p>Tied to the planner's own limit rather than picked separately. When these two disagreed,
+     * every plant between the smaller number and the larger one registered happily and then behaved
+     * as though it were empty: no turbine found, no mixed-generator refusal, and no message saying
+     * why. A box the planner accepts is a box this has to be able to read.
+     */
+    private static final int MAX_VOLUME = StructureScanner.MAX_VOLUME;
+
+    /**
+     * How long one walk of a plant is reused for.
+     *
+     * <p>Every boiler and every windmill in a plant asks the same question about the same box, and
+     * they all ask it on the same tick. Without this, a plant with four boilers in a large box walks
+     * that box four times over, every couple of seconds, for an answer that cannot have changed.
+     */
+    private static final int CACHE_TICKS = 60;
+
+    /** Cleared wholesale rather than pruned; it only ever holds one entry per plant being run. */
+    private static final int MAX_CACHED = 256;
+
+    private record CacheKey(long min, long max) { }
+
+    private record Cached(long stamp, PlantSurvey survey) { }
+
+    private static final Map<CacheKey, Cached> CACHE = new HashMap<>();
 
     /** What kind of plant this is, decided by what was found inside it. */
     public enum Kind {
@@ -86,6 +114,22 @@ public final class PlantSurvey {
             return NOTHING;
         }
 
+        CacheKey key = new CacheKey(min.asLong(), max.asLong());
+        long now = level.getGameTime();
+        Cached cached = CACHE.get(key);
+        if (cached != null && now - cached.stamp() < CACHE_TICKS && now >= cached.stamp()) {
+            return cached.survey();
+        }
+
+        PlantSurvey survey = walk(level, min, max);
+        if (CACHE.size() >= MAX_CACHED) {
+            CACHE.clear();
+        }
+        CACHE.put(key, new Cached(now, survey));
+        return survey;
+    }
+
+    private static PlantSurvey walk(Level level, BlockPos min, BlockPos max) {
         final List<BlockPos> boilers = new ArrayList<>();
         final List<BlockPos> windmills = new ArrayList<>();
         final List<BlockPos> turbines = new ArrayList<>();

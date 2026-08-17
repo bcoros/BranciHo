@@ -124,6 +124,11 @@ public class WindmillBlockEntity extends BlockEntity {
         // The rotor turns in the plane perpendicular to where it points, so the two axes it spans
         // are "up" and whichever horizontal direction is across the nacelle.
         Direction across = facing.getClockWise();
+
+        // The blades sweep in front of the nacelle, not through it. Centring the disc on the
+        // machine's own block put the mast it is bolted to inside the sweep, so every windmill
+        // spent its first second cutting down the tower holding it up.
+        BlockPos hub = pos.relative(facing);
         final BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
 
         for (int a = -BLADE_REACH; a <= BLADE_REACH; a++) {
@@ -132,9 +137,9 @@ public class WindmillBlockEntity extends BlockEntity {
                 if (distanceSqr > BLADE_REACH * BLADE_REACH || distanceSqr <= 1) {
                     continue;
                 }
-                cursor.set(pos.getX() + across.getStepX() * a,
-                        pos.getY() + b,
-                        pos.getZ() + across.getStepZ() * a);
+                cursor.set(hub.getX() + across.getStepX() * a,
+                        hub.getY() + b,
+                        hub.getZ() + across.getStepZ() * a);
                 BlockState hit = level.getBlockState(cursor);
                 if (hit.isAir() || hit.getBlock() instanceof WindmillBlock) {
                     continue;
@@ -152,7 +157,8 @@ public class WindmillBlockEntity extends BlockEntity {
     private void strike(Level level, BlockPos pos, BlockState state) {
         Direction facing = state.getValue(WindmillBlock.FACING);
         Direction across = facing.getClockWise();
-        Vec3 hub = Vec3.atCenterOf(pos);
+        // The same plane the blades are actually in, for the same reason.
+        Vec3 hub = Vec3.atCenterOf(pos.relative(facing));
 
         AABB arc = new AABB(hub, hub).inflate(BLADE_REACH + 1.0D);
         List<LivingEntity> caught = level.getEntitiesOfClass(LivingEntity.class, arc);

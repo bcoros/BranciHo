@@ -3,6 +3,8 @@ package com.branciho.citiesinlife.block;
 import com.branciho.citiesinlife.blockentity.ChimneyBlockEntity;
 import com.branciho.citiesinlife.registry.ModBlockEntities;
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.Level;
@@ -56,6 +58,21 @@ public class ChimneyBlock extends Block implements EntityBlock {
     @Override
     protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
         return SHAPE;
+    }
+
+    /**
+     * Wake up chimneys that were built before this block had any insides.
+     *
+     * <p>Block entities are restored from what the chunk saved. A chimney placed in an older version
+     * saved nothing, so on loading it stayed a plain block with no ticker and never smoked — the new
+     * house-chimney feature simply did not exist on any chimney anybody already owned. Asking for the
+     * block entity is what creates and registers it, and a random tick is a free place to ask.
+     *
+     * <p>Costs nothing on a chimney that already has one: the second call returns the same object.
+     */
+    @Override
+    protected void randomTick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
+        level.getBlockEntity(pos);
     }
 
     /**
