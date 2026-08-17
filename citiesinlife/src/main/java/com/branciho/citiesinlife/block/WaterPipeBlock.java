@@ -5,6 +5,8 @@ import com.branciho.citiesinlife.water.WaterGrid;
 import com.branciho.citiesinlife.water.WaterRole;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.util.RandomSource;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
@@ -41,6 +43,19 @@ public class WaterPipeBlock extends Block implements WaterBlock {
     public static final BooleanProperty UP = BooleanProperty.create("up");
     public static final BooleanProperty DOWN = BooleanProperty.create("down");
 
+    /**
+     * Whether this length has split.
+     *
+     * <p>A leak does not cut the run dead. It bleeds off part of what the network delivers and drips
+     * where you can see it, so a city that suddenly has less water than it did is a thing you go and
+     * look for rather than a thing that simply stopped.
+     */
+    public static final BooleanProperty LEAKING = BooleanProperty.create("leaking");
+
+    /** Units a split pipe wastes per step, and the odds of one splitting on a random tick. */
+    public static final int LEAK_LOSS = 12;
+    private static final int LEAK_ODDS = 14;
+
     private static final Map<Direction, BooleanProperty> BY_DIRECTION = new EnumMap<>(Direction.class);
 
     static {
@@ -76,12 +91,13 @@ public class WaterPipeBlock extends Block implements WaterBlock {
                 .setValue(SOUTH, false)
                 .setValue(WEST, false)
                 .setValue(UP, false)
-                .setValue(DOWN, false));
+                .setValue(DOWN, false)
+                .setValue(LEAKING, false));
     }
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(NORTH, EAST, SOUTH, WEST, UP, DOWN);
+        builder.add(NORTH, EAST, SOUTH, WEST, UP, DOWN, LEAKING);
     }
 
     @Override
@@ -136,9 +152,56 @@ public class WaterPipeBlock extends Block implements WaterBlock {
         super.onRemove(state, level, pos, newState, moved);
     }
 
+    /** Whether this kind of pipe can split at all. The indestructible one says no. */
+    public boolean canLeak() {
+        return true;
+    }
+
+    /**
+     * Pipes wear out.
+     *
+     * <p>Only a pipe that is actually part of a run can split - a single length lying in a chest
+     * room has nothing going through it - and only slowly, because a water network you have to
+     * patrol constantly would be a chore rather than a system.
+     */
+    @Override
+    protected void randomTick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
+        if (!canLeak() || state.getValue(LEAKING)) {
+            return;
+        }
+        int joints = 0;
+        for (Direction direction : Direction.values()) {
+            if (state.getValue(property(direction))) {
+                joints++;
+            }
+        }
+        if (joints < 2 || random.nextInt(LEAK_ODDS) != 0) {
+            return;
+        }
+        level.setBlock(pos, state.setValue(LEAKING, true), Block.UPDATE_ALL);
+    }
+
+    /** A split pipe drips, which is the only way to find one in a long run. */
+    @Override
+    public void animateTick(BlockState state, Level level, BlockPos pos, RandomSource random) {
+        if (!state.getValue(LEAKING)) {
+            return;
+        }
+        level.addParticle(ParticleTypes.DRIPPING_WATER,
+                pos.getX() + 0.2D + random.nextDouble() * 0.6D,
+                pos.getY() + 0.3D,
+                pos.getZ() + 0.2D + random.nextDouble() * 0.6D,
+                0.0D, 0.0D, 0.0D);
+    }
+
     @Override
     public WaterRole waterRole() {
         return WaterRole.CONDUIT;
+    }
+
+    @Override
+    public int waterLoss(BlockGetter level, BlockPos pos, BlockState state) {
+        return state.getValue(LEAKING) ? LEAK_LOSS : 0;
     }
 
     @Override

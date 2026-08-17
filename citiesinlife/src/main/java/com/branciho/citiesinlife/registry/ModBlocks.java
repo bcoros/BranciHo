@@ -3,6 +3,9 @@ package com.branciho.citiesinlife.registry;
 import com.branciho.citiesinlife.CitiesInLife;
 import com.branciho.citiesinlife.block.BoilerBlock;
 import com.branciho.citiesinlife.block.ChimneyBlock;
+import com.branciho.citiesinlife.block.IndestructiblePipeBlock;
+import com.branciho.citiesinlife.block.WindmillBlock;
+import com.branciho.citiesinlife.block.WindmillColour;
 import com.branciho.citiesinlife.block.EndPumpBlock;
 import com.branciho.citiesinlife.block.PipeConnectorBlock;
 import com.branciho.citiesinlife.block.PumpBlock;
@@ -109,6 +112,8 @@ public final class ModBlocks {
                     .strength(1.5F, 3.0F)
                     .requiresCorrectToolForDrops()
                     .sound(SoundType.METAL)
+                    // Random ticks are how a pipe eventually splits.
+                    .randomTicks()
                     .noOcclusion()));
 
     public static final DeferredBlock<PipeConnectorBlock> PIPE_CONNECTOR = BLOCKS.register("pipe_connector",
@@ -132,6 +137,38 @@ public final class ModBlocks {
                     .strength(3.0F, 6.0F)
                     .requiresCorrectToolForDrops()
                     .sound(SoundType.METAL)));
+
+    /**
+     * The four windmill liveries.
+     *
+     * <p>Registered as four blocks rather than one with a colour property so each shows up in the
+     * creative menu on its own - picking the colour before you place it is one decision instead of a
+     * placement followed by a correction.
+     */
+    public static final DeferredBlock<WindmillBlock> WINDMILL_WHITE = windmill(WindmillColour.WHITE);
+    public static final DeferredBlock<WindmillBlock> WINDMILL_BLACK = windmill(WindmillColour.BLACK);
+    public static final DeferredBlock<WindmillBlock> WINDMILL_BLUE = windmill(WindmillColour.BLUE);
+    public static final DeferredBlock<WindmillBlock> WINDMILL_GREEN = windmill(WindmillColour.GREEN);
+
+    /** Every windmill is the same machine; only the paint differs. */
+    private static DeferredBlock<WindmillBlock> windmill(WindmillColour colour) {
+        return BLOCKS.register(colour.blockName(),
+                () -> new WindmillBlock(BlockBehaviour.Properties.of()
+                        .mapColor(MapColor.QUARTZ)
+                        .strength(4.0F, 8.0F)
+                        .requiresCorrectToolForDrops()
+                        .sound(SoundType.METAL)
+                        .noOcclusion(), colour));
+    }
+
+    public static final DeferredBlock<IndestructiblePipeBlock> INDESTRUCTIBLE_PIPE =
+            BLOCKS.register("indestructible_pipe",
+                    () -> new IndestructiblePipeBlock(BlockBehaviour.Properties.of()
+                            .mapColor(MapColor.COLOR_LIGHT_GRAY)
+                            .strength(3.0F, 9.0F)
+                            .requiresCorrectToolForDrops()
+                            .sound(SoundType.METAL)
+                            .noOcclusion()));
 
     private ModBlocks() {
     }

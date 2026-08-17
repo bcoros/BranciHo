@@ -132,6 +132,8 @@ public class BoilerScreen extends AbstractContainerScreen<BoilerMenu> {
                     Component.translatable("screen.citiesinlife.boiler_no_outlet");
             case BoilerBlockEntity.STATUS_FOULING ->
                     Component.translatable("screen.citiesinlife.boiler_fouling");
+            case BoilerBlockEntity.STATUS_MIXED_PLANT ->
+                    Component.translatable("screen.citiesinlife.boiler_mixed_plant");
             case BoilerBlockEntity.STATUS_NO_TURBINE ->
                     Component.translatable("screen.citiesinlife.boiler_no_turbine");
             case BoilerBlockEntity.STATUS_NO_WATER ->

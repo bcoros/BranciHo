@@ -2,6 +2,8 @@ package com.branciho.citiesinlife.client;
 
 import com.branciho.citiesinlife.CitiesInLife;
 import com.branciho.citiesinlife.client.render.TurbineModel;
+import com.branciho.citiesinlife.client.render.WindmillModel;
+import com.branciho.citiesinlife.client.render.WindmillRenderer;
 import com.branciho.citiesinlife.client.render.TurbineRenderer;
 import com.branciho.citiesinlife.client.screen.BoilerScreen;
 import com.branciho.citiesinlife.client.screen.FactoryOutputScreen;
@@ -46,6 +48,7 @@ public final class CitiesInLifeClient {
     @SubscribeEvent
     public static void registerLayerDefinitions(EntityRenderersEvent.RegisterLayerDefinitions event) {
         event.registerLayerDefinition(TurbineModel.LAYER, TurbineModel::create);
+        event.registerLayerDefinition(WindmillModel.LAYER, WindmillModel::create);
     }
 
     @SubscribeEvent
@@ -53,6 +56,7 @@ public final class CitiesInLifeClient {
         // The turbine is three blocks wide and its rotor turns, so none of it can come from a block
         // model. All of it is drawn here.
         event.registerBlockEntityRenderer(ModBlockEntities.TURBINE.get(), TurbineRenderer::new);
+        event.registerBlockEntityRenderer(ModBlockEntities.WINDMILL.get(), WindmillRenderer::new);
     }
 
     @SubscribeEvent

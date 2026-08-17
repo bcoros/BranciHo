@@ -4,6 +4,7 @@ import com.branciho.citiesinlife.CitiesInLife;
 import com.branciho.citiesinlife.item.PlannerWandItem;
 import com.branciho.citiesinlife.item.PipeLineToolItem;
 import com.branciho.citiesinlife.item.PowerLineToolItem;
+import com.branciho.citiesinlife.item.RepairToolItem;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.neoforged.bus.api.IEventBus;
@@ -67,6 +68,24 @@ public final class ModItems {
 
     public static final DeferredItem<BlockItem> WATER_STORAGE =
             ITEMS.registerSimpleBlockItem("water_storage", ModBlocks.WATER_STORAGE);
+
+    public static final DeferredItem<RepairToolItem> REPAIR_TOOL = ITEMS.register("repair_tool",
+            () -> new RepairToolItem(new Item.Properties().stacksTo(1).durability(0)));
+
+    public static final DeferredItem<BlockItem> INDESTRUCTIBLE_PIPE =
+            ITEMS.registerSimpleBlockItem("indestructible_pipe", ModBlocks.INDESTRUCTIBLE_PIPE);
+
+    public static final DeferredItem<BlockItem> WINDMILL_WHITE =
+            ITEMS.registerSimpleBlockItem("windmill_white", ModBlocks.WINDMILL_WHITE);
+
+    public static final DeferredItem<BlockItem> WINDMILL_BLACK =
+            ITEMS.registerSimpleBlockItem("windmill_black", ModBlocks.WINDMILL_BLACK);
+
+    public static final DeferredItem<BlockItem> WINDMILL_BLUE =
+            ITEMS.registerSimpleBlockItem("windmill_blue", ModBlocks.WINDMILL_BLUE);
+
+    public static final DeferredItem<BlockItem> WINDMILL_GREEN =
+            ITEMS.registerSimpleBlockItem("windmill_green", ModBlocks.WINDMILL_GREEN);
 
     private ModItems() {
     }

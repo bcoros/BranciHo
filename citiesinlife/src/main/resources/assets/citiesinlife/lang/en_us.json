@@ -153,6 +153,21 @@
   "message.citiesinlife.pump_dry": "No water in reach - move this pump into the water or onto the bank.",
   "message.citiesinlife.pump_relay": "Relay pump - link it between the intake and the end pump.",
   "message.citiesinlife.another_city_land": "That ground belongs to another city.",
-  "screen.citiesinlife.boiler_fouling": "Running - no chimney, so the soot is going through the turbine and will clog it",
-  "screen.citiesinlife.boiler_no_turbine": "No turbine left for this boiler - every boiler in a plant needs one of its own"
+  "screen.citiesinlife.boiler_fouling": "Running - NO CHIMNEY, the turbine is fouling up",
+  "screen.citiesinlife.boiler_no_turbine": "No turbine left for this boiler - each one needs its own",
+  "screen.citiesinlife.boiler_mixed_plant": "This plant has a boiler and a windmill in it - pick one",
+  "block.citiesinlife.windmill_white": "White Windmill",
+  "block.citiesinlife.windmill_black": "Black Windmill",
+  "block.citiesinlife.windmill_blue": "Blue Windmill",
+  "block.citiesinlife.windmill_green": "Green Windmill",
+  "block.citiesinlife.indestructible_pipe": "Indestructible Pipe",
+  "item.citiesinlife.repair_tool": "Repair Tool",
+  "tooltip.citiesinlife.wrench_1": "Right click a clogged turbine or a leaking pipe to mend it",
+  "tooltip.citiesinlife.wrench_2": "Turbines clog when a boiler has no chimney",
+  "message.citiesinlife.wrench_turbine": "Turbine cleaned out - it will spin up again.",
+  "message.citiesinlife.wrench_turbine_clean": "That turbine is already clean.",
+  "message.citiesinlife.wrench_pipe": "Pipe patched.",
+  "message.citiesinlife.wrench_pipe_clean": "That pipe is not leaking.",
+  "message.citiesinlife.wrench_nothing": "Nothing to repair there.",
+  "message.citiesinlife.mixed_generators": "You cannot have 2 different power generators in 1 plant - boilers or windmills, not both."
 }

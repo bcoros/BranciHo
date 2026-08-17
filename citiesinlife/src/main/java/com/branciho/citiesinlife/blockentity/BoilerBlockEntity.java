@@ -1,13 +1,10 @@
 package com.branciho.citiesinlife.blockentity;
 
-import com.branciho.citiesinlife.block.BoilerBlock;
 import com.branciho.citiesinlife.block.ChimneyBlock;
 import com.branciho.citiesinlife.block.TurbineBlock;
-import com.branciho.citiesinlife.city.CityData;
+import com.branciho.citiesinlife.plant.PlantSurvey;
 import com.branciho.citiesinlife.menu.BoilerMenu;
 import com.branciho.citiesinlife.registry.ModBlockEntities;
-import com.branciho.citiesinlife.structure.Structure;
-import com.branciho.citiesinlife.structure.StructureType;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import net.minecraft.core.BlockPos;
@@ -17,7 +14,6 @@ import net.minecraft.core.NonNullList;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Container;
 import net.minecraft.world.ContainerHelper;
@@ -36,9 +32,6 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
 
 /**
  * The boiler's insides: a firebox, a water tank, and the survey of the room it stands in.
@@ -105,6 +98,7 @@ public class BoilerBlockEntity extends BlockEntity implements WorldlyContainer, 
     public static final int STATUS_NO_FUEL = 5;
     public static final int STATUS_FOULING = 6;
     public static final int STATUS_NO_TURBINE = 7;
+    public static final int STATUS_MIXED_PLANT = 8;
 
     /** Indices into the block of numbers the screen reads. */
     public static final int DATA_BURN_TIME = 0;
@@ -113,9 +107,6 @@ public class BoilerBlockEntity extends BlockEntity implements WorldlyContainer, 
     public static final int DATA_STEAM = 3;
     public static final int DATA_STATUS = 4;
     public static final int DATA_SIZE = 5;
-
-    /** Biggest power plant box the machinery scan will walk before giving up. */
-    private static final int MAX_PLANT_VOLUME = 32768;
 
     private final NonNullList<ItemStack> items = NonNullList.withSize(TOTAL_SLOTS, ItemStack.EMPTY);
 
@@ -135,8 +126,9 @@ public class BoilerBlockEntity extends BlockEntity implements WorldlyContainer, 
     /** Where the smoke leaves: a chimney's mouth, or the top of an open shaft above the boiler. */
     private @Nullable BlockPos smokeOut;
 
-    /** Whether this boiler stands in a registered plant at all. */
+    /** Whether this boiler stands in a registered plant, and whether that plant is coherent. */
     private boolean insidePlant;
+    private boolean mixedPlant;
 
     private int ticksRun;
     private boolean changed;
@@ -185,7 +177,7 @@ public class BoilerBlockEntity extends BlockEntity implements WorldlyContainer, 
         // A boiler with no flue still burns. The emissions have to go somewhere, and if there is no
         // chimney and no shaft they go through the turbine and foul it - which is the whole reason
         // to build a chimney rather than a rule telling you to.
-        boolean canRun = boiler.chamberSealed
+        boolean canRun = boiler.chamberSealed && !boiler.mixedPlant
                 && (boiler.smokeOut != null || boiler.turbinePos != null);
         if (canRun && boiler.burnTime <= 0 && boiler.water >= WATER_PER_TICK) {
             boiler.lightFire();
@@ -282,7 +274,9 @@ public class BoilerBlockEntity extends BlockEntity implements WorldlyContainer, 
 
     private void updateStatus(boolean canRun) {
         int previous = status;
-        if (!chamberSealed) {
+        if (mixedPlant) {
+            status = STATUS_MIXED_PLANT;
+        } else if (!chamberSealed) {
             status = STATUS_NO_CHAMBER;
         } else if (smokeOut == null && turbinePos == null) {
             status = STATUS_NO_OUTLET;
@@ -341,6 +335,7 @@ public class BoilerBlockEntity extends BlockEntity implements WorldlyContainer, 
         turbinePos = null;
         smokeOut = null;
         insidePlant = false;
+        mixedPlant = false;
 
         surveyPlant(level, pos);
         if (!insidePlant) {
@@ -364,56 +359,21 @@ public class BoilerBlockEntity extends BlockEntity implements WorldlyContainer, 
      * saying "the machinery is in here" is the same information and none of the fuss.
      */
     private void surveyPlant(Level level, BlockPos pos) {
-        MinecraftServer server = level.getServer();
-        if (server == null) {
+        PlantSurvey plant = PlantSurvey.at(level, pos);
+        if (!plant.registered()) {
             return;
         }
-        Structure plant = CityData.get(server).structureAt(level.dimension(), pos);
-        if (plant == null || plant.type() != StructureType.POWER_PLANT) {
-            return;
-        }
-
-        BlockPos min = plant.min();
-        BlockPos max = plant.max();
-        long volume = (long) (max.getX() - min.getX() + 1)
-                * (max.getY() - min.getY() + 1)
-                * (max.getZ() - min.getZ() + 1);
-        if (volume > MAX_PLANT_VOLUME) {
-            return;
-        }
-
         insidePlant = true;
+        smokeOut = plant.chimney();
 
-        final List<BlockPos> turbines = new ArrayList<>();
-        final List<BlockPos> boilers = new ArrayList<>();
-
-        final BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
-        for (int y = min.getY(); y <= max.getY(); y++) {
-            for (int z = min.getZ(); z <= max.getZ(); z++) {
-                for (int x = min.getX(); x <= max.getX(); x++) {
-                    cursor.set(x, y, z);
-                    Block block = level.getBlockState(cursor).getBlock();
-                    if (block instanceof TurbineBlock) {
-                        turbines.add(cursor.immutable());
-                    } else if (block instanceof BoilerBlock) {
-                        boilers.add(cursor.immutable());
-                    } else if (smokeOut == null && block instanceof ChimneyBlock
-                            && ChimneyBlock.isOpen(level, cursor)) {
-                        smokeOut = cursor.immutable();
-                    }
-                }
-            }
+        // One kind of generator per plant. A boiler and a windmill in the same box is not a hybrid,
+        // it is two plants somebody forgot to draw separately, and guessing which one wins would be
+        // worse than refusing.
+        if (plant.kind() == PlantSurvey.Kind.MIXED) {
+            mixedPlant = true;
+            return;
         }
-
-        // Pair each boiler with its own turbine, so a plant scales by adding matched pairs. Both
-        // lists are sorted the same way, so every boiler agrees on who has which turbine without
-        // any of them having to talk to each other or store a claim.
-        turbines.sort(Comparator.comparingLong(BlockPos::asLong));
-        boilers.sort(Comparator.comparingLong(BlockPos::asLong));
-        int mine = boilers.indexOf(pos);
-        if (mine >= 0 && mine < turbines.size()) {
-            turbinePos = turbines.get(mine);
-        }
+        turbinePos = plant.turbineFor(pos);
     }
 
     /**

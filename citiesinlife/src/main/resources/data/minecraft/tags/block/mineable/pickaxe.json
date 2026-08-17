@@ -12,6 +12,11 @@
     "citiesinlife:water_pipe",
     "citiesinlife:pipe_connector",
     "citiesinlife:valve",
-    "citiesinlife:water_storage"
+    "citiesinlife:water_storage",
+    "citiesinlife:indestructible_pipe",
+    "citiesinlife:windmill_white",
+    "citiesinlife:windmill_black",
+    "citiesinlife:windmill_blue",
+    "citiesinlife:windmill_green"
   ]
 }

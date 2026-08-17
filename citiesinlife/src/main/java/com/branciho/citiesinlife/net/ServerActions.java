@@ -12,6 +12,7 @@ import com.branciho.citiesinlife.net.payload.PowerLinesPayload;
 import com.branciho.citiesinlife.net.payload.RegisterStructurePayload;
 import com.branciho.citiesinlife.net.payload.StructureSyncPayload;
 import com.branciho.citiesinlife.net.payload.WaterLinesPayload;
+import com.branciho.citiesinlife.plant.PlantSurvey;
 import com.branciho.citiesinlife.power.PowerBlock;
 import com.branciho.citiesinlife.power.PowerGrid;
 import com.branciho.citiesinlife.scan.StructureScanner;
@@ -125,6 +126,14 @@ public final class ServerActions {
                 reject(player, "not_your_land");
                 return;
             }
+        }
+
+        // A plant is coal or wind, never both. Catching it here means the player is told when they
+        // draw the box, rather than finding out later from a boiler that quietly refuses to light.
+        if (type == StructureType.POWER_PLANT
+                && PlantSurvey.of(level, min, max).kind() == PlantSurvey.Kind.MIXED) {
+            reject(player, "mixed_generators");
+            return;
         }
 
         Structure overlap = data.overlapping(level.dimension(), min, max);

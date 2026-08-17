@@ -221,9 +221,12 @@ public final class WaterGrid extends SavedData {
         if (tanks.isEmpty()) {
             return 0;
         }
+        // Leaks come off the top of the supply rather than cutting the run: the city gets less
+        // water and the pipe drips where you can find it, which is a problem you can chase.
         final int[] supply = {0};
-        walk(level, tanks, (pos, state, block) -> supply[0] += block.waterOutput(level, pos, state));
-        return supply[0];
+        walk(level, tanks, (pos, state, block) ->
+                supply[0] += block.waterOutput(level, pos, state) - block.waterLoss(level, pos, state));
+        return Math.max(0, supply[0]);
     }
 
     /** What a survey of one pumping station found. */

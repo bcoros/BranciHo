@@ -4,7 +4,9 @@ import com.branciho.citiesinlife.CitiesInLife;
 import com.branciho.citiesinlife.blockentity.BoilerBlockEntity;
 import com.branciho.citiesinlife.blockentity.FactoryOutputBlockEntity;
 import com.branciho.citiesinlife.blockentity.TurbineBlockEntity;
+import com.branciho.citiesinlife.blockentity.ChimneyBlockEntity;
 import com.branciho.citiesinlife.blockentity.WaterStorageBlockEntity;
+import com.branciho.citiesinlife.blockentity.WindmillBlockEntity;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.neoforged.bus.api.IEventBus;
@@ -38,6 +40,20 @@ public final class ModBlockEntities {
             WATER_STORAGE = BLOCK_ENTITIES.register("water_storage",
                     () -> BlockEntityType.Builder
                             .of(WaterStorageBlockEntity::new, ModBlocks.WATER_STORAGE.get())
+                            .build(null));
+
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<WindmillBlockEntity>>
+            WINDMILL = BLOCK_ENTITIES.register("windmill",
+                    () -> BlockEntityType.Builder
+                            .of(WindmillBlockEntity::new,
+                                    ModBlocks.WINDMILL_WHITE.get(), ModBlocks.WINDMILL_BLACK.get(),
+                                    ModBlocks.WINDMILL_BLUE.get(), ModBlocks.WINDMILL_GREEN.get())
+                            .build(null));
+
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ChimneyBlockEntity>>
+            CHIMNEY = BLOCK_ENTITIES.register("chimney",
+                    () -> BlockEntityType.Builder
+                            .of(ChimneyBlockEntity::new, ModBlocks.CHIMNEY.get())
                             .build(null));
 
     private ModBlockEntities() {

@@ -41,4 +41,9 @@ public interface WaterBlock {
     default int waterOutput(BlockGetter level, BlockPos pos, BlockState state) {
         return 0;
     }
+
+    /** Units this block bleeds out of the network each step, for a pipe that has split. */
+    default int waterLoss(BlockGetter level, BlockPos pos, BlockState state) {
+        return 0;
+    }
 }

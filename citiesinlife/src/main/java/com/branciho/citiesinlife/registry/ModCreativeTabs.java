@@ -26,6 +26,11 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.BOILER.get());
                         output.accept(ModItems.TURBINE.get());
                         output.accept(ModItems.CHIMNEY.get());
+                        output.accept(ModItems.WINDMILL_WHITE.get());
+                        output.accept(ModItems.WINDMILL_BLACK.get());
+                        output.accept(ModItems.WINDMILL_BLUE.get());
+                        output.accept(ModItems.WINDMILL_GREEN.get());
+                        output.accept(ModItems.REPAIR_TOOL.get());
                         output.accept(ModItems.TRANSIT_STATION.get());
                         output.accept(ModItems.FACTORY_OUTPUT.get());
                         output.accept(ModItems.PIPE_LINE_TOOL.get());
@@ -33,6 +38,7 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.PUMP.get());
                         output.accept(ModItems.END_PUMP.get());
                         output.accept(ModItems.WATER_PIPE.get());
+                        output.accept(ModItems.INDESTRUCTIBLE_PIPE.get());
                         output.accept(ModItems.PIPE_CONNECTOR.get());
                         output.accept(ModItems.VALVE.get());
                         output.accept(ModItems.WATER_STORAGE.get());
