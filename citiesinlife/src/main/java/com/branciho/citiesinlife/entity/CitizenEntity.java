@@ -1,5 +1,6 @@
 package com.branciho.citiesinlife.entity;
 
+import com.branciho.citiesinlife.city.CityData;
 import com.branciho.citiesinlife.entity.ai.CitizenSleepGoal;
 import com.branciho.citiesinlife.entity.ai.CitizenWorkGoal;
 import com.branciho.citiesinlife.entity.ai.StrollOnPathGoal;
@@ -157,6 +158,16 @@ public class CitizenEntity extends PathfinderMob {
         if (level().isClientSide) {
             return;
         }
+        // A razed city leaves its people behind. Nothing counts them against a cap any longer and
+        // nothing protects them from being killed, so they would wander a dead city forever as a
+        // small permanent leak. They go with it.
+        if (tickCount % 200 == 0 && level() instanceof ServerLevel serverLevel) {
+            if (cityId == null || CityData.get(serverLevel.getServer()).city(cityId) == null) {
+                discard();
+                return;
+            }
+        }
+
         // Hold the job open. A desk forgets anybody who stops checking in, which is how it recovers
         // from a worker that was killed, unloaded, or removed because the cap was turned down —
         // none of which give the citizen a chance to hand its notice in.

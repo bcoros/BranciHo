@@ -620,6 +620,12 @@ public final class ServerActions {
             reject(player, "chunk_owned");
             return;
         }
+        // Somebody else's power plant is allowed to stand on unclaimed ground. Buying the ground out
+        // from under it would lock its owner out of their own machinery without touching a block.
+        if (data.foreignStructureInChunk(level.dimension(), key, city.id()) != null) {
+            reject(player, "chunk_has_their_building");
+            return;
+        }
         if (!data.isAdjacentToClaim(city, chunk)) {
             reject(player, "not_adjacent");
             return;
@@ -732,7 +738,11 @@ public final class ServerActions {
 
         // Marking pavement is an edit to how a city's people behave, so it answers to the same rule
         // as breaking a block there - it simply never touches a block, so the block events miss it.
-        if (!Diplomacy.mayInterfere(server, player, min) || !Diplomacy.mayInterfere(server, player, max)) {
+        //
+        // Every chunk the box spans, not just its two corners. Testing the corners alone meant a box
+        // drawn wide around a city passed the check on the empty ground outside it and then wiped
+        // every street inside.
+        if (!mayEditWholeBox(server, player, min, max)) {
             reject(player, "protected_land_tool");
             return;
         }
@@ -747,6 +757,26 @@ public final class ServerActions {
                     : "message.citiesinlife.path_marked", changed));
         }
         syncPaths(player, true);
+    }
+
+    /**
+     * Whether the player may edit every chunk a box touches.
+     *
+     * <p>Chunk by chunk rather than block by block: territory is granted per chunk, so one probe per
+     * chunk is exact and a box the size of a city is still a handful of lookups.
+     */
+    private static boolean mayEditWholeBox(MinecraftServer server, ServerPlayer player,
+                                           BlockPos min, BlockPos max) {
+        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+        for (int x = min.getX() >> 4; x <= max.getX() >> 4; x++) {
+            for (int z = min.getZ() >> 4; z <= max.getZ() >> 4; z++) {
+                cursor.set(x << 4, min.getY(), z << 4);
+                if (!Diplomacy.mayInterfere(server, player, cursor)) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     /**

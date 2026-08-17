@@ -1,6 +1,10 @@
 package com.branciho.citiesinlife.blockentity;
 
 import com.branciho.citiesinlife.block.WindmillBlock;
+import com.branciho.citiesinlife.city.City;
+import com.branciho.citiesinlife.city.CityData;
+import com.branciho.citiesinlife.city.Diplomacy;
+import com.branciho.citiesinlife.entity.CitizenEntity;
 import com.branciho.citiesinlife.plant.PlantSurvey;
 import com.branciho.citiesinlife.registry.ModBlockEntities;
 import net.minecraft.core.BlockPos;
@@ -131,6 +135,11 @@ public class WindmillBlockEntity extends BlockEntity {
         BlockPos hub = pos.relative(facing);
         final BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
 
+        // Fifteen blocks of rotor is easily enough to reach over a fence. Whoever's land the mast
+        // stands on is whose blocks these are; anybody else's are left alone, which is the same rule
+        // a player with a pickaxe answers to.
+        City mine = Diplomacy.owner(serverLevel.getServer(), level.dimension(), pos);
+
         for (int a = -BLADE_REACH; a <= BLADE_REACH; a++) {
             for (int b = -BLADE_REACH; b <= BLADE_REACH; b++) {
                 int distanceSqr = a * a + b * b;
@@ -144,6 +153,9 @@ public class WindmillBlockEntity extends BlockEntity {
                 if (hit.isAir() || hit.getBlock() instanceof WindmillBlock) {
                     continue;
                 }
+                if (!sameOwner(mine, Diplomacy.owner(serverLevel.getServer(), level.dimension(), cursor))) {
+                    continue;
+                }
                 // Bedrock and the like stop the blades rather than the other way round.
                 if (hit.getDestroySpeed(level, cursor) < 0.0F) {
                     continue;
@@ -151,6 +163,14 @@ public class WindmillBlockEntity extends BlockEntity {
                 serverLevel.destroyBlock(cursor, true);
             }
         }
+    }
+
+    /** Whether two owners are the same city, counting "nobody" as its own answer. */
+    private static boolean sameOwner(@Nullable City mine, @Nullable City theirs) {
+        if (theirs == null) {
+            return true;
+        }
+        return mine != null && mine.id().equals(theirs.id());
     }
 
     /** Hit anything alive inside the arc. */
@@ -173,6 +193,15 @@ public class WindmillBlockEntity extends BlockEntity {
             double planar = Math.hypot(offset.x * across.getStepX() + offset.z * across.getStepZ(), offset.y);
             if (planar < BLADE_INNER || planar > BLADE_REACH) {
                 continue;
+            }
+            // A neighbour's citizens are not yours to mince, even if they wander into your rotor.
+            if (entity instanceof CitizenEntity citizen && level.getServer() != null) {
+                City mine = Diplomacy.owner(level.getServer(), level.dimension(), pos);
+                City theirs = citizen.cityId() == null ? null
+                        : CityData.get(level.getServer()).city(citizen.cityId());
+                if (!sameOwner(mine, theirs)) {
+                    continue;
+                }
             }
             entity.hurt(level.damageSources().flyIntoWall(), STRIKE_DAMAGE);
         }

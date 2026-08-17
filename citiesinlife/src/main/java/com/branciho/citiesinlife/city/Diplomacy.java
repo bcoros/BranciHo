@@ -1,6 +1,7 @@
 package com.branciho.citiesinlife.city;
 
 import com.branciho.citiesinlife.config.CitiesInLifeConfig;
+import com.branciho.citiesinlife.structure.Structure;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
@@ -24,10 +25,22 @@ public final class Diplomacy {
     private Diplomacy() {
     }
 
-    /** Which city, if any, claims the ground at this position. */
+    /**
+     * Which city, if any, this position answers to.
+     *
+     * <p>Claimed ground first, and then — for ground nobody has claimed — whichever city has a
+     * registered building standing on it. That second half matters more than it looks: a power plant
+     * is deliberately allowed outside city limits, and without this its owner was the only player on
+     * the server who could not be sure it would still be there tomorrow.
+     */
     public static @Nullable City owner(MinecraftServer server, ResourceKey<Level> dimension, BlockPos pos) {
-        return CityData.get(server).cityAtChunk(
-                dimension, ChunkPos.asLong(pos.getX() >> 4, pos.getZ() >> 4));
+        CityData data = CityData.get(server);
+        City claimed = data.cityAtChunk(dimension, ChunkPos.asLong(pos.getX() >> 4, pos.getZ() >> 4));
+        if (claimed != null) {
+            return claimed;
+        }
+        Structure standing = data.structureAt(dimension, pos);
+        return standing == null ? null : data.city(standing.cityId());
     }
 
     /**

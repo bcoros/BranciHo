@@ -244,6 +244,23 @@ public final class CityData extends SavedData {
     }
 
     /** Anything already registered that would overlap this box. */
+    /**
+     * A structure belonging to somebody other than this city, anywhere in the chunk.
+     *
+     * <p>Asked before a chunk is claimed. Somebody else's power plant is allowed to stand on
+     * unclaimed ground; letting a stranger buy the ground out from under it would let them lock its
+     * owner out of their own machinery without ever touching a block.
+     */
+    public @Nullable Structure foreignStructureInChunk(ResourceKey<Level> dimension, long chunkKey,
+                                                       UUID cityId) {
+        for (Structure structure : structuresInChunk(dimension, chunkKey)) {
+            if (!structure.cityId().equals(cityId)) {
+                return structure;
+            }
+        }
+        return null;
+    }
+
     public @Nullable Structure overlapping(ResourceKey<Level> dimension, BlockPos min, BlockPos max) {
         for (int x = min.getX() >> 4; x <= max.getX() >> 4; x++) {
             for (int z = min.getZ() >> 4; z <= max.getZ() >> 4; z++) {

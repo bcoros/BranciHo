@@ -11,13 +11,17 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 import net.neoforged.neoforge.event.entity.player.AttackEntityEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.event.level.BlockEvent;
+import net.neoforged.neoforge.event.level.ExplosionEvent;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -70,20 +74,76 @@ public final class MultiplayerEvents {
     }
 
     /**
-     * Anything with a lid on it is off limits too.
+     * Right-clicking anything in a foreign city, with one deliberate exception.
      *
-     * <p>Gated on the block having a block entity, which is a rough but accurate stand-in for "this
-     * holds something or does something": chests, furnaces, and every machine this mod adds. Doors,
-     * buttons and levers keep working, because being unable to walk through somebody's town would be
-     * a worse experience than the theft it prevents.
+     * <p>This started out gated on the block having a block entity, on the theory that a block entity
+     * meant "holds something". It let almost everything through. A bucket of water or lava never
+     * fires a place event at all; nor does flint and steel, bone meal, a hoe tilling a field, an axe
+     * stripping a log, or a shovel cutting a path. A valve is a plain block with a state, so a
+     * visitor could shut a city's water off. Every one of those is a right click, so this is where
+     * they are caught, and the rule is now the other way round: everything is refused unless it is
+     * one of the ways through a town.
+     *
+     * <p>The exception is doors, gates, trapdoors, buttons, levers and pressure plates. Being unable
+     * to walk through somebody's city would be a worse experience than the mischief it prevents, and
+     * none of them can be used to take anything.
      */
     @SubscribeEvent
     public static void onRightClick(PlayerInteractEvent.RightClickBlock event) {
         Level level = event.getLevel();
-        if (level.isClientSide || level.getBlockEntity(event.getPos()) == null) {
+        if (level.isClientSide || passage(level.getBlockState(event.getPos()))) {
             return;
         }
         if (refuse(event.getEntity(), event.getPos())) {
+            event.setCanceled(true);
+        }
+    }
+
+    /** The ways through a town, which stay usable no matter whose town it is. */
+    private static boolean passage(BlockState state) {
+        return state.is(BlockTags.DOORS)
+                || state.is(BlockTags.TRAPDOORS)
+                || state.is(BlockTags.FENCE_GATES)
+                || state.is(BlockTags.BUTTONS)
+                || state.is(BlockTags.PRESSURE_PLATES)
+                || state.is(Blocks.LEVER);
+    }
+
+    /**
+     * Explosions do not cross a border either.
+     *
+     * <p>Only when a player is behind them. A creeper wandering into a city is weather, and the
+     * mod's own turbine detonating is the whole point of the turbine detonating - filtering those
+     * would be protecting a city from itself. But primed TNT, a bed in the Nether or a respawn
+     * anchor is somebody making a decision, and the border applies to decisions.
+     */
+    @SubscribeEvent
+    public static void onExplosion(ExplosionEvent.Detonate event) {
+        if (!(event.getExplosion().getIndirectSourceEntity() instanceof Player player)) {
+            return;
+        }
+        if (!(player instanceof ServerPlayer server)) {
+            return;
+        }
+        MinecraftServer minecraftServer = server.getServer();
+        if (minecraftServer == null) {
+            return;
+        }
+        event.getAffectedBlocks().removeIf(pos ->
+                !Diplomacy.mayInterfereWith(minecraftServer, server,
+                        Diplomacy.owner(minecraftServer, server.level().dimension(), pos)));
+        event.getAffectedEntities().removeIf(entity -> protectedCitizen(server, entity));
+    }
+
+    /**
+     * Nor may you lead one away.
+     *
+     * <p>Damage is not the only way to take somebody's citizen. A lead, a boat, a name tag - all of
+     * them are an interaction rather than a hit, and none of them reach the damage events.
+     */
+    @SubscribeEvent
+    public static void onInteractEntity(PlayerInteractEvent.EntityInteract event) {
+        if (protectedCitizen(event.getEntity(), event.getTarget())) {
             event.setCanceled(true);
         }
     }

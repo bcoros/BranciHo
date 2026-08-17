@@ -242,5 +242,6 @@
   "message.citiesinlife.not_a_container": "That does not hold anything - try a chest, barrel, hopper or boiler",
   "message.citiesinlife.tap_dry": "No water reaching this End Pipe - check the pumps",
   "message.citiesinlife.tap_flowing": "Flowing - %s units reaching it",
-  "message.citiesinlife.tap_filling": "Filling buckets at %s, %s, %s"
+  "message.citiesinlife.tap_filling": "Filling buckets at %s, %s, %s",
+  "message.citiesinlife.chunk_has_their_building": "Another city has a building on that chunk"
 }
