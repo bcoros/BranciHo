@@ -20,8 +20,12 @@ public enum Relation {
      * <p>One way round on purpose. Letting a neighbour help you build should not silently hand them
      * the keys to your own city as well, and a pair of one-way grants says "we trust each other"
      * perfectly well without pretending trust is automatically mutual.
+     *
+     * <p>Teal rather than the obvious green, because the map already paints your own claims green.
+     * A friendly neighbour's border rendered in the same colour as your own is exactly the confusion
+     * a border is drawn to prevent.
      */
-    ALLIED("allied", 0x66E576),
+    ALLIED("allied", 0x3FD9C8),
 
     /**
      * At war. Their blocks are yours to break and their people are yours to kill.

@@ -41,8 +41,21 @@ public final class MultiplayerEvents {
 
     // ----------------------------------------------------------------- blocks
 
+    /**
+     * A claim runs from bedrock to the build limit.
+     *
+     * <p>Territory is per chunk with no height to it, so mining under somebody's city is protected
+     * exactly as much as knocking their wall down. That is deliberate — a city that could be
+     * undermined from below would need a second, invisible rule to explain — but it is worth being
+     * explicit about, because it is not what "a border" looks like from the surface.
+     */
     @SubscribeEvent
     public static void onBreak(BlockEvent.BreakEvent event) {
+        // NeoForge pre-cancels this for its own reasons; re-deciding a refusal somebody else has
+        // already made would only risk turning it back on.
+        if (event.isCanceled()) {
+            return;
+        }
         if (refuse(event.getPlayer(), event.getPos())) {
             event.setCanceled(true);
         }

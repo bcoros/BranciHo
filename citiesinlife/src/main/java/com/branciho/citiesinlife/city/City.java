@@ -43,9 +43,10 @@ public final class City {
      * in the same way its treasury is, and every question ever asked of these — may this person
      * build here, may they hit that citizen — starts from a city and not from a pair.
      *
-     * <p>Permission is one way and war is not. Granting is stored only on the city that granted it;
-     * declaring war writes the entry on both sides, because a war you are not aware of is not a war,
-     * it is being ambushed.
+     * <p>Both are stored one way round, and mean different things for it. A grant is simply the
+     * grantor's to give. A war entry is one city saying it is hostile, and two cities count as at
+     * war while <em>either</em> holds one — so a declaration cannot be shrugged off by the city on
+     * the receiving end, and standing down is something you can only do for yourself.
      */
     private final Set<UUID> granted = new HashSet<>();
     private final Set<UUID> wars = new HashSet<>();

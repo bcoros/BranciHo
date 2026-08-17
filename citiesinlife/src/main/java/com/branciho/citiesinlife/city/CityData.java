@@ -1,5 +1,6 @@
 package com.branciho.citiesinlife.city;
 
+import com.branciho.citiesinlife.CitiesInLife;
 import com.branciho.citiesinlife.structure.Structure;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
@@ -41,9 +42,11 @@ public final class CityData extends SavedData {
      *
      * <p>2 marks the addition of a structure's stored cell count and measurement mode. It was left at
      * 1 when those fields were added, so nothing noticed the format change and old worlds loaded
-     * silently wrong.
+     * silently wrong. 3 marks a city's diplomatic relations - which read back tolerantly from an
+     * older save, but leaving the number alone after a shape change is the exact habit that caused
+     * the problem at 2.
      */
-    private static final int DATA_VERSION = 2;
+    private static final int DATA_VERSION = 3;
 
     private final Map<UUID, City> cities = new LinkedHashMap<>();
     private final Map<UUID, Structure> structures = new LinkedHashMap<>();
@@ -320,7 +323,16 @@ public final class CityData extends SavedData {
 
         ListTag cityList = tag.getList("cities", Tag.TAG_COMPOUND);
         for (int i = 0; i < cityList.size(); i++) {
-            City city = City.load(cityList.getCompound(i));
+            // One unreadable city must not cost the player every other one. Vanilla swallows an
+            // exception thrown out of here and quietly hands back a blank CityData, which would
+            // read to the player as every city in the world having been deleted at once.
+            City city;
+            try {
+                city = City.load(cityList.getCompound(i));
+            } catch (RuntimeException failure) {
+                CitiesInLife.LOGGER.error("Skipping an unreadable city entry", failure);
+                continue;
+            }
             data.cities.put(city.id(), city);
             Map<Long, UUID> index =
                     data.territoryIndex.computeIfAbsent(city.dimension(), key -> new HashMap<>());
@@ -331,7 +343,13 @@ public final class CityData extends SavedData {
 
         ListTag structureList = tag.getList("structures", Tag.TAG_COMPOUND);
         for (int i = 0; i < structureList.size(); i++) {
-            Structure structure = Structure.load(structureList.getCompound(i));
+            Structure structure;
+            try {
+                structure = Structure.load(structureList.getCompound(i));
+            } catch (RuntimeException failure) {
+                CitiesInLife.LOGGER.error("Skipping an unreadable structure entry", failure);
+                continue;
+            }
             data.structures.put(structure.id(), structure);
             data.indexStructure(structure);
         }

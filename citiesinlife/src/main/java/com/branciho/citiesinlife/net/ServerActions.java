@@ -70,8 +70,21 @@ public final class ServerActions {
     /** The chunk each player was last sent pavement for, so it is not re-sent every tick. */
     private static final Map<UUID, Long> lastPathChunk = new HashMap<>();
 
-    /** How far around the player another city's land is sent for the map, in chunks. */
-    private static final int FOREIGN_LAND_RADIUS = 24;
+    /**
+     * How far around the player another city's land is sent for the map, in chunks.
+     *
+     * <p>Matched to what the map can actually draw plus a little slack. It was twice this, which
+     * shipped roughly five times as many chunks as could ever appear on screen.
+     */
+    private static final int FOREIGN_LAND_RADIUS = 12;
+
+    /**
+     * What declaring war costs the treasury.
+     *
+     * <p>Without a price, a declaration is a permission switch: declare, help yourself to a
+     * neighbour's town, stand down, repeat. It has to be a decision you can regret.
+     */
+    private static final long WAR_COST = 2_500L;
 
     private static final int MIN_NAME_LENGTH = 2;
     private static final int MAX_NAME_LENGTH = 32;
@@ -345,6 +358,13 @@ public final class ServerActions {
             player.sendSystemMessage(Component.translatable(
                     "message.citiesinlife.city_deleted", city.name(), removed));
             sync(player);
+            // Every other player's Neighbours list still has this city on it, with buttons that
+            // now do nothing. They are cheap to refresh and expensive to leave stale.
+            for (ServerPlayer other : server.getPlayerList().getPlayers()) {
+                if (!other.getUUID().equals(player.getUUID())) {
+                    syncNeighbours(other);
+                }
+            }
             return;
         }
 
@@ -707,7 +727,10 @@ public final class ServerActions {
             return;
         }
         City target = data.city(payload.targetCityId());
-        if (target == null || target.id().equals(own.id())) {
+        // A city in another dimension can neither be seen on this player's Neighbours list nor
+        // answer back, so a crafted packet naming one would write a war nobody could ever end.
+        if (target == null || target.id().equals(own.id())
+                || !target.dimension().equals(own.dimension())) {
             reject(player, "unknown_city");
             return;
         }
@@ -740,9 +763,15 @@ public final class ServerActions {
             case DiplomacyPayload.ACTION_DECLARE_WAR -> {
                 // A war cancels any welcome, both ways. Otherwise an attacker keeps the run of the
                 // place they granted themselves access to before declaring.
+                if (!own.canAfford(WAR_COST)) {
+                    player.sendSystemMessage(Component.translatable(
+                            "message.citiesinlife.war_too_expensive", WAR_COST));
+                    yield false;
+                }
                 own.revoke(target.id());
                 target.revoke(own.id());
                 if (own.declareWar(target.id())) {
+                    own.withdraw(WAR_COST);
                     tell(server, target, "message.citiesinlife.war_declared_on_you", own.name());
                     player.sendSystemMessage(Component.translatable(
                             "message.citiesinlife.war_declared", target.name()));
@@ -751,6 +780,13 @@ public final class ServerActions {
                 yield false;
             }
             case DiplomacyPayload.ACTION_MAKE_PEACE -> {
+                if (!own.hostileTo(target.id())) {
+                    // The city that was attacked has nothing to stand down from. Saying so is the
+                    // difference between a button that does nothing and a button that explains.
+                    player.sendSystemMessage(Component.translatable(
+                            "message.citiesinlife.not_your_war", target.name()));
+                    yield false;
+                }
                 if (own.makePeace(target.id())) {
                     boolean over = !target.hostileTo(own.id());
                     tell(server, target, over
@@ -773,6 +809,35 @@ public final class ServerActions {
             ServerPlayer other = server.getPlayerList().getPlayer(target.owner());
             if (other != null) {
                 syncNeighbours(other);
+            }
+        }
+    }
+
+    /**
+     * Tell a player about any war they are in, as they arrive.
+     *
+     * <p>A declaration made while somebody was offline is otherwise silently dropped, which defeats
+     * the whole reason a declaration is announced at all. Derived from state rather than queued, so
+     * there is no message backlog to persist and nothing to go stale.
+     */
+    public static void greetWithWars(ServerPlayer player) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        CityData data = CityData.get(server);
+        for (City own : data.cities()) {
+            if (!own.owner().equals(player.getUUID())) {
+                continue;
+            }
+            for (City other : data.cities()) {
+                if (other.id().equals(own.id())) {
+                    continue;
+                }
+                if (Diplomacy.stance(own, other) == Relation.WAR) {
+                    player.sendSystemMessage(Component.translatable(
+                            "message.citiesinlife.still_at_war", own.name(), other.name()));
+                }
             }
         }
     }

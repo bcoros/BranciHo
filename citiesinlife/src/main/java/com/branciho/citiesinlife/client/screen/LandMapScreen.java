@@ -289,6 +289,12 @@ public class LandMapScreen extends Screen {
         int chunkZ = centreZ - RADIUS + row;
         boolean owned = ClientCityCache.claims(ChunkPos.asLong(chunkX, chunkZ));
 
+        // Somebody else's land is not on offer. The server refuses it anyway, but letting the click
+        // through would answer a visibly foreign tile with a line of red chat.
+        if (ClientCityCache.foreignStance(ChunkPos.asLong(chunkX, chunkZ)) >= 0) {
+            return true;
+        }
+
         // Left click claims, right click releases. The server re-checks cost, adjacency and ownership
         // regardless of what this screen believed.
         if (button == 0 && !owned) {

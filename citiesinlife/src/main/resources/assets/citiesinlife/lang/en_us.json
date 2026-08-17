@@ -225,5 +225,8 @@
   "message.citiesinlife.war_declared_on_you": "%s has declared war on you",
   "message.citiesinlife.stood_down": "You have stood down against %s - the war ends when they do too",
   "message.citiesinlife.peace_offered": "%s has stood down - stand down too to end the war",
-  "message.citiesinlife.peace_agreed": "Peace with %s"
+  "message.citiesinlife.peace_agreed": "Peace with %s",
+  "message.citiesinlife.war_too_expensive": "Declaring war costs %s and you cannot afford it",
+  "message.citiesinlife.not_your_war": "%s declared this war - only they can end it",
+  "message.citiesinlife.still_at_war": "%s is still at war with %s"
 }

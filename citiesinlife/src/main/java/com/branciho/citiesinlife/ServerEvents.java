@@ -51,6 +51,7 @@ public final class ServerEvents {
     public static void onPlayerJoin(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             ServerActions.sync(player);
+            ServerActions.greetWithWars(player);
         }
     }
 
