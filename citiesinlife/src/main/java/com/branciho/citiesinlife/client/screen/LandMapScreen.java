@@ -1,5 +1,6 @@
 package com.branciho.citiesinlife.client.screen;
 
+import com.branciho.citiesinlife.city.Relation;
 import com.branciho.citiesinlife.net.CitiesInLifeNetwork;
 import com.branciho.citiesinlife.net.ClientCityCache;
 import com.branciho.citiesinlife.net.payload.ClaimChunkPayload;
@@ -43,6 +44,9 @@ public class LandMapScreen extends Screen {
 
     private static final int COLOUR_OWNED_TINT = 0x5533FF77;
     private static final int COLOUR_OWNED_EDGE = 0xFF66E576;
+
+    /** How strongly a foreign claim tints the terrain. Lighter than your own — it is not yours. */
+    private static final int FOREIGN_TINT_ALPHA = 0x44000000;
     private static final int COLOUR_HOVER = 0x66FFFFFF;
     private static final int COLOUR_PLAYER = 0xFFFFD86A;
     private static final int COLOUR_GRID = 0x22000000;
@@ -139,11 +143,20 @@ public class LandMapScreen extends Screen {
 
                 graphics.fill(x, y, x + TILE, y + TILE, terrainColour(level, chunkX, chunkZ));
 
-                boolean owned = ClientCityCache.claims(ChunkPos.asLong(chunkX, chunkZ));
+                long key = ChunkPos.asLong(chunkX, chunkZ);
+                boolean owned = ClientCityCache.claims(key);
+                int foreign = ClientCityCache.foreignStance(key);
                 if (owned) {
                     // A wash rather than a solid fill, so the terrain underneath still reads.
                     graphics.fill(x, y, x + TILE, y + TILE, COLOUR_OWNED_TINT);
                     edge(graphics, x, y, chunkX, chunkZ);
+                } else if (foreign >= 0) {
+                    // Somebody else's, coloured by how they regard you: grey for keep out, green for
+                    // welcome, red for at war. A border you cannot see is not a border.
+                    int colour = Relation.byOrdinal(foreign).colour();
+                    graphics.fill(x, y, x + TILE, y + TILE, FOREIGN_TINT_ALPHA | (colour & 0xFFFFFF));
+                    graphics.fill(x, y, x + TILE, y + 1, 0xFF000000 | colour);
+                    graphics.fill(x, y, x + 1, y + TILE, 0xFF000000 | colour);
                 } else {
                     graphics.fill(x, y, x + TILE, y + 1, COLOUR_GRID);
                     graphics.fill(x, y, x + 1, y + TILE, COLOUR_GRID);
@@ -245,11 +258,16 @@ public class LandMapScreen extends Screen {
         }
         int chunkX = centreX - RADIUS + column;
         int chunkZ = centreZ - RADIUS + row;
-        boolean owned = ClientCityCache.claims(ChunkPos.asLong(chunkX, chunkZ));
-        return Component.translatable(owned
-                        ? "screen.citiesinlife.chunk_owned"
-                        : "screen.citiesinlife.chunk_free",
-                chunkX * 16, chunkZ * 16);
+        long key = ChunkPos.asLong(chunkX, chunkZ);
+        if (ClientCityCache.claims(key)) {
+            return Component.translatable("screen.citiesinlife.chunk_owned", chunkX * 16, chunkZ * 16);
+        }
+        int foreign = ClientCityCache.foreignStance(key);
+        if (foreign >= 0) {
+            return Component.translatable("screen.citiesinlife.chunk_foreign",
+                    chunkX * 16, chunkZ * 16, Relation.byOrdinal(foreign).displayName());
+        }
+        return Component.translatable("screen.citiesinlife.chunk_free", chunkX * 16, chunkZ * 16);
     }
 
     private boolean isOver(int mouseX, int mouseY, int x, int y) {

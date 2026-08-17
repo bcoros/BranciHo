@@ -9,6 +9,7 @@ import com.branciho.citiesinlife.scan.StructureScanner;
 import com.branciho.citiesinlife.structure.Structure;
 import com.branciho.citiesinlife.structure.StructureType;
 import net.minecraft.core.BlockPos;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
@@ -50,13 +51,23 @@ public final class PlantSurvey {
      * <p>Every boiler and every windmill in a plant asks the same question about the same box, and
      * they all ask it on the same tick. Without this, a plant with four boilers in a large box walks
      * that box four times over, every couple of seconds, for an answer that cannot have changed.
+     *
+     * <p>Kept below the boiler's own survey interval on purpose. Longer, and building a chimney would
+     * take several seconds to be noticed, which reads as the chimney not working.
      */
-    private static final int CACHE_TICKS = 60;
+    private static final int CACHE_TICKS = 20;
 
     /** Cleared wholesale rather than pruned; it only ever holds one entry per plant being run. */
     private static final int MAX_CACHED = 256;
 
-    private record CacheKey(long min, long max) { }
+    /**
+     * The dimension is part of the key.
+     *
+     * <p>Without it, a plant at the same coordinates in the Nether and the Overworld share one
+     * cached answer - including which block is its turbine, which would then be a position in the
+     * wrong world.
+     */
+    private record CacheKey(ResourceKey<Level> dimension, long min, long max) { }
 
     private record Cached(long stamp, PlantSurvey survey) { }
 
@@ -80,6 +91,17 @@ public final class PlantSurvey {
     private final List<BlockPos> generators;
     private final List<BlockPos> turbines;
     private final @Nullable BlockPos chimney;
+
+    /**
+     * Throw the cache away.
+     *
+     * <p>In single player the JVM outlives the world, and entries are only invalidated by game time
+     * - so opening a second world whose clock happens to sit just after a stale stamp would be served
+     * the previous world's plant.
+     */
+    public static void forgetAll() {
+        CACHE.clear();
+    }
 
     private PlantSurvey(Kind kind, List<BlockPos> generators, List<BlockPos> turbines,
                         @Nullable BlockPos chimney) {
@@ -114,7 +136,7 @@ public final class PlantSurvey {
             return NOTHING;
         }
 
-        CacheKey key = new CacheKey(min.asLong(), max.asLong());
+        CacheKey key = new CacheKey(level.dimension(), min.asLong(), max.asLong());
         long now = level.getGameTime();
         Cached cached = CACHE.get(key);
         if (cached != null && now - cached.stamp() < CACHE_TICKS && now >= cached.stamp()) {

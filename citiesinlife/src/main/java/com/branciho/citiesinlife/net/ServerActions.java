@@ -2,13 +2,18 @@ package com.branciho.citiesinlife.net;
 
 import com.branciho.citiesinlife.city.City;
 import com.branciho.citiesinlife.city.CityData;
+import com.branciho.citiesinlife.city.Diplomacy;
+import com.branciho.citiesinlife.city.Relation;
 import com.branciho.citiesinlife.net.payload.ClaimChunkPayload;
 import com.branciho.citiesinlife.net.payload.CitySyncPayload;
 import com.branciho.citiesinlife.net.payload.ConfirmDeleteCityPayload;
 import com.branciho.citiesinlife.net.payload.DeleteAreaPayload;
+import com.branciho.citiesinlife.net.payload.DiplomacyPayload;
+import com.branciho.citiesinlife.net.payload.ForeignLandPayload;
 import com.branciho.citiesinlife.net.payload.LinkPowerPayload;
 import com.branciho.citiesinlife.net.payload.LinkWaterPayload;
 import com.branciho.citiesinlife.net.payload.MarkPathPayload;
+import com.branciho.citiesinlife.net.payload.NeighbourCitiesPayload;
 import com.branciho.citiesinlife.net.payload.PathSyncPayload;
 import com.branciho.citiesinlife.net.payload.PowerLinesPayload;
 import com.branciho.citiesinlife.net.payload.RegisterStructurePayload;
@@ -29,6 +34,7 @@ import com.branciho.citiesinlife.water.WaterRole;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.players.GameProfileCache;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
@@ -63,6 +69,9 @@ public final class ServerActions {
 
     /** The chunk each player was last sent pavement for, so it is not re-sent every tick. */
     private static final Map<UUID, Long> lastPathChunk = new HashMap<>();
+
+    /** How far around the player another city's land is sent for the map, in chunks. */
+    private static final int FOREIGN_LAND_RADIUS = 24;
 
     private static final int MIN_NAME_LENGTH = 2;
     private static final int MAX_NAME_LENGTH = 32;
@@ -371,6 +380,13 @@ public final class ServerActions {
             return;
         }
 
+        // Cutting somebody's transmission line is griefing that leaves no trace and breaks no
+        // block, so it has to be refused here rather than by the block rules.
+        if (!Diplomacy.mayInterfere(server, player, from) || !Diplomacy.mayInterfere(server, player, to)) {
+            reject(player, "protected_land_tool");
+            return;
+        }
+
         BlockState fromState = level.getBlockState(from);
         BlockState toState = level.getBlockState(to);
         if (!(fromState.getBlock() instanceof PowerBlock fromBlock)
@@ -436,6 +452,12 @@ public final class ServerActions {
         BlockPos to = payload.to();
         if (tooFar(player, from) || tooFar(player, to)) {
             reject(player, "too_far");
+            return;
+        }
+        // Same reasoning as the power line: cutting a city's water off is an edit to that city, and
+        // it happens without a single block changing.
+        if (!Diplomacy.mayInterfere(server, player, from) || !Diplomacy.mayInterfere(server, player, to)) {
+            reject(player, "protected_land_tool");
             return;
         }
 
@@ -615,6 +637,13 @@ public final class ServerActions {
         BlockPos max = new BlockPos(
                 Math.max(a.getX(), b.getX()), Math.max(a.getY(), b.getY()), Math.max(a.getZ(), b.getZ()));
 
+        // Marking pavement is an edit to how a city's people behave, so it answers to the same rule
+        // as breaking a block there - it simply never touches a block, so the block events miss it.
+        if (!Diplomacy.mayInterfere(server, player, min) || !Diplomacy.mayInterfere(server, player, max)) {
+            reject(player, "protected_land_tool");
+            return;
+        }
+
         int changed = PathNetwork.get(server).mark(
                 player.serverLevel().dimension(), min, max, payload.remove());
         if (changed == 0) {
@@ -655,6 +684,194 @@ public final class ServerActions {
     /** Forget a player who has left, so this map does not grow for the life of the server. */
     public static void forget(ServerPlayer player) {
         lastPathChunk.remove(player.getUUID());
+    }
+
+    // ------------------------------------------------------------- diplomacy
+
+    /**
+     * Grant, revoke, declare war, or stand down.
+     *
+     * <p>Nothing here trusts the packet past "which city" and "which of four things". Whether the
+     * sender has any standing to do it is re-derived from server state, because a screen that can be
+     * modified is a screen that will be.
+     */
+    public static void diplomacy(ServerPlayer player, DiplomacyPayload payload) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        CityData data = CityData.get(server);
+        City own = data.cityOf(player.getUUID(), player.serverLevel().dimension());
+        if (own == null) {
+            reject(player, "no_city");
+            return;
+        }
+        City target = data.city(payload.targetCityId());
+        if (target == null || target.id().equals(own.id())) {
+            reject(player, "unknown_city");
+            return;
+        }
+
+        boolean changed = switch (payload.action()) {
+            case DiplomacyPayload.ACTION_GRANT -> {
+                // Being at war and being welcome are not compatible, and letting somebody grant
+                // permission mid-war would read as a truce that the war rules then ignore.
+                if (Diplomacy.stance(own, target) == Relation.WAR) {
+                    reject(player, "at_war_cannot_grant");
+                    yield false;
+                }
+                if (own.grant(target.id())) {
+                    tell(server, target, "message.citiesinlife.granted_by", own.name());
+                    player.sendSystemMessage(Component.translatable(
+                            "message.citiesinlife.granted_to", target.name()));
+                    yield true;
+                }
+                yield false;
+            }
+            case DiplomacyPayload.ACTION_REVOKE -> {
+                if (own.revoke(target.id())) {
+                    tell(server, target, "message.citiesinlife.revoked_by", own.name());
+                    player.sendSystemMessage(Component.translatable(
+                            "message.citiesinlife.revoked_from", target.name()));
+                    yield true;
+                }
+                yield false;
+            }
+            case DiplomacyPayload.ACTION_DECLARE_WAR -> {
+                // A war cancels any welcome, both ways. Otherwise an attacker keeps the run of the
+                // place they granted themselves access to before declaring.
+                own.revoke(target.id());
+                target.revoke(own.id());
+                if (own.declareWar(target.id())) {
+                    tell(server, target, "message.citiesinlife.war_declared_on_you", own.name());
+                    player.sendSystemMessage(Component.translatable(
+                            "message.citiesinlife.war_declared", target.name()));
+                    yield true;
+                }
+                yield false;
+            }
+            case DiplomacyPayload.ACTION_MAKE_PEACE -> {
+                if (own.makePeace(target.id())) {
+                    boolean over = !target.hostileTo(own.id());
+                    tell(server, target, over
+                            ? "message.citiesinlife.peace_agreed"
+                            : "message.citiesinlife.peace_offered", own.name());
+                    player.sendSystemMessage(Component.translatable(over
+                            ? "message.citiesinlife.peace_agreed"
+                            : "message.citiesinlife.stood_down", target.name()));
+                    yield true;
+                }
+                yield false;
+            }
+            default -> false;
+        };
+
+        if (changed) {
+            data.setDirty();
+            syncNeighbours(player);
+            // The other side's screens are looking at numbers that have just changed under them.
+            ServerPlayer other = server.getPlayerList().getPlayer(target.owner());
+            if (other != null) {
+                syncNeighbours(other);
+            }
+        }
+    }
+
+    /** Tell a city's owner something, if they happen to be online to hear it. */
+    private static void tell(MinecraftServer server, City city, String key, Object argument) {
+        ServerPlayer owner = server.getPlayerList().getPlayer(city.owner());
+        if (owner != null) {
+            owner.sendSystemMessage(Component.translatable(key, argument));
+        }
+    }
+
+    /** The other cities in this dimension, and the land they hold near the player. */
+    public static void syncNeighbours(ServerPlayer player) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        CityData data = CityData.get(server);
+        City own = data.cityOf(player.getUUID(), player.serverLevel().dimension());
+        ChunkPos here = player.chunkPosition();
+
+        List<NeighbourCitiesPayload.Entry> entries = new ArrayList<>();
+        LongArrayList chunks = new LongArrayList();
+        List<Byte> stances = new ArrayList<>();
+
+        for (City city : data.cities()) {
+            if (!city.dimension().equals(player.serverLevel().dimension())) {
+                continue;
+            }
+            if (own != null && city.id().equals(own.id())) {
+                continue;
+            }
+            if (city.owner().equals(player.getUUID())) {
+                // Their own city in another dimension has already been skipped; this catches the
+                // case of a player who somehow owns two here.
+                continue;
+            }
+
+            Relation theirs = Diplomacy.stance(city, own);
+            Relation yours = Diplomacy.stance(own, city);
+
+            if (entries.size() < NeighbourCitiesPayload.MAX_CITIES) {
+                entries.add(new NeighbourCitiesPayload.Entry(
+                        city.id(),
+                        city.name(),
+                        nameOf(server, city.owner()),
+                        theirs.ordinal(),
+                        yours.ordinal(),
+                        city.claimedChunks().size(),
+                        distanceInChunks(here, city)));
+            }
+
+            for (long chunkKey : city.claimedChunks()) {
+                if (chunks.size() >= ForeignLandPayload.MAX_CHUNKS) {
+                    break;
+                }
+                if (Math.abs(ChunkPos.getX(chunkKey) - here.x) > FOREIGN_LAND_RADIUS
+                        || Math.abs(ChunkPos.getZ(chunkKey) - here.z) > FOREIGN_LAND_RADIUS) {
+                    continue;
+                }
+                chunks.add(chunkKey);
+                stances.add((byte) theirs.ordinal());
+            }
+        }
+
+        byte[] packedStances = new byte[stances.size()];
+        for (int i = 0; i < packedStances.length; i++) {
+            packedStances[i] = stances.get(i);
+        }
+        CitiesInLifeNetwork.sendTo(player, new NeighbourCitiesPayload(entries));
+        CitiesInLifeNetwork.sendTo(player, new ForeignLandPayload(chunks.toLongArray(), packedStances));
+    }
+
+    /** How far the nearest bit of a city's territory is, in chunks; -1 if it holds none. */
+    private static int distanceInChunks(ChunkPos here, City city) {
+        int best = -1;
+        for (long chunkKey : city.claimedChunks()) {
+            int dx = ChunkPos.getX(chunkKey) - here.x;
+            int dz = ChunkPos.getZ(chunkKey) - here.z;
+            int distance = Math.max(Math.abs(dx), Math.abs(dz));
+            if (best < 0 || distance < best) {
+                best = distance;
+            }
+        }
+        return best;
+    }
+
+    private static String nameOf(MinecraftServer server, UUID playerId) {
+        ServerPlayer online = server.getPlayerList().getPlayer(playerId);
+        if (online != null) {
+            return online.getGameProfile().getName();
+        }
+        GameProfileCache cache = server.getProfileCache();
+        if (cache != null) {
+            return cache.get(playerId).map(profile -> profile.getName())
+                    .orElse("?");
+        }
+        return "?";
     }
 
     // ---------------------------------------------------------------- syncing
@@ -708,6 +925,7 @@ public final class ServerActions {
         CitiesInLifeNetwork.sendTo(player, new PowerLinesPayload(nearbyLines(server, player)));
         CitiesInLifeNetwork.sendTo(player, new WaterLinesPayload(nearbyWaterLines(server, player)));
         syncPaths(player, true);
+        syncNeighbours(player);
     }
 
     private static List<StructureSyncPayload.Entry> nearbyStructures(CityData data, ServerPlayer player) {

@@ -1,6 +1,7 @@
 package com.branciho.citiesinlife;
 
 import com.branciho.citiesinlife.net.ServerActions;
+import com.branciho.citiesinlife.plant.PlantSurvey;
 import com.branciho.citiesinlife.sim.CitizenDirector;
 import com.branciho.citiesinlife.sim.CitySimulation;
 import net.minecraft.server.MinecraftServer;
@@ -9,6 +10,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 
 /** Server-side lifecycle: run the simulation, and make sure a joining player sees their city. */
 @EventBusSubscriber(modid = CitiesInLife.MOD_ID)
@@ -37,6 +39,12 @@ public final class ServerEvents {
                 ServerActions.syncSurroundings(player);
             }
         }
+    }
+
+    /** In single player the next world would otherwise inherit this one's cached power plants. */
+    @SubscribeEvent
+    public static void onServerStopped(ServerStoppedEvent event) {
+        PlantSurvey.forgetAll();
     }
 
     @SubscribeEvent

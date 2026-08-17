@@ -42,9 +42,10 @@ public class TurbineBlockEntity extends BlockEntity {
     /**
      * How much soot a turbine takes before it seizes up.
      *
-     * <p>A boiler with nowhere to put its emissions pushes them through the turbine instead. Two
-     * thousand is a bit over three minutes of running with no chimney - long enough to be a
-     * consequence you can see coming and short enough that you only make the mistake once.
+     * <p>A boiler with nowhere to put its emissions pushes them through the turbine instead. Soot
+     * goes in at one a tick while the fire is actually lit, so two thousand is a hundred seconds of
+     * burning with no chimney - long enough to be a consequence you can see coming and short enough
+     * that you only make the mistake once.
      */
     public static final int SOOT_LIMIT = 2000;
 
@@ -111,12 +112,19 @@ public class TurbineBlockEntity extends BlockEntity {
                 return;
             }
 
-            if (level.getGameTime() % 20L == 0L && level instanceof ServerLevel serverLevel) {
-                serverLevel.sendParticles(
-                        turbine.burning ? ParticleTypes.FLAME : ParticleTypes.LARGE_SMOKE,
-                        pos.getX() + 0.5D, pos.getY() + 1.4D, pos.getZ() + 0.5D,
-                        turbine.burning ? 12 : 6, 0.4D, 0.2D, 0.4D,
-                        turbine.burning ? 0.03D : 0.01D);
+            if (level.getGameTime() % 20L == 0L) {
+                // Nothing else dirties this chunk while a turbine smoulders - the boiler has already
+                // stopped burning by then. Without this the countdown is never written, and an
+                // autosave or an unload rewinds the fuse to whatever it was before it clogged.
+                turbine.setChanged();
+
+                if (level instanceof ServerLevel serverLevel) {
+                    serverLevel.sendParticles(
+                            turbine.burning ? ParticleTypes.FLAME : ParticleTypes.LARGE_SMOKE,
+                            pos.getX() + 0.5D, pos.getY() + 1.4D, pos.getZ() + 0.5D,
+                            turbine.burning ? 12 : 6, 0.4D, 0.2D, 0.4D,
+                            turbine.burning ? 0.03D : 0.01D);
+                }
             }
         } else if (turbine.charge >= CHARGE_PER_TICK) {
             turbine.charge -= CHARGE_PER_TICK;

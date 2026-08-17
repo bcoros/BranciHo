@@ -359,11 +359,12 @@ public class BoilerBlockEntity extends BlockEntity implements WorldlyContainer, 
             // Nothing registered. Fall back to the original rule: a shaft straight up, with or
             // without a turbine capping it.
             surveyShaft(level, pos);
-        } else if (smokeOut == null) {
-            // Registered, but with no chimney in it. A shaft above the boiler still counts as a
-            // flue; if there is not one either, the smoke goes through the turbine.
-            surveyShaftForSmokeOnly(level, pos);
         }
+        // Inside a registered plant a chimney is the only flue there is. There used to be a fallback
+        // here that accepted open air above the boiler instead - which quietly made the whole
+        // chimney rule dead, because a boiler is REQUIRED to have a hole above it to seal its
+        // chamber at all. Every plant therefore had a "flue", nothing ever fouled, and a player
+        // could run a chimney-less plant indefinitely with no consequence whatsoever.
         chamberSealed = surveyChamber(level, pos);
     }
 
@@ -391,29 +392,6 @@ public class BoilerBlockEntity extends BlockEntity implements WorldlyContainer, 
             return;
         }
         turbinePos = plant.turbineFor(pos);
-    }
-
-    /**
-     * Inside a plant, the shaft above can still be the flue - but never the turbine.
-     *
-     * <p>The plant's own pairing decides which turbine is this boiler's. Letting the shaft rule
-     * grab one as well would hand a second boiler the turbine that already belongs to the first.
-     */
-    private void surveyShaftForSmokeOnly(Level level, BlockPos pos) {
-        BlockPos highestOpen = null;
-        for (int up = 1; up <= VENT_REACH; up++) {
-            BlockPos above = pos.above(up);
-            BlockState state = level.getBlockState(above);
-            if (state.getBlock() instanceof TurbineBlock) {
-                smokeOut = above.above();
-                return;
-            }
-            if (state.blocksMotion()) {
-                return;
-            }
-            highestOpen = above;
-        }
-        smokeOut = highestOpen;
     }
 
     /** The original rule: look straight up for a turbine, or for open air to vent through. */

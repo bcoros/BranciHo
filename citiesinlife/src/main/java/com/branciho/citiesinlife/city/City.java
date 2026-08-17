@@ -11,7 +11,9 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.Level;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -33,6 +35,20 @@ public final class City {
 
     private final LongSet claimedChunks = new LongOpenHashSet();
     private final List<UUID> structures = new ArrayList<>();
+
+    /**
+     * Cities this one has given the run of its land to, and cities it is at war with.
+     *
+     * <p>Held here rather than in a table of their own because a relationship is a fact about a city
+     * in the same way its treasury is, and every question ever asked of these — may this person
+     * build here, may they hit that citizen — starts from a city and not from a pair.
+     *
+     * <p>Permission is one way and war is not. Granting is stored only on the city that granted it;
+     * declaring war writes the entry on both sides, because a war you are not aware of is not a war,
+     * it is being ambushed.
+     */
+    private final Set<UUID> granted = new HashSet<>();
+    private final Set<UUID> wars = new HashSet<>();
 
     /**
      * Capacity the city's buildings offer, and how much of it is taken up.
@@ -197,6 +213,63 @@ public final class City {
         this.waterNeeded = Math.max(0, needed);
     }
 
+    // ------------------------------------------------------------- diplomacy
+
+    /** Whether this city has given another the run of its land. */
+    public boolean grantedTo(UUID otherCityId) {
+        return granted.contains(otherCityId);
+    }
+
+    /** Let another city's people build here. Returns false if nothing changed. */
+    public boolean grant(UUID otherCityId) {
+        return granted.add(otherCityId);
+    }
+
+    public boolean revoke(UUID otherCityId) {
+        return granted.remove(otherCityId);
+    }
+
+    /**
+     * Declare yourself hostile to another city.
+     *
+     * <p>Stored one way round even though a war is felt by both sides, and that is the point: two
+     * cities are at war while <em>either</em> of them is hostile, so standing down is something you
+     * can only do for yourself. If peace were one click by either party, the city that was attacked
+     * could end the war unilaterally and a declaration would mean nothing.
+     */
+    public boolean declareWar(UUID otherCityId) {
+        return wars.add(otherCityId);
+    }
+
+    /** Stand down. The war only actually ends once the other side has done the same. */
+    public boolean makePeace(UUID otherCityId) {
+        return wars.remove(otherCityId);
+    }
+
+    /** Whether <em>this</em> city is the hostile one. Ask {@code Diplomacy} for the real answer. */
+    public boolean hostileTo(UUID otherCityId) {
+        return wars.contains(otherCityId);
+    }
+
+    public Set<UUID> granted() {
+        return granted;
+    }
+
+    public Set<UUID> wars() {
+        return wars;
+    }
+
+    /**
+     * Forget a city entirely.
+     *
+     * <p>Called when one is deleted. Without it a razed city leaves its wars behind in everybody
+     * else's save file forever, and a new city that happened to be handed the same UUID would
+     * inherit somebody else's grudge.
+     */
+    public boolean forget(UUID otherCityId) {
+        return granted.remove(otherCityId) | wars.remove(otherCityId);
+    }
+
     public CompoundTag save() {
         CompoundTag tag = new CompoundTag();
         tag.putUUID("id", id);
@@ -222,7 +295,28 @@ public final class City {
         tag.putInt("powerProduced", powerProduced);
         tag.putInt("waterNeeded", waterNeeded);
         tag.putInt("waterSupplied", waterSupplied);
+        tag.put("granted", writeIds(granted));
+        tag.put("wars", writeIds(wars));
         return tag;
+    }
+
+    private static ListTag writeIds(Set<UUID> ids) {
+        ListTag list = new ListTag();
+        for (UUID id : ids) {
+            CompoundTag entry = new CompoundTag();
+            entry.putUUID("id", id);
+            list.add(entry);
+        }
+        return list;
+    }
+
+    private static void readIds(CompoundTag tag, String key, Set<UUID> into) {
+        // Absent on any city saved before Alpha 4, which reads as an empty list rather than as an
+        // error - an old world simply starts out at peace with everybody.
+        ListTag list = tag.getList(key, Tag.TAG_COMPOUND);
+        for (int i = 0; i < list.size(); i++) {
+            into.add(list.getCompound(i).getUUID("id"));
+        }
     }
 
     public static City load(CompoundTag tag) {
@@ -245,6 +339,8 @@ public final class City {
         city.powerProduced = tag.getInt("powerProduced");
         city.waterNeeded = tag.getInt("waterNeeded");
         city.waterSupplied = tag.getInt("waterSupplied");
+        readIds(tag, "granted", city.granted);
+        readIds(tag, "wars", city.wars);
         return city;
     }
 }

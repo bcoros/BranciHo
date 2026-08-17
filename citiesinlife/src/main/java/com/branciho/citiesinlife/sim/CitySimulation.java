@@ -49,17 +49,24 @@ public final class CitySimulation {
     private static final long UPKEEP_PER_CHUNK = 1L;
 
     /** Residents served by one unit of power, and jobs served by one unit. */
-    private static final int RESIDENTS_PER_POWER = 40;
-    private static final int JOBS_PER_POWER = 20;
+    private static final int RESIDENTS_PER_POWER = 28;
+    private static final int JOBS_PER_POWER = 14;
 
     /**
-     * Residents served by one unit of water.
+     * Residents and jobs served by one unit of water.
      *
-     * <p>Only people drink; a factory's demand is folded into the people who work in it. One starter
-     * pump lifts forty units, so a single intake waters a thousand residents — enough that the first
-     * pumping station is a real milestone and the second one is a real decision.
+     * <p>Charged against what the buildings <em>hold</em>, not against who has moved in yet — which
+     * is how power has always worked and is the only reason these two numbers now mean the same
+     * kind of thing. Billing water by current population made a tower with room for a thousand
+     * people ask for four units on the day it was built, and since a small city tends to have about
+     * as many people as it has buildings, it read as one unit per building regardless of size. A
+     * building's plumbing is sized for the building.
+     *
+     * <p>Workplaces drink too, so jobs count as well — less per head, because a shop uses less water
+     * per person than a home does.
      */
-    private static final int RESIDENTS_PER_WATER = 25;
+    private static final int RESIDENTS_PER_WATER = 20;
+    private static final int JOBS_PER_WATER = 40;
 
     /**
      * How much of normal growth a city manages with no water at all.
@@ -133,7 +140,7 @@ public final class CitySimulation {
      * With one, the tanks visibly run down first and there is time to notice and go and look.
      */
     private static void updateWater(MinecraftServer server, WaterGrid grid, City city) {
-        int demand = (int) Math.ceil(city.population() / (double) RESIDENTS_PER_WATER);
+        int demand = waterFor(city.housing(), city.jobs());
         ServerLevel level = server.getLevel(city.dimension());
         if (level == null) {
             city.setWater(0, demand);
@@ -186,6 +193,11 @@ public final class CitySimulation {
                 + (int) Math.ceil(jobs / (double) JOBS_PER_POWER);
     }
 
+    private static int waterFor(int housing, int jobs) {
+        return (int) Math.ceil(housing / (double) RESIDENTS_PER_WATER)
+                + (int) Math.ceil(jobs / (double) JOBS_PER_WATER);
+    }
+
     /** Recompute what the city's buildings offer. Pure capacity, no growth. */
     private static void recalculate(CityData data, City city) {
         int housing = 0;
@@ -196,6 +208,9 @@ public final class CitySimulation {
         }
         city.setCapacity(housing, jobs);
         city.setPower(city.powerProduced(), demandFor(housing, jobs));
+        // Water demand is set here too, not only on the water tick, so registering a tower shows its
+        // thirst on the panel straight away rather than ten seconds later.
+        city.setWater(city.waterSupplied(), waterFor(housing, jobs));
         city.setPopulation(Math.min(city.population(), housing));
         city.setEmployed(Math.min(city.population(), jobs));
     }

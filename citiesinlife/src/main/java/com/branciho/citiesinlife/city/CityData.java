@@ -126,6 +126,14 @@ public final class CityData extends SavedData {
         }
 
         cities.remove(city.id());
+
+        // Nobody is at war with a city that no longer exists. Left behind, these entries would sit in
+        // every other city's save file forever, and a future city handed the same UUID would inherit
+        // a grudge it never earned.
+        for (City other : cities.values()) {
+            other.forget(city.id());
+        }
+
         setDirty();
         return removed;
     }

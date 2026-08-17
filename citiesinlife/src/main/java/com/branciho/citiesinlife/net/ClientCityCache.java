@@ -2,10 +2,13 @@ package com.branciho.citiesinlife.net;
 
 import com.branciho.citiesinlife.net.payload.CitySyncPayload;
 import com.branciho.citiesinlife.net.payload.ConfirmDeleteCityPayload;
+import com.branciho.citiesinlife.net.payload.ForeignLandPayload;
+import com.branciho.citiesinlife.net.payload.NeighbourCitiesPayload;
 import com.branciho.citiesinlife.net.payload.PathSyncPayload;
 import com.branciho.citiesinlife.net.payload.PowerLinesPayload;
 import com.branciho.citiesinlife.net.payload.StructureSyncPayload;
 import com.branciho.citiesinlife.net.payload.WaterLinesPayload;
+import it.unimi.dsi.fastutil.longs.Long2ByteOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import org.jetbrains.annotations.Nullable;
@@ -32,6 +35,8 @@ public final class ClientCityCache {
     private static List<long[]> waterLines = List.of();
     private static LongSet claimedChunks = new LongOpenHashSet();
     private static long[] paths = new long[0];
+    private static List<NeighbourCitiesPayload.Entry> neighbours = List.of();
+    private static Long2ByteOpenHashMap foreignLand = new Long2ByteOpenHashMap();
     private static @Nullable ConfirmDeleteCityPayload pendingDeleteConfirm;
 
     private ClientCityCache() {
@@ -60,6 +65,34 @@ public final class ClientCityCache {
 
     public static void accept(PathSyncPayload payload) {
         paths = payload.marked();
+    }
+
+    public static void accept(NeighbourCitiesPayload payload) {
+        neighbours = payload.cities();
+    }
+
+    /**
+     * Foreign territory, indexed rather than searched.
+     *
+     * <p>The map paints four hundred tiles a frame and asks about each one. A list would turn that
+     * into a scan of every claimed chunk on the server, per tile, per frame.
+     */
+    public static void accept(ForeignLandPayload payload) {
+        Long2ByteOpenHashMap land = new Long2ByteOpenHashMap(payload.chunks().length);
+        land.defaultReturnValue((byte) -1);
+        for (int i = 0; i < payload.chunks().length && i < payload.stances().length; i++) {
+            land.put(payload.chunks()[i], payload.stances()[i]);
+        }
+        foreignLand = land;
+    }
+
+    public static List<NeighbourCitiesPayload.Entry> neighbours() {
+        return neighbours;
+    }
+
+    /** The stance of whoever owns this chunk towards you, or -1 if nobody foreign owns it. */
+    public static int foreignStance(long chunkKey) {
+        return foreignLand.get(chunkKey);
     }
 
     /** The pavement near the player, drawn only in structure mode or with the path tool in hand. */
@@ -128,6 +161,8 @@ public final class ClientCityCache {
         waterLines = List.of();
         claimedChunks = new LongOpenHashSet();
         paths = new long[0];
+        neighbours = List.of();
+        foreignLand = new Long2ByteOpenHashMap();
         pendingDeleteConfirm = null;
     }
 }
