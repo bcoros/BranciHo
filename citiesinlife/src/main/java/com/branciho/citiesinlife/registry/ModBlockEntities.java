@@ -1,6 +1,7 @@
 package com.branciho.citiesinlife.registry;
 
 import com.branciho.citiesinlife.CitiesInLife;
+import com.branciho.citiesinlife.blockentity.AlarmBlockEntity;
 import com.branciho.citiesinlife.blockentity.BoilerBlockEntity;
 import com.branciho.citiesinlife.blockentity.FactoryOutputBlockEntity;
 import com.branciho.citiesinlife.blockentity.TurbineBlockEntity;
@@ -68,6 +69,12 @@ public final class ModBlockEntities {
             REGISTER_COUNTER = BLOCK_ENTITIES.register("register_counter",
                     () -> BlockEntityType.Builder
                             .of(RegisterCounterBlockEntity::new, ModBlocks.REGISTER_COUNTER.get())
+                            .build(null));
+
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<AlarmBlockEntity>>
+            ALARM = BLOCK_ENTITIES.register("alarm",
+                    () -> BlockEntityType.Builder
+                            .of(AlarmBlockEntity::new, ModBlocks.ALARM.get())
                             .build(null));
 
     private ModBlockEntities() {

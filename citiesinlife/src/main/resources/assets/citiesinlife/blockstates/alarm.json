@@ -1,0 +1,22 @@
+{
+  "variants": {
+    "trouble=none,flash=false": {
+      "model": "citiesinlife:block/alarm"
+    },
+    "trouble=none,flash=true": {
+      "model": "citiesinlife:block/alarm"
+    },
+    "trouble=fouled,flash=false": {
+      "model": "citiesinlife:block/alarm"
+    },
+    "trouble=fouled,flash=true": {
+      "model": "citiesinlife:block/alarm_warn"
+    },
+    "trouble=fire,flash=false": {
+      "model": "citiesinlife:block/alarm"
+    },
+    "trouble=fire,flash=true": {
+      "model": "citiesinlife:block/alarm_fire"
+    }
+  }
+}

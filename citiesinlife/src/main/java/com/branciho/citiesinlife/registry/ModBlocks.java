@@ -1,6 +1,7 @@
 package com.branciho.citiesinlife.registry;
 
 import com.branciho.citiesinlife.CitiesInLife;
+import com.branciho.citiesinlife.block.AlarmBlock;
 import com.branciho.citiesinlife.block.BoilerBlock;
 import com.branciho.citiesinlife.block.ChimneyBlock;
 import com.branciho.citiesinlife.block.IndestructiblePipeBlock;
@@ -196,6 +197,21 @@ public final class ModBlocks {
                             .strength(2.0F, 4.0F)
                             .sound(SoundType.WOOD)
                             .noOcclusion()));
+
+    /**
+     * The plant siren.
+     *
+     * <p>Glows steadily rather than in step with its own flash - relighting the chunk three times a
+     * second for a flicker the lens already shows would be an expensive way to say the same thing.
+     */
+    public static final DeferredBlock<AlarmBlock> ALARM = BLOCKS.register("alarm",
+            () -> new AlarmBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_RED)
+                    .strength(2.0F, 4.0F)
+                    .requiresCorrectToolForDrops()
+                    .sound(SoundType.METAL)
+                    .lightLevel(AlarmBlock::lightFor)
+                    .noOcclusion()));
 
     private ModBlocks() {
     }

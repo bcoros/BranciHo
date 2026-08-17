@@ -210,6 +210,16 @@ public final class PlantSurvey {
         return generators.size();
     }
 
+    /**
+     * Every turbine in the plant.
+     *
+     * <p>Unmodifiable and in the same sorted order the pairing uses, so anything reading this sees
+     * the same machines the boilers do.
+     */
+    public List<BlockPos> turbines() {
+        return java.util.Collections.unmodifiableList(turbines);
+    }
+
     public int turbineCount() {
         return turbines.size();
     }
