@@ -34,6 +34,20 @@ public class PlannerWandItem extends Item {
      * Returning success here stops the block underneath being activated and stops the arm swinging
      * as though something was placed.
      */
+    /**
+     * Take the click before the block ever sees it.
+     *
+     * <p>Cancelling the interaction on the client is not enough: the use packet still goes to the
+     * server, which runs the block's own right-click handler before the item's. So right-clicking a
+     * valve with this in hand was starting a link <em>and</em> working the valve, which is a
+     * spectacular way to lose track of which branch of a network is shut. This hook runs first and
+     * consumes the click outright.
+     */
+    @Override
+    public InteractionResult onItemUseFirst(ItemStack stack, UseOnContext context) {
+        return InteractionResult.SUCCESS;
+    }
+
     @Override
     public InteractionResult useOn(UseOnContext context) {
         return InteractionResult.SUCCESS;

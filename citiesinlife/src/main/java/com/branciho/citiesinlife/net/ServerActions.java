@@ -110,7 +110,18 @@ public final class ServerActions {
             // edge of a river or out where the smoke is somebody else's problem, and claiming a
             // corridor of chunks out to it before you can even mark the building would be a tax on
             // building it in the sensible place. Windmills and reactors will want the same.
-            if (type != StructureType.POWER_PLANT && !ownsGroundUnder(data, city, min, max)) {
+            //
+            // "Not your land" is still not the same as "anybody's land", though. ownsGroundUnder was
+            // the only thing in this method that looked at territory at all, so exempting a plant
+            // from it outright would let one player plant an undeletable building in the middle of
+            // another player's city - undeletable because deleteArea only ever removes structures
+            // belonging to the caller's own city.
+            if (type == StructureType.POWER_PLANT) {
+                if (standsOnAnotherCity(data, city, level, min, max)) {
+                    reject(player, "another_city_land");
+                    return;
+                }
+            } else if (!ownsGroundUnder(data, city, min, max)) {
                 reject(player, "not_your_land");
                 return;
             }
@@ -195,6 +206,25 @@ public final class ServerActions {
         }
         player.sendSystemMessage(Component.translatable("message.citiesinlife.founded", name));
         return city;
+    }
+
+    /**
+     * Whether any of the ground under this box belongs to a city other than the builder's.
+     *
+     * <p>Unclaimed ground is fine — that is the point of the power plant exemption. Somebody else's
+     * ground is not, and there is no other check anywhere that would catch it.
+     */
+    private static boolean standsOnAnotherCity(CityData data, City city, ServerLevel level,
+                                               BlockPos min, BlockPos max) {
+        for (int x = min.getX() >> 4; x <= max.getX() >> 4; x++) {
+            for (int z = min.getZ() >> 4; z <= max.getZ() >> 4; z++) {
+                City owner = data.cityAtChunk(level.dimension(), ChunkPos.asLong(x, z));
+                if (owner != null && !owner.id().equals(city.id())) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private static boolean ownsGroundUnder(CityData data, City city, BlockPos min, BlockPos max) {
@@ -433,15 +463,19 @@ public final class ServerActions {
         }
 
         // One starter pump per station. Checked when the link is drawn, because a second intake that
-        // silently counts for nothing is a bug the player has no way to see.
-        WaterGrid.Survey fromSide = grid.survey(level, fromNode);
-        if (!fromSide.reaches(toNode)) {
-            // Two separate stations about to become one. If joining them would put two intakes on
-            // the result, say so now. (A link inside one station is redundant, never illegal.)
-            WaterGrid.Survey toSide = grid.survey(level, toNode);
-            if (fromSide.sources() + toSide.sources() > 1) {
-                reject(player, "two_sources");
-                return;
+        // silently counts for nothing is a bug the player has no way to see. The survey walks the
+        // pumps only - a station is the pump chain, not everything downstream of it - so a second
+        // station on its own river may still feed the same city, and its water adds to the first.
+        if (fromBlock.waterRole().isPump() && toBlock.waterRole().isPump()) {
+            WaterGrid.Survey fromSide = grid.surveyStation(level, fromNode);
+            if (!fromSide.reaches(toNode)) {
+                // Two separate stations about to become one. If joining them would put two intakes
+                // on the result, say so now. (A link inside one station is merely redundant.)
+                WaterGrid.Survey toSide = grid.surveyStation(level, toNode);
+                if (fromSide.sources() + toSide.sources() > 1) {
+                    reject(player, "two_sources");
+                    return;
+                }
             }
         }
 

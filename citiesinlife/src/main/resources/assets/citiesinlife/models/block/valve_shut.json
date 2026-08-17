@@ -148,67 +148,67 @@
       "name": "handle",
       "from": [
         7,
-        7,
-        1
+        10,
+        7
       ],
       "to": [
         9,
-        9,
-        15
+        12,
+        9
       ],
       "faces": {
         "north": {
           "texture": "#wheel",
           "uv": [
-            0,
+            7,
             6,
-            16,
-            10
+            9,
+            8
           ]
         },
         "south": {
           "texture": "#wheel",
           "uv": [
-            0,
+            7,
             6,
-            16,
-            10
+            9,
+            8
           ]
         },
         "east": {
           "texture": "#wheel",
           "uv": [
-            0,
+            7,
             6,
-            16,
-            10
+            9,
+            8
           ]
         },
         "west": {
           "texture": "#wheel",
           "uv": [
-            0,
+            7,
             6,
-            16,
-            10
+            9,
+            8
           ]
         },
         "up": {
           "texture": "#wheel",
           "uv": [
-            0,
+            7,
             6,
-            16,
-            10
+            9,
+            8
           ]
         },
         "down": {
           "texture": "#wheel",
           "uv": [
-            0,
+            7,
             6,
-            16,
-            10
+            9,
+            8
           ]
         }
       }

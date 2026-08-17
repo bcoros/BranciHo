@@ -148,5 +148,9 @@
   "message.citiesinlife.only_end_pump": "Only the End Pump connects to pipes and tanks.",
   "message.citiesinlife.tank_level": "Tank: %s / %s",
   "screen.citiesinlife.water": "Water",
-  "screen.citiesinlife.water_short": "Not enough water - the city has stopped growing"
+  "screen.citiesinlife.water_short": "Not enough water - the city has stopped growing",
+  "message.citiesinlife.pump_wet": "Intake reaches water - this station can pump.",
+  "message.citiesinlife.pump_dry": "No water in reach - move this pump into the water or onto the bank.",
+  "message.citiesinlife.pump_relay": "Relay pump - link it between the intake and the end pump.",
+  "message.citiesinlife.another_city_land": "That ground belongs to another city."
 }

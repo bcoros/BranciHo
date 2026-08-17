@@ -292,6 +292,7 @@ public final class ClientEvents {
         ClientCityCache.clear();
         ClientSelection.reset();
         ClientPowerTool.clear();
+        ClientPipeTool.clear();
         StructureMode.deactivate();
     }
 

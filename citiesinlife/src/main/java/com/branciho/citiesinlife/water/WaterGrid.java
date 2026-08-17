@@ -226,7 +226,7 @@ public final class WaterGrid extends SavedData {
         return supply[0];
     }
 
-    /** What one walk found: how many starter pumps, and everywhere it reached. */
+    /** What a survey of one pumping station found. */
     public record Survey(int sources, LongOpenHashSet visited) {
 
         public boolean reaches(BlockPos pos) {
@@ -235,28 +235,52 @@ public final class WaterGrid extends SavedData {
     }
 
     /**
-     * Walk out from one node and report the station it belongs to.
+     * Walk out from one node across the <em>pumps only</em> and report the station it belongs to.
      *
-     * <p>Used to keep one starter pump per station, checked when the link is drawn rather than when
-     * the water is counted. Refusing the link is something the player can see and understand;
-     * silently ignoring the second pump later is not.
+     * <p>A pumping station is the chain of pumps, not everything downstream of it. That distinction
+     * is the whole reason this is separate from {@link #walk}: surveying through the pipes as well
+     * made the "station" mean the entire city's plumbing, which had it both ways and got both wrong.
+     * It refused a perfectly good second intake on its own river merely because that river's pipes
+     * would eventually reach the same city, and it could be walked around entirely by laying one
+     * pipe block to bridge two runs, which the rule never looks at.
      *
-     * <p>The visited set comes back too, because the caller has to tell "these are two stations
-     * about to become one" from "these were already the same station" — in the second case the link
-     * is redundant rather than illegal, and refusing it would be wrong.
+     * <p>So this stops at anything that is not a pump, and only follows hand-drawn links. Two
+     * stations feeding one city is then allowed, and their water adds up, which is what a second
+     * intake ought to buy you.
+     *
+     * <p>The visited set comes back too, because the caller has to tell "two stations about to
+     * become one" from "these were already the same station" — in the second case the link is merely
+     * redundant, and refusing it would be wrong.
      */
-    public Survey survey(ServerLevel level, BlockPos start) {
+    public Survey surveyStation(ServerLevel level, BlockPos start) {
         final LongOpenHashSet visited = new LongOpenHashSet();
-        final int[] sources = {0};
-        LongArrayList seed = new LongArrayList();
-        seed.add(start.asLong());
-        walk(level, seed, (pos, state, block) -> {
-            visited.add(pos.asLong());
-            if (block.waterRole() == WaterRole.SOURCE) {
-                sources[0]++;
+        final LongArrayList queue = new LongArrayList();
+        final BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+        int sources = 0;
+
+        visited.add(start.asLong());
+        queue.add(start.asLong());
+
+        while (!queue.isEmpty() && visited.size() < MAX_WALK) {
+            long current = queue.removeLong(queue.size() - 1);
+            cursor.set(BlockPos.getX(current), BlockPos.getY(current), BlockPos.getZ(current));
+
+            BlockState state = level.getBlockState(cursor);
+            if (!(state.getBlock() instanceof WaterBlock block) || !block.waterRole().isPump()) {
+                // The far side of the seam, or a block that has since been broken. Either way the
+                // station stops here.
+                continue;
             }
-        });
-        return new Survey(sources[0], visited);
+            if (block.waterRole() == WaterRole.SOURCE) {
+                sources++;
+            }
+            for (long neighbour : neighbours(level.dimension(), cursor)) {
+                if (visited.add(neighbour)) {
+                    queue.add(neighbour);
+                }
+            }
+        }
+        return new Survey(sources, visited);
     }
 
     /** Storage tanks that stand on this city's ground and are therefore allowed to serve it. */

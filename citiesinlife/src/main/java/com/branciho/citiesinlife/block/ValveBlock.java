@@ -1,9 +1,11 @@
 package com.branciho.citiesinlife.block;
 
 import com.branciho.citiesinlife.water.WaterBlock;
+import com.branciho.citiesinlife.water.WaterGrid;
 import com.branciho.citiesinlife.water.WaterRole;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionResult;
@@ -36,9 +38,12 @@ public class ValveBlock extends Block implements WaterBlock {
     public static final EnumProperty<Direction.Axis> AXIS = BlockStateProperties.AXIS;
     public static final BooleanProperty OPEN = BlockStateProperties.OPEN;
 
-    private static final VoxelShape SHAPE_X = Block.box(0.0D, 4.0D, 4.0D, 16.0D, 12.0D, 12.0D);
-    private static final VoxelShape SHAPE_Y = Block.box(4.0D, 0.0D, 4.0D, 12.0D, 16.0D, 12.0D);
-    private static final VoxelShape SHAPE_Z = Block.box(4.0D, 4.0D, 0.0D, 12.0D, 12.0D, 16.0D);
+    // Wide enough to cover the handle. The first version was 4..12 across while the handle was
+    // drawn 1..15, so the visible ends of the handle were not clickable and a right click aimed at
+    // them sailed past the valve entirely.
+    private static final VoxelShape SHAPE_X = Block.box(0.0D, 3.0D, 3.0D, 16.0D, 13.0D, 13.0D);
+    private static final VoxelShape SHAPE_Y = Block.box(3.0D, 0.0D, 3.0D, 13.0D, 16.0D, 13.0D);
+    private static final VoxelShape SHAPE_Z = Block.box(3.0D, 3.0D, 0.0D, 13.0D, 13.0D, 16.0D);
 
     public ValveBlock(Properties properties) {
         super(properties);
@@ -76,6 +81,18 @@ public class ValveBlock extends Block implements WaterBlock {
             case Z -> SHAPE_Z;
             default -> SHAPE_Y;
         };
+    }
+
+    @Override
+    protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean moved) {
+        if (!state.is(newState.getBlock()) && level instanceof ServerLevel serverLevel) {
+            // A conduit is a legal end of a hand-drawn link, so breaking one has to take its links
+            // with it. Without this the link outlives the block, cannot be cut - the cut gesture
+            // needs a block to click and the server rejects a position that is no longer a water
+            // block - and silently adopts whatever gets placed there next.
+            WaterGrid.get(serverLevel.getServer()).removeNode(level.dimension(), pos);
+        }
+        super.onRemove(state, level, pos, newState, moved);
     }
 
     @Override

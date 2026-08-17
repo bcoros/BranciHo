@@ -3,7 +3,9 @@ package com.branciho.citiesinlife.block;
 import com.branciho.citiesinlife.water.WaterRole;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.Fluids;
 
@@ -24,6 +26,13 @@ public class StarterPumpBlock extends AbstractPumpBlock {
 
     public StarterPumpBlock(Properties properties) {
         super(properties);
+    }
+
+    @Override
+    protected Component statusOf(Level level, BlockPos pos) {
+        return Component.translatable(touchesWater(level, pos)
+                ? "message.citiesinlife.pump_wet"
+                : "message.citiesinlife.pump_dry");
     }
 
     @Override
