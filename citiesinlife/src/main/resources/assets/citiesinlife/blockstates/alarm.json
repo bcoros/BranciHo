@@ -1,22 +1,160 @@
 {
   "variants": {
-    "trouble=none,flash=false": {
+    "trouble=none,flash=false,facing=up": {
       "model": "citiesinlife:block/alarm"
     },
-    "trouble=none,flash=true": {
+    "trouble=none,flash=true,facing=up": {
       "model": "citiesinlife:block/alarm"
     },
-    "trouble=fouled,flash=false": {
+    "trouble=fouled,flash=false,facing=up": {
       "model": "citiesinlife:block/alarm"
     },
-    "trouble=fouled,flash=true": {
+    "trouble=fouled,flash=true,facing=up": {
       "model": "citiesinlife:block/alarm_warn"
     },
-    "trouble=fire,flash=false": {
+    "trouble=fire,flash=false,facing=up": {
       "model": "citiesinlife:block/alarm"
     },
-    "trouble=fire,flash=true": {
+    "trouble=fire,flash=true,facing=up": {
       "model": "citiesinlife:block/alarm_fire"
+    },
+    "trouble=none,flash=false,facing=down": {
+      "model": "citiesinlife:block/alarm",
+      "x": 180
+    },
+    "trouble=none,flash=true,facing=down": {
+      "model": "citiesinlife:block/alarm",
+      "x": 180
+    },
+    "trouble=fouled,flash=false,facing=down": {
+      "model": "citiesinlife:block/alarm",
+      "x": 180
+    },
+    "trouble=fouled,flash=true,facing=down": {
+      "model": "citiesinlife:block/alarm_warn",
+      "x": 180
+    },
+    "trouble=fire,flash=false,facing=down": {
+      "model": "citiesinlife:block/alarm",
+      "x": 180
+    },
+    "trouble=fire,flash=true,facing=down": {
+      "model": "citiesinlife:block/alarm_fire",
+      "x": 180
+    },
+    "trouble=none,flash=false,facing=north": {
+      "model": "citiesinlife:block/alarm",
+      "x": 90
+    },
+    "trouble=none,flash=true,facing=north": {
+      "model": "citiesinlife:block/alarm",
+      "x": 90
+    },
+    "trouble=fouled,flash=false,facing=north": {
+      "model": "citiesinlife:block/alarm",
+      "x": 90
+    },
+    "trouble=fouled,flash=true,facing=north": {
+      "model": "citiesinlife:block/alarm_warn",
+      "x": 90
+    },
+    "trouble=fire,flash=false,facing=north": {
+      "model": "citiesinlife:block/alarm",
+      "x": 90
+    },
+    "trouble=fire,flash=true,facing=north": {
+      "model": "citiesinlife:block/alarm_fire",
+      "x": 90
+    },
+    "trouble=none,flash=false,facing=south": {
+      "model": "citiesinlife:block/alarm",
+      "x": 90,
+      "y": 180
+    },
+    "trouble=none,flash=true,facing=south": {
+      "model": "citiesinlife:block/alarm",
+      "x": 90,
+      "y": 180
+    },
+    "trouble=fouled,flash=false,facing=south": {
+      "model": "citiesinlife:block/alarm",
+      "x": 90,
+      "y": 180
+    },
+    "trouble=fouled,flash=true,facing=south": {
+      "model": "citiesinlife:block/alarm_warn",
+      "x": 90,
+      "y": 180
+    },
+    "trouble=fire,flash=false,facing=south": {
+      "model": "citiesinlife:block/alarm",
+      "x": 90,
+      "y": 180
+    },
+    "trouble=fire,flash=true,facing=south": {
+      "model": "citiesinlife:block/alarm_fire",
+      "x": 90,
+      "y": 180
+    },
+    "trouble=none,flash=false,facing=west": {
+      "model": "citiesinlife:block/alarm",
+      "x": 90,
+      "y": 270
+    },
+    "trouble=none,flash=true,facing=west": {
+      "model": "citiesinlife:block/alarm",
+      "x": 90,
+      "y": 270
+    },
+    "trouble=fouled,flash=false,facing=west": {
+      "model": "citiesinlife:block/alarm",
+      "x": 90,
+      "y": 270
+    },
+    "trouble=fouled,flash=true,facing=west": {
+      "model": "citiesinlife:block/alarm_warn",
+      "x": 90,
+      "y": 270
+    },
+    "trouble=fire,flash=false,facing=west": {
+      "model": "citiesinlife:block/alarm",
+      "x": 90,
+      "y": 270
+    },
+    "trouble=fire,flash=true,facing=west": {
+      "model": "citiesinlife:block/alarm_fire",
+      "x": 90,
+      "y": 270
+    },
+    "trouble=none,flash=false,facing=east": {
+      "model": "citiesinlife:block/alarm",
+      "x": 90,
+      "y": 90
+    },
+    "trouble=none,flash=true,facing=east": {
+      "model": "citiesinlife:block/alarm",
+      "x": 90,
+      "y": 90
+    },
+    "trouble=fouled,flash=false,facing=east": {
+      "model": "citiesinlife:block/alarm",
+      "x": 90,
+      "y": 90
+    },
+    "trouble=fouled,flash=true,facing=east": {
+      "model": "citiesinlife:block/alarm_warn",
+      "x": 90,
+      "y": 90
+    },
+    "trouble=fire,flash=false,facing=east": {
+      "model": "citiesinlife:block/alarm",
+      "x": 90,
+      "y": 90
+    },
+    "trouble=fire,flash=true,facing=east": {
+      "model": "citiesinlife:block/alarm_fire",
+      "x": 90,
+      "y": 90
     }
   }
 }

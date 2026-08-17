@@ -4,13 +4,17 @@ import com.branciho.citiesinlife.blockentity.AlarmBlockEntity;
 import com.branciho.citiesinlife.registry.ModBlockEntities;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseEntityBlock;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Mirror;
+import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityTicker;
@@ -18,11 +22,16 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.EnumMap;
+import java.util.Map;
 
 /**
  * A siren for a power plant.
@@ -74,13 +83,37 @@ public class AlarmBlock extends BaseEntityBlock {
     /** Flipped a few times a second while sounding. This is the flash. */
     public static final BooleanProperty FLASH = BooleanProperty.create("flash");
 
-    private static final VoxelShape SHAPE = Block.box(3.0D, 3.0D, 3.0D, 13.0D, 13.0D, 13.0D);
+    /**
+     * Which way the lamp points, meaning the face it was bolted to is the opposite one.
+     *
+     * <p>It used to be a cube floating in the middle of its block, which read as an object nobody had
+     * finished installing. A siren is screwed to something.
+     */
+    public static final DirectionProperty FACING = BlockStateProperties.FACING;
+
+    /**
+     * A base plate flush against the mounting face, with the lamp standing on it.
+     *
+     * <p>Measured so the plate actually touches the block it is fixed to — that contact is the whole
+     * difference between a fitting and a floating box.
+     */
+    private static final Map<Direction, VoxelShape> SHAPES = new EnumMap<>(Direction.class);
+
+    static {
+        SHAPES.put(Direction.UP, Block.box(2.0D, 0.0D, 2.0D, 14.0D, 13.0D, 14.0D));
+        SHAPES.put(Direction.DOWN, Block.box(2.0D, 3.0D, 2.0D, 14.0D, 16.0D, 14.0D));
+        SHAPES.put(Direction.NORTH, Block.box(2.0D, 2.0D, 0.0D, 14.0D, 14.0D, 13.0D));
+        SHAPES.put(Direction.SOUTH, Block.box(2.0D, 2.0D, 3.0D, 14.0D, 14.0D, 16.0D));
+        SHAPES.put(Direction.WEST, Block.box(0.0D, 2.0D, 2.0D, 13.0D, 14.0D, 14.0D));
+        SHAPES.put(Direction.EAST, Block.box(3.0D, 2.0D, 2.0D, 16.0D, 14.0D, 14.0D));
+    }
 
     public AlarmBlock(Properties properties) {
         super(properties);
         registerDefaultState(stateDefinition.any()
                 .setValue(TROUBLE, Trouble.NONE)
-                .setValue(FLASH, false));
+                .setValue(FLASH, false)
+                .setValue(FACING, Direction.UP));
     }
 
     @Override
@@ -90,7 +123,29 @@ public class AlarmBlock extends BaseEntityBlock {
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(TROUBLE, FLASH);
+        builder.add(TROUBLE, FLASH, FACING);
+    }
+
+    /**
+     * The lamp points away from whatever you stuck it to.
+     *
+     * <p>Set it on the ground and it stands up; under a ceiling it hangs down; on a wall it sticks
+     * out sideways. Which is simply what happens when the base plate goes against the face you
+     * clicked.
+     */
+    @Override
+    public @Nullable BlockState getStateForPlacement(BlockPlaceContext context) {
+        return defaultBlockState().setValue(FACING, context.getClickedFace());
+    }
+
+    @Override
+    protected BlockState rotate(BlockState state, Rotation rotation) {
+        return state.setValue(FACING, rotation.rotate(state.getValue(FACING)));
+    }
+
+    @Override
+    protected BlockState mirror(BlockState state, Mirror mirror) {
+        return state.rotate(mirror.getRotation(state.getValue(FACING)));
     }
 
     @Override
@@ -100,7 +155,7 @@ public class AlarmBlock extends BaseEntityBlock {
 
     @Override
     protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
-        return SHAPE;
+        return SHAPES.get(state.getValue(FACING));
     }
 
     /**

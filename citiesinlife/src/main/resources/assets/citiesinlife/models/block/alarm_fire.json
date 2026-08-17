@@ -1,12 +1,84 @@
 {
   "parent": "minecraft:block/block",
   "textures": {
-    "particle": "citiesinlife:block/alarm",
-    "all": "citiesinlife:block/alarm_fire"
+    "particle": "citiesinlife:block/alarm_base",
+    "base": "citiesinlife:block/alarm_base",
+    "side": "citiesinlife:block/alarm_fire",
+    "top": "citiesinlife:block/alarm_fire_top"
   },
   "elements": [
     {
-      "name": "siren",
+      "name": "plate",
+      "from": [
+        2,
+        0,
+        2
+      ],
+      "to": [
+        14,
+        3,
+        14
+      ],
+      "faces": {
+        "north": {
+          "texture": "#base",
+          "uv": [
+            2,
+            13,
+            14,
+            16
+          ]
+        },
+        "south": {
+          "texture": "#base",
+          "uv": [
+            2,
+            13,
+            14,
+            16
+          ]
+        },
+        "east": {
+          "texture": "#base",
+          "uv": [
+            2,
+            13,
+            14,
+            16
+          ]
+        },
+        "west": {
+          "texture": "#base",
+          "uv": [
+            2,
+            13,
+            14,
+            16
+          ]
+        },
+        "up": {
+          "texture": "#base",
+          "uv": [
+            2,
+            2,
+            14,
+            14
+          ]
+        },
+        "down": {
+          "texture": "#base",
+          "uv": [
+            2,
+            2,
+            14,
+            14
+          ],
+          "cullface": "down"
+        }
+      }
+    },
+    {
+      "name": "lamp",
       "from": [
         3,
         3,
@@ -19,22 +91,58 @@
       ],
       "faces": {
         "north": {
-          "texture": "#all"
+          "texture": "#side",
+          "uv": [
+            3,
+            3,
+            13,
+            13
+          ]
         },
         "south": {
-          "texture": "#all"
+          "texture": "#side",
+          "uv": [
+            3,
+            3,
+            13,
+            13
+          ]
         },
         "east": {
-          "texture": "#all"
+          "texture": "#side",
+          "uv": [
+            3,
+            3,
+            13,
+            13
+          ]
         },
         "west": {
-          "texture": "#all"
+          "texture": "#side",
+          "uv": [
+            3,
+            3,
+            13,
+            13
+          ]
         },
         "up": {
-          "texture": "#all"
+          "texture": "#top",
+          "uv": [
+            3,
+            3,
+            13,
+            13
+          ]
         },
         "down": {
-          "texture": "#all"
+          "texture": "#top",
+          "uv": [
+            3,
+            3,
+            13,
+            13
+          ]
         }
       }
     }
