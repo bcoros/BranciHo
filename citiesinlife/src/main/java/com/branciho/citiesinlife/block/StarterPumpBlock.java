@@ -22,7 +22,7 @@ import net.minecraft.world.level.material.Fluids;
 public class StarterPumpBlock extends AbstractPumpBlock {
 
     /** Units a working intake lifts per simulation step. */
-    public static final int OUTPUT = 80;
+    public static final int OUTPUT = 40;
 
     public StarterPumpBlock(Properties properties) {
         super(properties);

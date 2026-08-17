@@ -48,9 +48,26 @@ public final class CitySimulation {
     /** Upkeep per claimed chunk, so unlimited land grabbing has a running cost. */
     private static final long UPKEEP_PER_CHUNK = 1L;
 
-    /** Residents served by one unit of power, and jobs served by one unit. */
-    private static final int RESIDENTS_PER_POWER = 28;
-    private static final int JOBS_PER_POWER = 14;
+    /**
+     * What a city draws before a single resident moves in.
+     *
+     * <p>Street lighting and the city hall itself. Without a floor, a village of three houses asks
+     * for two units of power and one solar panel covers it for the rest of the game - the utility
+     * systems simply do not exist until the city is large, which is the wrong way round for the
+     * point at which a player is learning them.
+     */
+    private static final int BASE_POWER = 4;
+    private static final int BASE_WATER = 3;
+
+    /**
+     * Residents served by one unit of power, and jobs served by one unit.
+     *
+     * <p>Roughly twice what they were before this pass. The shape was never the problem - power has
+     * always been charged against how much building there is, measured block by block - the numbers
+     * were simply too small to ever require a second generator.
+     */
+    private static final int RESIDENTS_PER_POWER = 20;
+    private static final int JOBS_PER_POWER = 10;
 
     /**
      * Residents and jobs served by one unit of water.
@@ -65,8 +82,8 @@ public final class CitySimulation {
      * <p>Workplaces drink too, so jobs count as well — less per head, because a shop uses less water
      * per person than a home does.
      */
-    private static final int RESIDENTS_PER_WATER = 20;
-    private static final int JOBS_PER_WATER = 40;
+    private static final int RESIDENTS_PER_WATER = 25;
+    private static final int JOBS_PER_WATER = 50;
 
     /**
      * How much of normal growth a city manages with no water at all.
@@ -189,12 +206,14 @@ public final class CitySimulation {
     }
 
     private static int demandFor(int housing, int jobs) {
-        return (int) Math.ceil(housing / (double) RESIDENTS_PER_POWER)
+        return BASE_POWER
+                + (int) Math.ceil(housing / (double) RESIDENTS_PER_POWER)
                 + (int) Math.ceil(jobs / (double) JOBS_PER_POWER);
     }
 
     private static int waterFor(int housing, int jobs) {
-        return (int) Math.ceil(housing / (double) RESIDENTS_PER_WATER)
+        return BASE_WATER
+                + (int) Math.ceil(housing / (double) RESIDENTS_PER_WATER)
                 + (int) Math.ceil(jobs / (double) JOBS_PER_WATER);
     }
 

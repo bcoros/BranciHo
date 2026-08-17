@@ -8,6 +8,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
@@ -104,10 +105,19 @@ public final class MultiplayerEvents {
      */
     @SubscribeEvent
     public static void onIncomingDamage(LivingIncomingDamageEvent event) {
-        if (event.getSource().getEntity() instanceof Player player
-                && protectedCitizen(player, event.getEntity())) {
+        // getEntity() is whoever is responsible, which for an arrow is the archer rather than the
+        // arrow; getDirectEntity() catches the case where a player is the thing that actually hit.
+        Player blamed = responsibleFor(event.getSource());
+        if (blamed != null && protectedCitizen(blamed, event.getEntity())) {
             event.setCanceled(true);
         }
+    }
+
+    private static @Nullable Player responsibleFor(DamageSource source) {
+        if (source.getEntity() instanceof Player player) {
+            return player;
+        }
+        return source.getDirectEntity() instanceof Player direct ? direct : null;
     }
 
     /**

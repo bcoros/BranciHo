@@ -1,5 +1,6 @@
 package com.branciho.citiesinlife.city;
 
+import com.branciho.citiesinlife.config.CitiesInLifeConfig;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
@@ -49,8 +50,12 @@ public final class Diplomacy {
      * Whether this player may place, break or otherwise interfere at this position.
      *
      * <p>Unclaimed ground is everybody's, your own city is yours, and somebody else's needs either
-     * their permission or a war. Operators are exempt so a server admin can still fix a build without
-     * founding a city and declaring war on their own players.
+     * their permission or a war.
+     *
+     * <p>Operators are <em>not</em> exempt unless the server has been configured to exempt them. They
+     * were, unconditionally, and it quietly broke the entire feature in the only setting that matters
+     * for it: the person hosting a world is an operator, so they could raze a friend's city while the
+     * friend could not lay a block in theirs.
      */
     public static boolean mayInterfere(MinecraftServer server, ServerPlayer player, BlockPos pos) {
         return mayInterfereWith(server, player, owner(server, player.level().dimension(), pos));
@@ -58,7 +63,10 @@ public final class Diplomacy {
 
     /** The same question when the owning city is already in hand — citizens carry theirs. */
     public static boolean mayInterfereWith(MinecraftServer server, ServerPlayer player, @Nullable City owner) {
-        if (owner == null || owner.owner().equals(player.getUUID()) || player.hasPermissions(2)) {
+        if (owner == null || owner.owner().equals(player.getUUID())) {
+            return true;
+        }
+        if (CitiesInLifeConfig.opsIgnoreBorders() && player.hasPermissions(2)) {
             return true;
         }
         return stance(owner, visitorCity(server, player, owner.dimension())).permitsInterference();

@@ -43,10 +43,14 @@ public final class City {
      * in the same way its treasury is, and every question ever asked of these — may this person
      * build here, may they hit that citizen — starts from a city and not from a pair.
      *
-     * <p>Both are stored one way round, and mean different things for it. A grant is simply the
-     * grantor's to give. A war entry is one city saying it is hostile, and two cities count as at
-     * war while <em>either</em> holds one — so a declaration cannot be shrugged off by the city on
-     * the receiving end, and standing down is something you can only do for yourself.
+     * <p>A grant is one way: it is the grantor's to give and only they can take it back. A war is
+     * not — two cities count as at war while either of them holds an entry, and ending one clears
+     * both sides at once.
+     *
+     * <p>Peace used to require both sides to stand down independently, which was tidier on paper and
+     * confusing to actually play: a player who was attacked pressed the only button they had, nothing
+     * happened, and the war looked stuck. The declaration already costs the aggressor real money;
+     * that is the thing that stops war being spammed, not making peace hard to reach.
      */
     private final Set<UUID> granted = new HashSet<>();
     private final Set<UUID> wars = new HashSet<>();
@@ -233,16 +237,14 @@ public final class City {
     /**
      * Declare yourself hostile to another city.
      *
-     * <p>Stored one way round even though a war is felt by both sides, and that is the point: two
-     * cities are at war while <em>either</em> of them is hostile, so standing down is something you
-     * can only do for yourself. If peace were one click by either party, the city that was attacked
-     * could end the war unilaterally and a declaration would mean nothing.
+     * <p>Stored one way round; two cities are at war while either of them is hostile. Call
+     * {@link #makePeace} on <em>both</em> to end it, which is what the server does.
      */
     public boolean declareWar(UUID otherCityId) {
         return wars.add(otherCityId);
     }
 
-    /** Stand down. The war only actually ends once the other side has done the same. */
+    /** Drop this city's own hostility. Ending a war means doing this on both sides. */
     public boolean makePeace(UUID otherCityId) {
         return wars.remove(otherCityId);
     }

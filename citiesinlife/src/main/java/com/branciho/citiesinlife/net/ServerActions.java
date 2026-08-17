@@ -780,21 +780,15 @@ public final class ServerActions {
                 yield false;
             }
             case DiplomacyPayload.ACTION_MAKE_PEACE -> {
-                if (!own.hostileTo(target.id())) {
-                    // The city that was attacked has nothing to stand down from. Saying so is the
-                    // difference between a button that does nothing and a button that explains.
+                // Ending a war clears both sides. Requiring each of them to stand down separately
+                // read as a broken button to whichever city was attacked: it had nothing of its own
+                // to withdraw, so its only option did nothing at all. The cost of declaring is what
+                // keeps war from being spammed; making peace hard to reach never did.
+                boolean ended = own.makePeace(target.id()) | target.makePeace(own.id());
+                if (ended) {
+                    tell(server, target, "message.citiesinlife.peace_agreed", own.name());
                     player.sendSystemMessage(Component.translatable(
-                            "message.citiesinlife.not_your_war", target.name()));
-                    yield false;
-                }
-                if (own.makePeace(target.id())) {
-                    boolean over = !target.hostileTo(own.id());
-                    tell(server, target, over
-                            ? "message.citiesinlife.peace_agreed"
-                            : "message.citiesinlife.peace_offered", own.name());
-                    player.sendSystemMessage(Component.translatable(over
-                            ? "message.citiesinlife.peace_agreed"
-                            : "message.citiesinlife.stood_down", target.name()));
+                            "message.citiesinlife.peace_agreed", target.name()));
                     yield true;
                 }
                 yield false;
