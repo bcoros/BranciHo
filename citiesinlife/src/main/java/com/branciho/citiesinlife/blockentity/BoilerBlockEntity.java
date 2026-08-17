@@ -1,6 +1,6 @@
 package com.branciho.citiesinlife.blockentity;
 
-import com.branciho.citiesinlife.block.ChimneyBlock;
+import com.branciho.citiesinlife.block.BoilerBlock;
 import com.branciho.citiesinlife.block.TurbineBlock;
 import com.branciho.citiesinlife.plant.PlantSurvey;
 import com.branciho.citiesinlife.menu.BoilerMenu;
