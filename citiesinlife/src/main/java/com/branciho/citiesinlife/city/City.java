@@ -317,7 +317,7 @@ public final class City {
             return new Soldier(id, name, training, item, trainingDoneAt);
         }
 
-        public Soldier training(long finishesAt) {
+        public Soldier startingCourse(long finishesAt) {
             return new Soldier(id, name, training, weapon, finishesAt);
         }
 

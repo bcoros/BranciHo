@@ -7,6 +7,7 @@ import com.branciho.citiesinlife.city.Relation;
 import com.branciho.citiesinlife.entity.ServiceEntity;
 import com.branciho.citiesinlife.service.ServiceType;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.level.ChunkPos;
@@ -199,8 +200,7 @@ public class SoldierGoal extends Goal {
             return;
         }
         if (!level.getBlockState(spot).canBeReplaced()
-                || !level.getBlockState(spot.below()).isFaceSturdy(level, spot.below(),
-                        net.minecraft.core.Direction.UP)) {
+                || !level.getBlockState(spot.below()).isFaceSturdy(level, spot.below(), Direction.UP)) {
             return;
         }
         level.setBlockAndUpdate(spot, Blocks.TNT.defaultBlockState());

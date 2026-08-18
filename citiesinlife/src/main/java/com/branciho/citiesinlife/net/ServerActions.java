@@ -307,6 +307,12 @@ public final class ServerActions {
             case BUSINESS -> "Office " + index;
             case FACTORY -> "Factory " + index;
             case POWER_PLANT -> "Power Plant " + index;
+            case POLICE_STATION -> "Police Station " + index;
+            case FIRE_STATION -> "Fire Station " + index;
+            case HOSPITAL -> "Hospital " + index;
+            case PARK -> "Park " + index;
+            case GARBAGE_DEPOT -> "Depot " + index;
+            case MILITARY_BASE -> "Barracks " + index;
         };
     }
 
@@ -1096,7 +1102,7 @@ public final class ServerActions {
                     Component.translatable("message.citiesinlife.cannot_afford", City.TRAIN_COST));
             return;
         }
-        city.replace(soldier.training(player.level().getGameTime() + City.TRAIN_TICKS));
+        city.replace(soldier.startingCourse(player.level().getGameTime() + City.TRAIN_TICKS));
         data.setDirty();
         player.sendSystemMessage(
                 Component.translatable("message.citiesinlife.training_started", soldier.name()));

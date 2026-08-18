@@ -1,6 +1,7 @@
 package com.branciho.citiesinlife.entity.ai;
 
 import com.branciho.citiesinlife.city.City;
+import com.branciho.citiesinlife.city.CityData;
 import com.branciho.citiesinlife.city.Diplomacy;
 import com.branciho.citiesinlife.city.Relation;
 import com.branciho.citiesinlife.entity.CitizenEntity;
@@ -84,8 +85,7 @@ public class SoldierTargetGoal extends Goal {
             theirs = service.city();
         } else if (other instanceof CitizenEntity citizen && citizen.cityId() != null
                 && soldier.level().getServer() != null) {
-            theirs = com.branciho.citiesinlife.city.CityData
-                    .get(soldier.level().getServer()).city(citizen.cityId());
+            theirs = CityData.get(soldier.level().getServer()).city(citizen.cityId());
         }
         return theirs != null && !theirs.id().equals(mine.id())
                 && Diplomacy.stance(theirs, mine) == Relation.WAR;
