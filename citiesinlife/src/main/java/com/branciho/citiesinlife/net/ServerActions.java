@@ -13,15 +13,21 @@ import com.branciho.citiesinlife.net.payload.ForeignLandPayload;
 import com.branciho.citiesinlife.net.payload.LinkPowerPayload;
 import com.branciho.citiesinlife.net.payload.LinkOutletPayload;
 import com.branciho.citiesinlife.net.payload.LinkWaterPayload;
+import com.branciho.citiesinlife.net.payload.ArmySyncPayload;
 import com.branciho.citiesinlife.net.payload.MarkPathPayload;
+import com.branciho.citiesinlife.net.payload.MilitaryActionPayload;
 import com.branciho.citiesinlife.net.payload.NeighbourCitiesPayload;
 import com.branciho.citiesinlife.net.payload.PathSyncPayload;
 import com.branciho.citiesinlife.net.payload.PowerLinesPayload;
 import com.branciho.citiesinlife.net.payload.RegisterStructurePayload;
+import com.branciho.citiesinlife.net.payload.SeizeStructurePayload;
 import com.branciho.citiesinlife.net.payload.StructureSyncPayload;
 import com.branciho.citiesinlife.net.payload.WaterLinesPayload;
 import com.branciho.citiesinlife.block.EndPipeBlock;
 import com.branciho.citiesinlife.blockentity.EndPipeBlockEntity;
+import com.branciho.citiesinlife.blockentity.ServiceSpawnerBlockEntity;
+import com.branciho.citiesinlife.entity.ServiceEntity;
+import com.branciho.citiesinlife.registry.ModEntities;
 import com.branciho.citiesinlife.path.PathNetwork;
 import com.branciho.citiesinlife.plant.PlantSurvey;
 import com.branciho.citiesinlife.power.PowerBlock;
@@ -36,12 +42,18 @@ import com.branciho.citiesinlife.water.WaterBlock;
 import com.branciho.citiesinlife.water.WaterGrid;
 import com.branciho.citiesinlife.water.WaterRole;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.players.GameProfileCache;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.Container;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
@@ -829,6 +841,301 @@ public final class ServerActions {
         player.displayClientMessage(Component.translatable(enabled
                 ? "hud.citiesinlife.creative_money_on"
                 : "hud.citiesinlife.creative_money_off"), true);
+    }
+
+    // ---------------------------------------------------------------- conquest
+
+    /**
+     * Take somebody else's building.
+     *
+     * <p>The only test is whether the chunk it stands in belongs to the taker, and that is a
+     * stronger rule than it sounds: a chunk with a foreign building on it cannot be bought, so the
+     * only way to be standing in one you own with somebody else's building in it is to have taken it
+     * with soldiers.
+     *
+     * <p>A city hall is never on the table. Taking one would delete a player's entire city from
+     * under them with a single click, and there is no version of that which is not a disaster.
+     */
+    public static void seizeStructure(ServerPlayer player, SeizeStructurePayload payload) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        ServerLevel level = player.serverLevel();
+        CityData data = CityData.get(server);
+
+        BlockPos a = payload.pointA();
+        BlockPos b = payload.pointB();
+        if (tooFar(player, a) || tooFar(player, b)) {
+            reject(player, "too_far");
+            return;
+        }
+        City city = data.cityOf(player.getUUID(), level.dimension());
+        if (city == null) {
+            reject(player, "no_city");
+            return;
+        }
+
+        BlockPos min = new BlockPos(
+                Math.min(a.getX(), b.getX()), Math.min(a.getY(), b.getY()), Math.min(a.getZ(), b.getZ()));
+        BlockPos max = new BlockPos(
+                Math.max(a.getX(), b.getX()), Math.max(a.getY(), b.getY()), Math.max(a.getZ(), b.getZ()));
+
+        Structure target = foreignStructureIn(data, level, city, min, max);
+        if (target == null) {
+            reject(player, "nothing_to_seize");
+            return;
+        }
+        if (target.type() == StructureType.CITY_CORE) {
+            reject(player, "cannot_seize_hall");
+            return;
+        }
+        if (!conquered(data, level, city, target)) {
+            reject(player, "not_conquered");
+            return;
+        }
+
+        StructureType type = payload.typeId().isEmpty()
+                ? target.type()
+                : StructureType.byId(payload.typeId(), null);
+        if (type == null || type == StructureType.CITY_CORE) {
+            reject(player, "unknown_type");
+            return;
+        }
+
+        City loser = data.city(target.cityId());
+        data.removeStructure(target.id());
+
+        MeasureMode mode = target.measureMode();
+        StructureScanner.Measurement measured =
+                StructureScanner.measure(level, target.min(), target.max(), mode);
+        String name = defaultName(type, data.structuresOf(city).size() + 1);
+        Structure taken = Structure.create(
+                city.id(), name, type, level.dimension(), target.min(), target.max());
+        taken.setMeasurement(mode, measured.floors(), measured.usableCells());
+        data.addStructure(city, taken);
+
+        CitySimulation.refresh(data, city);
+        if (loser != null) {
+            CitySimulation.refresh(data, loser);
+            tell(server, loser, "message.citiesinlife.building_lost", city.name());
+        }
+
+        player.sendSystemMessage(Component.translatable("message.citiesinlife.seized",
+                target.name(), type.displayName()));
+        sync(player);
+    }
+
+    /** A registered building inside this box that belongs to somebody else. */
+    private static @Nullable Structure foreignStructureIn(CityData data, ServerLevel level, City city,
+                                                          BlockPos min, BlockPos max) {
+        for (int x = min.getX() >> 4; x <= max.getX() >> 4; x++) {
+            for (int z = min.getZ() >> 4; z <= max.getZ() >> 4; z++) {
+                for (Structure structure : data.structuresInChunk(level.dimension(), ChunkPos.asLong(x, z))) {
+                    if (!structure.cityId().equals(city.id()) && structure.intersects(min, max)) {
+                        return structure;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Whether this city holds the ground the building stands on.
+     *
+     * <p>Judged by the middle of the building rather than by every chunk it touches. A tower that
+     * straddles a boundary would otherwise be untakeable until both sides of the street had fallen,
+     * which reads as the wand being broken rather than as a rule.
+     */
+    private static boolean conquered(CityData data, ServerLevel level, City city, Structure target) {
+        int x = (target.min().getX() + target.max().getX()) / 2;
+        int z = (target.min().getZ() + target.max().getZ()) / 2;
+        City here = data.cityAtChunk(level.dimension(), ChunkPos.asLong(x >> 4, z >> 4));
+        return here != null && here.id().equals(city.id());
+    }
+
+    // ---------------------------------------------------------------- military
+
+    /**
+     * Names for people the player has just paid for.
+     *
+     * <p>A list rather than "Soldier 1", "Soldier 2", because the Military Tool is the only screen
+     * in the mod where the player makes decisions about individuals — firing one, arming one,
+     * sending one on a course — and a numbered list makes every one of those decisions feel like
+     * moving a counter.
+     */
+    private static final String[] SOLDIER_NAMES = {
+        "Adams", "Bailey", "Cortez", "Dunn", "Eriksen", "Faro", "Gill", "Hoxha",
+        "Ivarsen", "Jelinek", "Kovac", "Lang", "Mireles", "Novak", "Osei", "Petrov",
+        "Quinn", "Rao", "Sokol", "Tamm", "Ustinov", "Varga", "Whyte", "Zeman"
+    };
+
+    /** Push the army roll to whoever is looking at it. */
+    public static void syncArmy(ServerPlayer player) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        City city = CityData.get(server).cityOf(player.getUUID(), player.level().dimension());
+        if (city == null) {
+            CitiesInLifeNetwork.sendTo(player, ArmySyncPayload.none());
+            return;
+        }
+
+        long now = player.level().getGameTime();
+        List<ArmySyncPayload.Entry> roll = new ArrayList<>();
+        for (City.Soldier soldier : city.army()) {
+            int secondsLeft = soldier.inTraining()
+                    ? (int) Math.max(0L, (soldier.trainingDoneAt() - now) / 20L)
+                    : 0;
+            roll.add(new ArmySyncPayload.Entry(soldier.id(), soldier.name(), soldier.training(),
+                    weaponName(soldier), secondsLeft));
+        }
+
+        CitiesInLifeNetwork.sendTo(player, new ArmySyncPayload(
+                hasBase(server, city, player.level().dimension()),
+                city.treasury(), City.HIRE_COST, City.TRAIN_COST, City.MAX_ARMY, roll));
+    }
+
+    /** What to print next to a soldier's name. Their own hands, if they have been given nothing. */
+    private static String weaponName(City.Soldier soldier) {
+        ItemStack held = ServiceSpawnerBlockEntity.weaponOf(soldier);
+        return held.isEmpty() ? "" : held.getHoverName().getString();
+    }
+
+    private static boolean hasBase(MinecraftServer server, City city, ResourceKey<Level> dimension) {
+        for (Structure structure : CityData.get(server).structuresOf(city)) {
+            if (structure.type() == StructureType.MILITARY_BASE
+                    && structure.dimension().equals(dimension)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Hire, dismiss, arm or train.
+     *
+     * <p>Every one of these re-checks the city, the base and the money server-side. The screen is a
+     * convenience; it is not the authority on whether the player can afford a soldier.
+     */
+    public static void militaryAction(ServerPlayer player, MilitaryActionPayload payload) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        CityData data = CityData.get(server);
+        ResourceKey<Level> dimension = player.level().dimension();
+        City city = data.cityOf(player.getUUID(), dimension);
+        if (city == null) {
+            reject(player, "no_city");
+            return;
+        }
+        if (!hasBase(server, city, dimension)) {
+            reject(player, "no_military_base");
+            return;
+        }
+
+        switch (payload.action()) {
+            case HIRE -> hire(player, data, city);
+            case DISMISS -> dismiss(player, data, city, payload.soldier());
+            case TRAIN -> train(player, data, city, payload.soldier());
+            case ARM -> arm(player, data, city, payload.soldier());
+        }
+        syncArmy(player);
+        sync(player);
+    }
+
+    private static void hire(ServerPlayer player, CityData data, City city) {
+        if (city.army().size() >= City.MAX_ARMY) {
+            reject(player, "army_full");
+            return;
+        }
+        if (!city.withdraw(City.HIRE_COST)) {
+            player.sendSystemMessage(
+                    Component.translatable("message.citiesinlife.cannot_afford", City.HIRE_COST));
+            return;
+        }
+        String name = SOLDIER_NAMES[player.level().random.nextInt(SOLDIER_NAMES.length)];
+        city.enlist(new City.Soldier(UUID.randomUUID(), name, 0, "", 0L));
+        data.setDirty();
+        player.sendSystemMessage(Component.translatable("message.citiesinlife.hired", name));
+    }
+
+    private static void dismiss(ServerPlayer player, CityData data, City city, UUID id) {
+        City.Soldier soldier = city.soldier(id);
+        if (soldier == null) {
+            return;
+        }
+        city.discharge(id);
+        data.setDirty();
+        // The body goes with the record. The barracks would sweep it up on its next pass anyway,
+        // but a soldier who keeps standing there after being fired reads as the button not working.
+        for (ServiceEntity body : soldiersOf(player, id)) {
+            body.discard();
+        }
+        player.sendSystemMessage(Component.translatable("message.citiesinlife.dismissed", soldier.name()));
+    }
+
+    private static void train(ServerPlayer player, CityData data, City city, UUID id) {
+        City.Soldier soldier = city.soldier(id);
+        if (soldier == null) {
+            return;
+        }
+        if (soldier.inTraining()) {
+            reject(player, "already_training");
+            return;
+        }
+        if (soldier.training() >= ServiceEntity.MAX_TRAINING) {
+            reject(player, "fully_trained");
+            return;
+        }
+        if (!city.withdraw(City.TRAIN_COST)) {
+            player.sendSystemMessage(
+                    Component.translatable("message.citiesinlife.cannot_afford", City.TRAIN_COST));
+            return;
+        }
+        city.replace(soldier.training(player.level().getGameTime() + City.TRAIN_TICKS));
+        data.setDirty();
+        player.sendSystemMessage(
+                Component.translatable("message.citiesinlife.training_started", soldier.name()));
+    }
+
+    /**
+     * Hand a soldier whatever the player is holding in their off hand.
+     *
+     * <p>The off hand rather than a slot in the screen, because the whole point of this is that the
+     * weapon might come from a mod this build has never heard of — anything that can be held can be
+     * handed over, and no inventory widget has to know what it is.
+     */
+    private static void arm(ServerPlayer player, CityData data, City city, UUID id) {
+        City.Soldier soldier = city.soldier(id);
+        if (soldier == null) {
+            return;
+        }
+        ItemStack offering = player.getOffhandItem();
+        if (offering.isEmpty()) {
+            reject(player, "nothing_to_give");
+            return;
+        }
+        ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(offering.getItem());
+        city.replace(soldier.withWeapon(itemId.toString()));
+        data.setDirty();
+
+        ItemStack given = offering.split(1);
+        for (ServiceEntity body : soldiersOf(player, id)) {
+            body.setItemSlot(EquipmentSlot.MAINHAND, given.copy());
+            body.setDropChance(EquipmentSlot.MAINHAND, 0.0F);
+        }
+        player.sendSystemMessage(Component.translatable("message.citiesinlife.armed",
+                soldier.name(), given.getHoverName()));
+    }
+
+    /** Every body currently standing about that belongs to one entry on the roll. */
+    private static List<ServiceEntity> soldiersOf(ServerPlayer player, UUID soldierId) {
+        return new ArrayList<>(player.serverLevel().getEntities(ModEntities.SERVICE.get(),
+                entity -> entity.isAlive() && soldierId.equals(entity.soldierId())));
     }
 
     /** Forget a player who has left, so this map does not grow for the life of the server. */

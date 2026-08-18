@@ -3,6 +3,7 @@ package com.branciho.citiesinlife.sim;
 import com.branciho.citiesinlife.city.City;
 import com.branciho.citiesinlife.city.CityData;
 import com.branciho.citiesinlife.entity.CitizenEntity;
+import com.branciho.citiesinlife.entity.ServiceEntity;
 import com.branciho.citiesinlife.registry.ModEntities;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
@@ -60,6 +61,38 @@ public final class ServiceDirector {
                 continue;
             }
             rollForTrouble(server, level, city);
+            finishCourses(server, data, level, city);
+        }
+    }
+
+    /**
+     * Let anybody who has finished a course out of it.
+     *
+     * <p>Training is stored as the game time it ends rather than as a countdown, so it keeps running
+     * while the world is shut and cannot be dodged by logging out. The soldier already walking about
+     * is told as well, since their training is what decides how fast they take ground.
+     */
+    private static void finishCourses(MinecraftServer server, CityData data, ServerLevel level,
+                                      City city) {
+        long now = level.getGameTime();
+        for (City.Soldier soldier : List.copyOf(city.army())) {
+            if (!soldier.inTraining() || now < soldier.trainingDoneAt()) {
+                continue;
+            }
+            int trained = Math.min(ServiceEntity.MAX_TRAINING, soldier.training() + 1);
+            city.replace(soldier.withTraining(trained));
+            data.setDirty();
+
+            for (ServiceEntity body : level.getEntities(ModEntities.SERVICE.get(),
+                    entity -> entity.isAlive() && soldier.id().equals(entity.soldierId()))) {
+                body.setTraining(trained);
+            }
+
+            ServerPlayer owner = server.getPlayerList().getPlayer(city.owner());
+            if (owner != null) {
+                owner.sendSystemMessage(Component.translatable(
+                        "message.citiesinlife.training_done", soldier.name(), trained));
+            }
         }
     }
 

@@ -109,9 +109,14 @@ public final class SelectionRenderer {
         // opposite consequence, so it must not look the same.
         Minecraft minecraft = Minecraft.getInstance();
         boolean pathTool = minecraft.player != null && ClientEvents.holdingPathTool(minecraft.player);
+        boolean warWand = minecraft.player != null && ClientEvents.holdingWarWand(minecraft.player);
 
         float[] rgb;
-        if (pathTool) {
+        if (warWand) {
+            // Red, and not the structure-mode red: this box takes rather than deletes, and the two
+            // are close enough in consequence that they should not be identical on screen.
+            rgb = new float[]{1.00F, 0.42F, 0.18F};
+        } else if (pathTool) {
             // The same amber the marked ground is drawn in, so it is obvious what the box will become.
             rgb = new float[]{1.00F, 0.82F, 0.32F};
         } else if (StructureMode.active()) {

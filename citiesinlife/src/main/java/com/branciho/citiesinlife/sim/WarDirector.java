@@ -62,7 +62,7 @@ public final class WarDirector {
     }
 
     private static void pressLevel(MinecraftServer server, CityData data, ServerLevel level) {
-        List<ServiceEntity> soldiers = level.getEntities(ModEntities.SERVICE.get(),
+        List<? extends ServiceEntity> soldiers = level.getEntities(ModEntities.SERVICE.get(),
                 entity -> entity.isAlive() && entity.role() == ServiceType.MILITARY);
         if (soldiers.isEmpty()) {
             return;

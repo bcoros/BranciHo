@@ -1,6 +1,7 @@
 package com.branciho.citiesinlife.net;
 
 import com.branciho.citiesinlife.CitiesInLife;
+import com.branciho.citiesinlife.net.payload.ArmySyncPayload;
 import com.branciho.citiesinlife.net.payload.ClaimChunkPayload;
 import com.branciho.citiesinlife.net.payload.CitySyncPayload;
 import com.branciho.citiesinlife.net.payload.ConfirmDeleteCityPayload;
@@ -11,10 +12,13 @@ import com.branciho.citiesinlife.net.payload.LinkPowerPayload;
 import com.branciho.citiesinlife.net.payload.LinkOutletPayload;
 import com.branciho.citiesinlife.net.payload.LinkWaterPayload;
 import com.branciho.citiesinlife.net.payload.MarkPathPayload;
+import com.branciho.citiesinlife.net.payload.MilitaryActionPayload;
 import com.branciho.citiesinlife.net.payload.NeighbourCitiesPayload;
 import com.branciho.citiesinlife.net.payload.PathSyncPayload;
 import com.branciho.citiesinlife.net.payload.PowerLinesPayload;
 import com.branciho.citiesinlife.net.payload.RegisterStructurePayload;
+import com.branciho.citiesinlife.net.payload.RequestArmyPayload;
+import com.branciho.citiesinlife.net.payload.SeizeStructurePayload;
 import com.branciho.citiesinlife.net.payload.RequestCityPayload;
 import com.branciho.citiesinlife.net.payload.StructureSyncPayload;
 import com.branciho.citiesinlife.net.payload.ToggleCreativeMoneyPayload;
@@ -83,6 +87,18 @@ public final class CitiesInLifeNetwork {
                 (payload, context) -> context.enqueueWork(
                         () -> onServer(context, ServerActions::toggleCreativeMoney)));
 
+        registrar.playToServer(SeizeStructurePayload.TYPE, SeizeStructurePayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(
+                        () -> onServer(context, player -> ServerActions.seizeStructure(player, payload))));
+
+        registrar.playToServer(RequestArmyPayload.TYPE, RequestArmyPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(
+                        () -> onServer(context, ServerActions::syncArmy)));
+
+        registrar.playToServer(MilitaryActionPayload.TYPE, MilitaryActionPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(
+                        () -> onServer(context, player -> ServerActions.militaryAction(player, payload))));
+
         registrar.playToServer(RequestCityPayload.TYPE, RequestCityPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(
                         () -> onServer(context, ServerActions::sync)));
@@ -107,6 +123,9 @@ public final class CitiesInLifeNetwork {
 
         registrar.playToClient(ForeignLandPayload.TYPE, ForeignLandPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(() -> ClientCityCache.accept(payload)));
+
+        registrar.playToClient(ArmySyncPayload.TYPE, ArmySyncPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() -> ClientArmyCache.accept(payload)));
 
         registrar.playToClient(ConfirmDeleteCityPayload.TYPE, ConfirmDeleteCityPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(() -> ClientCityCache.accept(payload)));

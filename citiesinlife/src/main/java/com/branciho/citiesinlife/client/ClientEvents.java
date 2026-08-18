@@ -3,8 +3,10 @@ package com.branciho.citiesinlife.client;
 import com.branciho.citiesinlife.CitiesInLife;
 import com.branciho.citiesinlife.client.screen.CityScreen;
 import com.branciho.citiesinlife.client.screen.ConfirmDeleteCityScreen;
+import com.branciho.citiesinlife.client.screen.MilitaryScreen;
 import com.branciho.citiesinlife.client.screen.NameCityScreen;
 import com.branciho.citiesinlife.net.CitiesInLifeNetwork;
+import com.branciho.citiesinlife.net.ClientArmyCache;
 import com.branciho.citiesinlife.net.ClientCityCache;
 import com.branciho.citiesinlife.net.payload.ConfirmDeleteCityPayload;
 import com.branciho.citiesinlife.net.payload.DeleteAreaPayload;
@@ -13,6 +15,8 @@ import com.branciho.citiesinlife.net.payload.LinkOutletPayload;
 import com.branciho.citiesinlife.net.payload.LinkWaterPayload;
 import com.branciho.citiesinlife.net.payload.MarkPathPayload;
 import com.branciho.citiesinlife.net.payload.RegisterStructurePayload;
+import com.branciho.citiesinlife.net.payload.RequestArmyPayload;
+import com.branciho.citiesinlife.net.payload.SeizeStructurePayload;
 import com.branciho.citiesinlife.net.payload.RequestCityPayload;
 import com.branciho.citiesinlife.net.payload.ToggleCreativeMoneyPayload;
 import com.branciho.citiesinlife.registry.ModItems;
@@ -69,6 +73,32 @@ public final class ClientEvents {
         return player.getMainHandItem().is(ModItems.PATH_TOOL.get());
     }
 
+    /**
+     * The red wand.
+     *
+     * <p>Draws a box exactly as the blue one does — same clicks, same corners, same confirm — and
+     * differs only in what the box means and what colour it is drawn in.
+     */
+    static boolean holdingWarWand(LocalPlayer player) {
+        return player.getMainHandItem().is(ModItems.WAR_PLANNER_WAND.get());
+    }
+
+    private static boolean holdingMilitaryTool(LocalPlayer player) {
+        return player.getMainHandItem().is(ModItems.MILITARY_TOOL.get());
+    }
+
+    /**
+     * Ask for the roll, then open the screen looking at it.
+     *
+     * <p>In that order and without waiting: the screen reads a cache that the reply fills in, and it
+     * rebuilds itself when that happens. Opening only once the packet arrives would put a visible
+     * delay between the click and the window on any server that is not the one in this process.
+     */
+    private static void openMilitary(Minecraft minecraft) {
+        CitiesInLifeNetwork.sendToServer(new RequestArmyPayload());
+        minecraft.setScreen(new MilitaryScreen());
+    }
+
     // ------------------------------------------------------------------ ticks
 
     @SubscribeEvent
@@ -114,15 +144,22 @@ public final class ClientEvents {
         // Type and measurement keys work whether or not a box is being drawn, so the player can set
         // up what they are about to place before placing it.
         boolean holdingWand = holdingWand(player);
+        boolean holdingWarWand = holdingWarWand(player);
 
         while (KeyBindings.TYPE_PREVIOUS.consumeClick()) {
             if (holdingWand) {
                 ClientSelection.cycleType(-1);
+            } else if (holdingWarWand) {
+                ClientWarWand.cycle(-1);
+                player.displayClientMessage(ClientWarWand.describe(), true);
             }
         }
         while (KeyBindings.TYPE_NEXT.consumeClick()) {
             if (holdingWand) {
                 ClientSelection.cycleType(1);
+            } else if (holdingWarWand) {
+                ClientWarWand.cycle(1);
+                player.displayClientMessage(ClientWarWand.describe(), true);
             }
         }
         while (KeyBindings.TOGGLE_MEASURE_MODE.consumeClick()) {
@@ -152,7 +189,10 @@ public final class ClientEvents {
         if (!(event.getEntity() instanceof LocalPlayer player)) {
             return;
         }
-        if (holdingWand(player) || holdingPathTool(player)) {
+        if (holdingMilitaryTool(player)) {
+            openMilitary(Minecraft.getInstance());
+            event.setCanceled(true);
+        } else if (holdingWand(player) || holdingPathTool(player) || holdingWarWand(player)) {
             handlePlannerRightClick(player);
             event.setCanceled(true);
         } else if (holdingLineTool(player)) {
@@ -190,7 +230,9 @@ public final class ClientEvents {
             return;
         }
 
-        if (holdingWand(player) || holdingPathTool(player)) {
+        if (holdingMilitaryTool(player)) {
+            openMilitary(minecraft);
+        } else if (holdingWand(player) || holdingPathTool(player) || holdingWarWand(player)) {
             handlePlannerRightClick(player);
         } else if (holdingLineTool(player) && player.isShiftKeyDown()) {
             ClientPowerTool.clear();
@@ -282,13 +324,16 @@ public final class ClientEvents {
 
         boolean wand = holdingWand(player);
         boolean pathTool = holdingPathTool(player);
-        if (!wand && !pathTool) {
+        boolean warWand = holdingWarWand(player);
+        if (!wand && !pathTool && !warWand) {
             return;
         }
 
         if (ClientSelection.phase() == ClientSelection.Phase.COMPLETE) {
             if (pathTool) {
                 confirmPath(player);
+            } else if (warWand) {
+                confirmSeizure();
             } else {
                 confirmSelection(minecraft, player);
             }
@@ -340,6 +385,22 @@ public final class ClientEvents {
         ClientSelection.cancel();
     }
 
+    /**
+     * Take the building in the box.
+     *
+     * <p>No structure-mode branch and no naming screen: seizing is one thing, and whether it is also
+     * rewritten is already decided by the arrow keys before the box is confirmed.
+     */
+    private static void confirmSeizure() {
+        BlockPos a = ClientSelection.pointA();
+        BlockPos b = ClientSelection.pointB();
+        if (a == null || b == null) {
+            return;
+        }
+        CitiesInLifeNetwork.sendToServer(new SeizeStructurePayload(a, b, ClientWarWand.rewriteId()));
+        ClientSelection.cancel();
+    }
+
     private static void confirmSelection(Minecraft minecraft, LocalPlayer player) {
         BlockPos a = ClientSelection.pointA();
         BlockPos b = ClientSelection.pointB();
@@ -375,7 +436,9 @@ public final class ClientEvents {
         // In single player the JVM outlives the world; without this the next world opens showing the
         // previous one's city and half-drawn selection.
         ClientCityCache.clear();
+        ClientArmyCache.clear();
         ClientSelection.reset();
+        ClientWarWand.reset();
         ClientPowerTool.clear();
         ClientPipeTool.clear();
         StructureMode.deactivate();

@@ -31,6 +31,9 @@ public final class PlannerHud {
     private static final int COLOUR_SET = 0xFF66E576;
     private static final int COLOUR_UNSET = 0xFF6E7B88;
 
+    /** The red wand's own colour, matching the box it draws in the world. */
+    private static final int COLOUR_WAR = 0xFFFF6B2E;
+
     private PlannerHud() {
     }
 
@@ -45,11 +48,46 @@ public final class PlannerHud {
             drawStructureModeBanner(graphics, minecraft);
         }
 
+        if (player.getMainHandItem().is(ModItems.WAR_PLANNER_WAND.get())) {
+            drawWarBanner(graphics, minecraft);
+            return;
+        }
+
         boolean holdingWand = player.getMainHandItem().is(ModItems.PLANNER_WAND.get());
         if (!holdingWand) {
             return;
         }
         drawPlannerPanel(graphics, minecraft);
+    }
+
+    /**
+     * A short banner for the red wand rather than the full planner panel.
+     *
+     * <p>The planner panel exists to answer "how big is this and how many people fit in it". None of
+     * that applies to a building somebody else already built and measured: the only two things worth
+     * knowing are whether the box is drawn and whether it is about to be rewritten.
+     */
+    private static void drawWarBanner(GuiGraphics graphics, Minecraft minecraft) {
+        final int screenWidth = minecraft.getWindow().getGuiScaledWidth();
+        final int screenHeight = minecraft.getWindow().getGuiScaledHeight();
+
+        Component title = Component.translatable("hud.citiesinlife.war_wand_banner");
+        Component mode = ClientWarWand.describe();
+        Component hint = Component.translatable(
+                ClientSelection.phase() == ClientSelection.Phase.COMPLETE
+                        ? "hud.citiesinlife.left_click_seize"
+                        : "hud.citiesinlife.right_click_start");
+
+        int width = Math.max(minecraft.font.width(title),
+                Math.max(minecraft.font.width(mode), minecraft.font.width(hint))) + 16;
+        int left = (screenWidth - width) / 2;
+        int top = screenHeight - 76;
+
+        panel(graphics, left, top, width, 42);
+        graphics.drawCenteredString(minecraft.font, title, screenWidth / 2, top + 6, COLOUR_WAR);
+        graphics.drawCenteredString(minecraft.font, mode, screenWidth / 2, top + 18, COLOUR_TEXT);
+        graphics.drawCenteredString(minecraft.font, hint, screenWidth / 2, top + 30,
+                ClientSelection.phase() == ClientSelection.Phase.COMPLETE ? COLOUR_SET : COLOUR_DIM);
     }
 
     private static void drawPlannerPanel(GuiGraphics graphics, Minecraft minecraft) {
