@@ -59,6 +59,20 @@ public final class KeyBindings {
             GLFW.GLFW_KEY_DOWN,
             CATEGORY);
 
+    /**
+     * Turn the creative treasury off, and on again.
+     *
+     * <p>Shift so it cannot be hit while typing a number into something, and I because it is next to
+     * nothing else this mod binds and vanilla leaves it alone.
+     */
+    public static final KeyMapping TOGGLE_CREATIVE_MONEY = new KeyMapping(
+            "key.citiesinlife.creative_money",
+            KeyConflictContext.IN_GAME,
+            KeyModifier.SHIFT,
+            InputConstants.Type.KEYSYM,
+            GLFW.GLFW_KEY_I,
+            CATEGORY);
+
     /** Switch between measuring floors and measuring enclosed space. */
     public static final KeyMapping TOGGLE_MEASURE_MODE = new KeyMapping(
             "key.citiesinlife.measure_mode",

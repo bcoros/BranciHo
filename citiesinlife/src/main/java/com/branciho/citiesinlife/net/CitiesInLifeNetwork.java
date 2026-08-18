@@ -17,6 +17,7 @@ import com.branciho.citiesinlife.net.payload.PowerLinesPayload;
 import com.branciho.citiesinlife.net.payload.RegisterStructurePayload;
 import com.branciho.citiesinlife.net.payload.RequestCityPayload;
 import com.branciho.citiesinlife.net.payload.StructureSyncPayload;
+import com.branciho.citiesinlife.net.payload.ToggleCreativeMoneyPayload;
 import com.branciho.citiesinlife.net.payload.WaterLinesPayload;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
@@ -77,6 +78,10 @@ public final class CitiesInLifeNetwork {
         registrar.playToServer(ClaimChunkPayload.TYPE, ClaimChunkPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(
                         () -> onServer(context, player -> ServerActions.claimChunk(player, payload))));
+
+        registrar.playToServer(ToggleCreativeMoneyPayload.TYPE, ToggleCreativeMoneyPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(
+                        () -> onServer(context, ServerActions::toggleCreativeMoney)));
 
         registrar.playToServer(RequestCityPayload.TYPE, RequestCityPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(

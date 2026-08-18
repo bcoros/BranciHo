@@ -87,9 +87,13 @@ public class CityScreen extends Screen {
         graphics.fill(left + 12, top + 22, left + PANEL_WIDTH - 12, top + 23, COLOUR_ACCENT);
 
         int y = top + 32;
+        // A creative treasury is not a number worth reading. Saying so outright is more use than a
+        // billion with commas in it, and it explains why nothing has a price at the moment.
         y = row(graphics, y, "screen.citiesinlife.treasury",
-                Component.literal(format(city.treasury())),
-                city.treasury() >= 0 ? COLOUR_GOOD : COLOUR_BAD);
+                city.creativeFunded()
+                        ? Component.translatable("screen.citiesinlife.creative_money")
+                        : Component.literal(format(city.treasury())),
+                city.creativeFunded() || city.treasury() >= 0 ? COLOUR_GOOD : COLOUR_BAD);
 
         // Population against housing, because "44" alone looks broken next to a tower you just
         // registered. Seeing 44 of 370 says plainly that the block is filling up.

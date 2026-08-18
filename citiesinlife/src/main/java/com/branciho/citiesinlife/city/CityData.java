@@ -17,9 +17,11 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -44,12 +46,21 @@ public final class CityData extends SavedData {
      * 1 when those fields were added, so nothing noticed the format change and old worlds loaded
      * silently wrong. 3 marks a city's diplomatic relations - which read back tolerantly from an
      * older save, but leaving the number alone after a shape change is the exact habit that caused
-     * the problem at 2.
+     * the problem at 2. 4 marks the creative treasury and who has turned it off.
      */
-    private static final int DATA_VERSION = 3;
+    private static final int DATA_VERSION = 4;
 
     private final Map<UUID, City> cities = new LinkedHashMap<>();
     private final Map<UUID, Structure> structures = new LinkedHashMap<>();
+
+    /**
+     * Players who have switched creative money off.
+     *
+     * <p>Stored as the exception rather than as the rule, because the rule is that creative mode
+     * means infinite money. A player who has never pressed the key is not in here, which is also
+     * what makes the setting arrive switched on for somebody who has just joined.
+     */
+    private final Set<UUID> creativeMoneyOff = new HashSet<>();
 
     /** dimension -> chunk key -> owning city. */
     private final Map<ResourceKey<Level>, Map<Long, UUID>> territoryIndex = new HashMap<>();
@@ -139,6 +150,26 @@ public final class CityData extends SavedData {
 
         setDirty();
         return removed;
+    }
+
+    // -------------------------------------------------------- creative money
+
+    /** Whether this player wants a creative treasury. Everybody does until they say otherwise. */
+    public boolean creativeMoneyEnabled(UUID playerId) {
+        return !creativeMoneyOff.contains(playerId);
+    }
+
+    /** Flip the setting. Returns what it is now, so the caller can say so on screen. */
+    public boolean toggleCreativeMoney(UUID playerId) {
+        boolean enabled;
+        if (creativeMoneyOff.remove(playerId)) {
+            enabled = true;
+        } else {
+            creativeMoneyOff.add(playerId);
+            enabled = false;
+        }
+        setDirty();
+        return enabled;
     }
 
     // -------------------------------------------------------------- territory
@@ -331,6 +362,14 @@ public final class CityData extends SavedData {
             structureList.add(structure.save());
         }
         tag.put("structures", structureList);
+
+        ListTag optedOut = new ListTag();
+        for (UUID playerId : creativeMoneyOff) {
+            CompoundTag entry = new CompoundTag();
+            entry.putUUID("id", playerId);
+            optedOut.add(entry);
+        }
+        tag.put("creativeMoneyOff", optedOut);
         return tag;
     }
 
@@ -369,6 +408,11 @@ public final class CityData extends SavedData {
             }
             data.structures.put(structure.id(), structure);
             data.indexStructure(structure);
+        }
+
+        ListTag optedOut = tag.getList("creativeMoneyOff", Tag.TAG_COMPOUND);
+        for (int i = 0; i < optedOut.size(); i++) {
+            data.creativeMoneyOff.add(optedOut.getCompound(i).getUUID("id"));
         }
 
         data.migrate(version);

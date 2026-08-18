@@ -1,0 +1,147 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "particle": "citiesinlife:block/end_pipe",
+    "body": "citiesinlife:block/end_pipe"
+  },
+  "elements": [
+    {
+      "name": "foot",
+      "from": [
+        4,
+        4,
+        0
+      ],
+      "to": [
+        12,
+        12,
+        2
+      ],
+      "faces": {
+        "north": {
+          "texture": "#body",
+          "uv": [
+            4,
+            4,
+            12,
+            12
+          ]
+        },
+        "south": {
+          "texture": "#body",
+          "uv": [
+            4,
+            4,
+            12,
+            12
+          ]
+        },
+        "east": {
+          "texture": "#body",
+          "uv": [
+            4,
+            4,
+            12,
+            12
+          ]
+        },
+        "west": {
+          "texture": "#body",
+          "uv": [
+            4,
+            4,
+            12,
+            12
+          ]
+        },
+        "up": {
+          "texture": "#body",
+          "uv": [
+            4,
+            4,
+            12,
+            12
+          ]
+        },
+        "down": {
+          "texture": "#body",
+          "uv": [
+            4,
+            4,
+            12,
+            12
+          ]
+        }
+      }
+    },
+    {
+      "name": "leg",
+      "from": [
+        6.5,
+        6.5,
+        2
+      ],
+      "to": [
+        9.5,
+        9.5,
+        5
+      ],
+      "faces": {
+        "north": {
+          "texture": "#body",
+          "uv": [
+            6.5,
+            6.5,
+            9.5,
+            9.5
+          ]
+        },
+        "south": {
+          "texture": "#body",
+          "uv": [
+            6.5,
+            6.5,
+            9.5,
+            9.5
+          ]
+        },
+        "east": {
+          "texture": "#body",
+          "uv": [
+            6.5,
+            6.5,
+            9.5,
+            9.5
+          ]
+        },
+        "west": {
+          "texture": "#body",
+          "uv": [
+            6.5,
+            6.5,
+            9.5,
+            9.5
+          ]
+        },
+        "up": {
+          "texture": "#body",
+          "uv": [
+            6.5,
+            6.5,
+            9.5,
+            9.5
+          ]
+        },
+        "down": {
+          "texture": "#body",
+          "uv": [
+            6.5,
+            6.5,
+            9.5,
+            9.5
+          ]
+        }
+      }
+    }
+  ]
+}

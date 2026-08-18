@@ -16,9 +16,11 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.EnumMap;
 import java.util.Map;
@@ -33,15 +35,20 @@ import java.util.Map;
  *
  * <p>Both ends must agree before water passes, which is what lets a valve shut one branch off
  * without the pipe pointed at it pretending otherwise.
+ *
+ * <p>Where there is no pipe to join but there is something solid, it puts a leg down instead. That
+ * is cosmetic and it matters: the barrel of a pipe is six pixels across and centred in its block, so
+ * without legs a run laid on the ground hovers above it and a run bolted under a roof hangs from
+ * nothing at all.
  */
 public class WaterPipeBlock extends Block implements WaterBlock {
 
-    public static final BooleanProperty NORTH = BooleanProperty.create("north");
-    public static final BooleanProperty EAST = BooleanProperty.create("east");
-    public static final BooleanProperty SOUTH = BooleanProperty.create("south");
-    public static final BooleanProperty WEST = BooleanProperty.create("west");
-    public static final BooleanProperty UP = BooleanProperty.create("up");
-    public static final BooleanProperty DOWN = BooleanProperty.create("down");
+    public static final EnumProperty<PipeJoin> NORTH = EnumProperty.create("north", PipeJoin.class);
+    public static final EnumProperty<PipeJoin> EAST = EnumProperty.create("east", PipeJoin.class);
+    public static final EnumProperty<PipeJoin> SOUTH = EnumProperty.create("south", PipeJoin.class);
+    public static final EnumProperty<PipeJoin> WEST = EnumProperty.create("west", PipeJoin.class);
+    public static final EnumProperty<PipeJoin> UP = EnumProperty.create("up", PipeJoin.class);
+    public static final EnumProperty<PipeJoin> DOWN = EnumProperty.create("down", PipeJoin.class);
 
     /**
      * Whether this length has split.
@@ -64,7 +71,8 @@ public class WaterPipeBlock extends Block implements WaterBlock {
     public static final int LEAK_LOSS = 4;
     private static final int LEAK_ODDS = 48;
 
-    private static final Map<Direction, BooleanProperty> BY_DIRECTION = new EnumMap<>(Direction.class);
+    private static final Map<Direction, EnumProperty<PipeJoin>> BY_DIRECTION =
+            new EnumMap<>(Direction.class);
 
     static {
         BY_DIRECTION.put(Direction.NORTH, NORTH);
@@ -75,12 +83,21 @@ public class WaterPipeBlock extends Block implements WaterBlock {
         BY_DIRECTION.put(Direction.DOWN, DOWN);
     }
 
-    public static BooleanProperty property(Direction direction) {
+    public static EnumProperty<PipeJoin> property(Direction direction) {
         return BY_DIRECTION.get(direction);
     }
 
     private static final VoxelShape CORE = Block.box(5.0D, 5.0D, 5.0D, 11.0D, 11.0D, 11.0D);
     private static final Map<Direction, VoxelShape> ARMS = new EnumMap<>(Direction.class);
+
+    /**
+     * The bracket a pipe puts down onto a solid neighbour.
+     *
+     * <p>Thinner than an arm and reaching the whole way to the face, because that is the difference
+     * you are meant to read at a glance: an arm is the pipe continuing, a leg is the pipe being held
+     * up by something that is not a pipe.
+     */
+    private static final Map<Direction, VoxelShape> LEGS = new EnumMap<>(Direction.class);
 
     static {
         ARMS.put(Direction.DOWN, Block.box(5.0D, 0.0D, 5.0D, 11.0D, 5.0D, 11.0D));
@@ -89,18 +106,22 @@ public class WaterPipeBlock extends Block implements WaterBlock {
         ARMS.put(Direction.SOUTH, Block.box(5.0D, 5.0D, 11.0D, 11.0D, 11.0D, 16.0D));
         ARMS.put(Direction.WEST, Block.box(0.0D, 5.0D, 5.0D, 5.0D, 11.0D, 11.0D));
         ARMS.put(Direction.EAST, Block.box(11.0D, 5.0D, 5.0D, 16.0D, 11.0D, 11.0D));
+
+        LEGS.put(Direction.DOWN, Block.box(6.0D, 0.0D, 6.0D, 10.0D, 5.0D, 10.0D));
+        LEGS.put(Direction.UP, Block.box(6.0D, 11.0D, 6.0D, 10.0D, 16.0D, 10.0D));
+        LEGS.put(Direction.NORTH, Block.box(6.0D, 6.0D, 0.0D, 10.0D, 10.0D, 5.0D));
+        LEGS.put(Direction.SOUTH, Block.box(6.0D, 6.0D, 11.0D, 10.0D, 10.0D, 16.0D));
+        LEGS.put(Direction.WEST, Block.box(0.0D, 6.0D, 6.0D, 5.0D, 10.0D, 10.0D));
+        LEGS.put(Direction.EAST, Block.box(11.0D, 6.0D, 6.0D, 16.0D, 10.0D, 10.0D));
     }
 
     public WaterPipeBlock(Properties properties) {
         super(properties);
-        registerDefaultState(stateDefinition.any()
-                .setValue(NORTH, false)
-                .setValue(EAST, false)
-                .setValue(SOUTH, false)
-                .setValue(WEST, false)
-                .setValue(UP, false)
-                .setValue(DOWN, false)
-                .setValue(LEAKING, false));
+        BlockState state = stateDefinition.any().setValue(LEAKING, false);
+        for (Direction direction : Direction.values()) {
+            state = state.setValue(property(direction), PipeJoin.NONE);
+        }
+        registerDefaultState(state);
     }
 
     @Override
@@ -113,7 +134,7 @@ public class WaterPipeBlock extends Block implements WaterBlock {
         BlockState state = defaultBlockState();
         for (Direction direction : Direction.values()) {
             state = state.setValue(property(direction),
-                    connectsTo(context.getLevel(), context.getClickedPos(), direction));
+                    joinFor(context.getLevel(), context.getClickedPos(), direction));
         }
         return state;
     }
@@ -121,31 +142,52 @@ public class WaterPipeBlock extends Block implements WaterBlock {
     @Override
     protected BlockState updateShape(BlockState state, Direction direction, BlockState neighbour,
                                      LevelAccessor level, BlockPos pos, BlockPos neighbourPos) {
-        return state.setValue(property(direction), connectsTo(level, pos, direction));
+        return state.setValue(property(direction), joinFor(level, pos, direction));
     }
 
     /**
-     * Whether the thing on that side is something to join to.
+     * What the thing on that side is worth to this pipe.
      *
-     * <p>Only the neighbour's opinion is asked here, not this pipe's own - a pipe always offers all
-     * six faces. Asking both would be circular during placement, when neither state exists yet.
+     * <p>Only the neighbour's opinion is asked about water, not this pipe's own - a pipe always
+     * offers all six faces. Asking both would be circular during placement, when neither state
+     * exists yet.
+     *
+     * <p>Anything else with a solid face gets a leg. A sturdy face is the right test rather than
+     * "is a full block": it means there is something there for a bracket to actually be bolted to,
+     * so a pipe braces against a slab's flat top and not against the open side of a fence.
      */
-    private static boolean connectsTo(BlockGetter level, BlockPos pos, Direction direction) {
+    public static PipeJoin joinFor(BlockGetter level, BlockPos pos, Direction direction) {
         BlockPos neighbourPos = pos.relative(direction);
         BlockState neighbour = level.getBlockState(neighbourPos);
-        return neighbour.getBlock() instanceof WaterBlock block
-                && block.joinsAutomatically(level, neighbourPos, neighbour, direction.getOpposite());
+        if (neighbour.getBlock() instanceof WaterBlock block
+                && block.joinsAutomatically(level, neighbourPos, neighbour, direction.getOpposite())) {
+            return PipeJoin.PIPE;
+        }
+        return neighbour.isFaceSturdy(level, neighbourPos, direction.getOpposite())
+                ? PipeJoin.LEG
+                : PipeJoin.NONE;
+    }
+
+    /** The shape of a pipe's core plus whatever it has grown on each side. */
+    public static VoxelShape shapeOf(BlockState state, @Nullable Direction spout) {
+        VoxelShape shape = CORE;
+        for (Direction direction : Direction.values()) {
+            if (direction == spout) {
+                continue;
+            }
+            switch (state.getValue(property(direction))) {
+                case PIPE -> shape = Shapes.or(shape, ARMS.get(direction));
+                case LEG -> shape = Shapes.or(shape, LEGS.get(direction));
+                case NONE -> {
+                }
+            }
+        }
+        return shape;
     }
 
     @Override
     protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
-        VoxelShape shape = CORE;
-        for (Direction direction : Direction.values()) {
-            if (state.getValue(property(direction))) {
-                shape = Shapes.or(shape, ARMS.get(direction));
-            }
-        }
-        return shape;
+        return shapeOf(state, null);
     }
 
     @Override
@@ -169,17 +211,19 @@ public class WaterPipeBlock extends Block implements WaterBlock {
      * Pipes wear out.
      *
      * <p>Only a pipe that is actually part of a run can split - a single length lying in a chest
-     * room has nothing going through it - and only slowly, because a water network you have to
-     * patrol constantly would be a chore rather than a system.
+     * room has nothing going through it, and neither does one that is only propped against a wall -
+     * and only slowly, because a water network you have to patrol constantly would be a chore rather
+     * than a system.
      */
     @Override
     protected void randomTick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
+        state = reseat(state, level, pos, null);
         if (!canLeak() || state.getValue(LEAKING)) {
             return;
         }
         int joints = 0;
         for (Direction direction : Direction.values()) {
-            if (state.getValue(property(direction))) {
+            if (state.getValue(property(direction)).carriesWater()) {
                 joints++;
             }
         }
@@ -187,6 +231,32 @@ public class WaterPipeBlock extends Block implements WaterBlock {
             return;
         }
         level.setBlock(pos, state.setValue(LEAKING, true), Block.UPDATE_ALL);
+    }
+
+    /**
+     * Recompute what this pipe is touching and, if it has changed, say so.
+     *
+     * <p>Nothing sends a block update to a pipe when the world simply loads, so a pipe whose sides
+     * were saved under an older rule set — before legs existed, when a side was a plain yes or no —
+     * would come back with every side open and stay that way until somebody happened to place a
+     * block beside it. This is the slow sweep that puts them right on their own.
+     *
+     * @return the state now in the world, which is the one the caller should go on using
+     */
+    public static BlockState reseat(BlockState state, ServerLevel level, BlockPos pos,
+                                    @Nullable Direction spout) {
+        BlockState wanted = state;
+        for (Direction direction : Direction.values()) {
+            if (direction == spout) {
+                continue;
+            }
+            wanted = wanted.setValue(property(direction), joinFor(level, pos, direction));
+        }
+        if (wanted == state) {
+            return state;
+        }
+        level.setBlock(pos, wanted, Block.UPDATE_ALL);
+        return wanted;
     }
 
     /** A split pipe drips, which is the only way to find one in a long run. */

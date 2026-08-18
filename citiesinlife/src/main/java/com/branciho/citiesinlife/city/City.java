@@ -27,11 +27,32 @@ public final class City {
     /** What a city starts with, enough to claim a few chunks before it has to earn anything. */
     public static final long STARTING_TREASURY = 5_000L;
 
+    /**
+     * What a city holds while its owner is building in creative.
+     *
+     * <p>A number rather than a special case in every price check. Creative money is meant to mean
+     * "stop asking me what things cost", and the cheapest way to make every cost in the mod stop
+     * mattering — including ones written after this — is to make the treasury bigger than any of
+     * them. It is topped back up every second, so spending never eats into it.
+     */
+    public static final long CREATIVE_TREASURY = 1_000_000_000L;
+
     private final UUID id;
     private String name;
     private final UUID owner;
     private final ResourceKey<Level> dimension;
     private long treasury = STARTING_TREASURY;
+
+    /**
+     * Whether the treasury on show is the creative one, and what the city really has underneath it.
+     *
+     * <p>Kept apart on purpose. Switching creative money off has to hand the player back the city
+     * they actually built, not whatever was left of a billion after an afternoon of buying land —
+     * and the city keeps earning and paying its upkeep the whole time, into the banked figure, so
+     * leaving creative does not rewind the economy either.
+     */
+    private boolean creativeFunded;
+    private long bankedTreasury;
 
     private final LongSet claimedChunks = new LongOpenHashSet();
     private final List<UUID> structures = new ArrayList<>();
@@ -108,6 +129,11 @@ public final class City {
     }
 
     public void deposit(long amount) {
+        if (creativeFunded) {
+            // The real economy carries on underneath the creative pile.
+            bankedTreasury = Math.max(0L, bankedTreasury + amount);
+            return;
+        }
         treasury += amount;
     }
 
@@ -120,6 +146,40 @@ public final class City {
             return false;
         }
         treasury -= amount;
+        return true;
+    }
+
+    /** Whether this city is currently spending its owner's creative-mode money. */
+    public boolean creativeFunded() {
+        return creativeFunded;
+    }
+
+    /**
+     * Switch the creative treasury on or off.
+     *
+     * @return whether anything changed, so the caller knows if the save needs writing
+     */
+    public boolean setCreativeFunded(boolean funded) {
+        if (creativeFunded == funded) {
+            return false;
+        }
+        if (funded) {
+            bankedTreasury = treasury;
+            treasury = CREATIVE_TREASURY;
+        } else {
+            treasury = bankedTreasury;
+            bankedTreasury = 0L;
+        }
+        creativeFunded = funded;
+        return true;
+    }
+
+    /** Put back whatever creative spending took out. Does nothing to a city paying its own way. */
+    public boolean refillCreative() {
+        if (!creativeFunded || treasury == CREATIVE_TREASURY) {
+            return false;
+        }
+        treasury = CREATIVE_TREASURY;
         return true;
     }
 
@@ -280,6 +340,8 @@ public final class City {
         tag.putUUID("owner", owner);
         tag.putString("dimension", dimension.location().toString());
         tag.putLong("treasury", treasury);
+        tag.putBoolean("creativeFunded", creativeFunded);
+        tag.putLong("banked", bankedTreasury);
         tag.putLongArray("chunks", claimedChunks.toLongArray());
 
         ListTag structureList = new ListTag();
@@ -327,6 +389,8 @@ public final class City {
                 Registries.DIMENSION, ResourceLocation.parse(tag.getString("dimension")));
         City city = new City(tag.getUUID("id"), tag.getString("name"), tag.getUUID("owner"), dimension);
         city.treasury = tag.getLong("treasury");
+        city.creativeFunded = tag.getBoolean("creativeFunded");
+        city.bankedTreasury = tag.getLong("banked");
         for (long chunk : tag.getLongArray("chunks")) {
             city.claimedChunks.add(chunk);
         }

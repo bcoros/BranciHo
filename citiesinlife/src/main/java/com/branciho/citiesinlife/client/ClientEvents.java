@@ -14,6 +14,7 @@ import com.branciho.citiesinlife.net.payload.LinkWaterPayload;
 import com.branciho.citiesinlife.net.payload.MarkPathPayload;
 import com.branciho.citiesinlife.net.payload.RegisterStructurePayload;
 import com.branciho.citiesinlife.net.payload.RequestCityPayload;
+import com.branciho.citiesinlife.net.payload.ToggleCreativeMoneyPayload;
 import com.branciho.citiesinlife.registry.ModItems;
 import com.branciho.citiesinlife.structure.StructureType;
 import net.minecraft.client.Minecraft;
@@ -89,6 +90,12 @@ public final class ClientEvents {
         while (KeyBindings.OPEN_CITY.consumeClick()) {
             CitiesInLifeNetwork.sendToServer(new RequestCityPayload());
             minecraft.setScreen(new CityScreen());
+        }
+
+        while (KeyBindings.TOGGLE_CREATIVE_MONEY.consumeClick()) {
+            // No client-side check for creative mode. The server owns the answer, and refusing here
+            // would mean a survival player pressing it got silence rather than a reply.
+            CitiesInLifeNetwork.sendToServer(new ToggleCreativeMoneyPayload());
         }
 
         while (KeyBindings.TOGGLE_STRUCTURE_MODE.consumeClick()) {

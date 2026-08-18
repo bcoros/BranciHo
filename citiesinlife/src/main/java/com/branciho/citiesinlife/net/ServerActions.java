@@ -28,6 +28,7 @@ import com.branciho.citiesinlife.power.PowerBlock;
 import com.branciho.citiesinlife.power.PowerGrid;
 import com.branciho.citiesinlife.scan.StructureScanner;
 import com.branciho.citiesinlife.sim.CitySimulation;
+import com.branciho.citiesinlife.sim.CreativeFunding;
 import com.branciho.citiesinlife.structure.MeasureMode;
 import com.branciho.citiesinlife.structure.Structure;
 import com.branciho.citiesinlife.structure.StructureType;
@@ -804,6 +805,25 @@ public final class ServerActions {
         CitiesInLifeNetwork.sendTo(player, new PathSyncPayload(near.toLongArray()));
     }
 
+    /**
+     * Turn this player's creative treasury off, or back on.
+     *
+     * <p>Answered on the action bar rather than in chat. It is a switch you flip while building and
+     * a line of chat for every press would be noise.
+     */
+    public static void toggleCreativeMoney(ServerPlayer player) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        boolean enabled = CityData.get(server).toggleCreativeMoney(player.getUUID());
+        CreativeFunding.sync(server);
+        sync(player);
+        player.displayClientMessage(Component.translatable(enabled
+                ? "hud.citiesinlife.creative_money_on"
+                : "hud.citiesinlife.creative_money_off"), true);
+    }
+
     /** Forget a player who has left, so this map does not grow for the life of the server. */
     public static void forget(ServerPlayer player) {
         lastPathChunk.remove(player.getUUID());
@@ -1081,6 +1101,7 @@ public final class ServerActions {
                         city.waterSupplied(),
                         city.waterNeeded(),
                         city.nextClaimCost(),
+                        city.creativeFunded(),
                         city.claimedChunks().toLongArray()));
 
         CitiesInLifeNetwork.sendTo(player, new StructureSyncPayload(nearbyStructures(data, player)));

@@ -9,6 +9,7 @@ import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.context.BlockPlaceContext;
@@ -59,25 +60,13 @@ public class EndPipeBlock extends BaseEntityBlock implements WaterBlock {
     public static final DirectionProperty FACING = BlockStateProperties.FACING;
 
     /**
-     * Built to the ordinary pipe's measurements on purpose.
-     *
-     * <p>A six-wide core with six-wide arms is what every other conduit in the mod is, so a tap
-     * bolted onto the end of a run lines up with it instead of bulging out of the joint.
+     * The nozzle, which is slimmer than an arm so that which end pours is obvious without reading a
+     * tooltip. Everything else about the shape is the ordinary pipe's, on purpose: a tap bolted onto
+     * the end of a run should line up with it instead of bulging out of the joint.
      */
-    private static final VoxelShape CORE = Block.box(5.0D, 5.0D, 5.0D, 11.0D, 11.0D, 11.0D);
-
-    private static final Map<Direction, VoxelShape> ARMS = new EnumMap<>(Direction.class);
     private static final Map<Direction, VoxelShape> SPOUTS = new EnumMap<>(Direction.class);
 
     static {
-        ARMS.put(Direction.DOWN, Block.box(5.0D, 0.0D, 5.0D, 11.0D, 5.0D, 11.0D));
-        ARMS.put(Direction.UP, Block.box(5.0D, 11.0D, 5.0D, 11.0D, 16.0D, 11.0D));
-        ARMS.put(Direction.NORTH, Block.box(5.0D, 5.0D, 0.0D, 11.0D, 11.0D, 5.0D));
-        ARMS.put(Direction.SOUTH, Block.box(5.0D, 5.0D, 11.0D, 11.0D, 11.0D, 16.0D));
-        ARMS.put(Direction.WEST, Block.box(0.0D, 5.0D, 5.0D, 5.0D, 11.0D, 11.0D));
-        ARMS.put(Direction.EAST, Block.box(11.0D, 5.0D, 5.0D, 16.0D, 11.0D, 11.0D));
-
-        // The nozzle is slimmer than an arm, so which end pours is obvious without reading a tooltip.
         SPOUTS.put(Direction.DOWN, Block.box(6.0D, 0.0D, 6.0D, 10.0D, 5.0D, 10.0D));
         SPOUTS.put(Direction.UP, Block.box(6.0D, 11.0D, 6.0D, 10.0D, 16.0D, 10.0D));
         SPOUTS.put(Direction.NORTH, Block.box(6.0D, 6.0D, 0.0D, 10.0D, 10.0D, 5.0D));
@@ -90,7 +79,7 @@ public class EndPipeBlock extends BaseEntityBlock implements WaterBlock {
         super(properties);
         BlockState state = stateDefinition.any().setValue(FACING, Direction.NORTH);
         for (Direction direction : Direction.values()) {
-            state = state.setValue(WaterPipeBlock.property(direction), false);
+            state = state.setValue(WaterPipeBlock.property(direction), PipeJoin.NONE);
         }
         registerDefaultState(state);
     }
@@ -118,8 +107,9 @@ public class EndPipeBlock extends BaseEntityBlock implements WaterBlock {
         Direction facing = context.getClickedFace();
         BlockState state = defaultBlockState().setValue(FACING, facing);
         for (Direction direction : Direction.values()) {
-            state = state.setValue(WaterPipeBlock.property(direction),
-                    direction != facing && connectsTo(context.getLevel(), context.getClickedPos(), direction));
+            state = state.setValue(WaterPipeBlock.property(direction), direction == facing
+                    ? PipeJoin.NONE
+                    : WaterPipeBlock.joinFor(context.getLevel(), context.getClickedPos(), direction));
         }
         return state;
     }
@@ -130,14 +120,8 @@ public class EndPipeBlock extends BaseEntityBlock implements WaterBlock {
         if (direction == state.getValue(FACING)) {
             return state;
         }
-        return state.setValue(WaterPipeBlock.property(direction), connectsTo(level, pos, direction));
-    }
-
-    private static boolean connectsTo(BlockGetter level, BlockPos pos, Direction direction) {
-        BlockPos neighbourPos = pos.relative(direction);
-        BlockState neighbour = level.getBlockState(neighbourPos);
-        return neighbour.getBlock() instanceof WaterBlock block
-                && block.joinsAutomatically(level, neighbourPos, neighbour, direction.getOpposite());
+        return state.setValue(WaterPipeBlock.property(direction),
+                WaterPipeBlock.joinFor(level, pos, direction));
     }
 
     @Override
@@ -155,6 +139,18 @@ public class EndPipeBlock extends BaseEntityBlock implements WaterBlock {
         return state.rotate(mirror.getRotation(state.getValue(FACING)));
     }
 
+    /**
+     * Sweep the sides straight now and then.
+     *
+     * <p>Same reason as the ordinary pipe: a tap saved before legs existed comes back with its sides
+     * blank, and nothing would ever tell it otherwise. The spout is left alone — water comes out of
+     * that face and a bracket across it would be nonsense.
+     */
+    @Override
+    protected void randomTick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
+        WaterPipeBlock.reseat(state, level, pos, state.getValue(FACING));
+    }
+
     @Override
     protected RenderShape getRenderShape(BlockState state) {
         return RenderShape.MODEL;
@@ -162,13 +158,8 @@ public class EndPipeBlock extends BaseEntityBlock implements WaterBlock {
 
     @Override
     protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
-        VoxelShape shape = Shapes.or(CORE, SPOUTS.get(state.getValue(FACING)));
-        for (Direction direction : Direction.values()) {
-            if (direction != state.getValue(FACING) && state.getValue(WaterPipeBlock.property(direction))) {
-                shape = Shapes.or(shape, ARMS.get(direction));
-            }
-        }
-        return shape;
+        Direction spout = state.getValue(FACING);
+        return Shapes.or(WaterPipeBlock.shapeOf(state, spout), SPOUTS.get(spout));
     }
 
     // ------------------------------------------------------------------ water

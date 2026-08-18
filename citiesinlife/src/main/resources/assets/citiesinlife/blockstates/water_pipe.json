@@ -7,7 +7,7 @@
     },
     {
       "when": {
-        "north": "true"
+        "north": "pipe"
       },
       "apply": {
         "model": "citiesinlife:block/water_pipe_arm"
@@ -15,7 +15,15 @@
     },
     {
       "when": {
-        "east": "true"
+        "north": "leg"
+      },
+      "apply": {
+        "model": "citiesinlife:block/water_pipe_leg"
+      }
+    },
+    {
+      "when": {
+        "east": "pipe"
       },
       "apply": {
         "model": "citiesinlife:block/water_pipe_arm",
@@ -24,7 +32,16 @@
     },
     {
       "when": {
-        "south": "true"
+        "east": "leg"
+      },
+      "apply": {
+        "model": "citiesinlife:block/water_pipe_leg",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "south": "pipe"
       },
       "apply": {
         "model": "citiesinlife:block/water_pipe_arm",
@@ -33,7 +50,16 @@
     },
     {
       "when": {
-        "west": "true"
+        "south": "leg"
+      },
+      "apply": {
+        "model": "citiesinlife:block/water_pipe_leg",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "west": "pipe"
       },
       "apply": {
         "model": "citiesinlife:block/water_pipe_arm",
@@ -42,7 +68,16 @@
     },
     {
       "when": {
-        "up": "true"
+        "west": "leg"
+      },
+      "apply": {
+        "model": "citiesinlife:block/water_pipe_leg",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "up": "pipe"
       },
       "apply": {
         "model": "citiesinlife:block/water_pipe_arm",
@@ -51,10 +86,28 @@
     },
     {
       "when": {
-        "down": "true"
+        "up": "leg"
+      },
+      "apply": {
+        "model": "citiesinlife:block/water_pipe_leg",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "down": "pipe"
       },
       "apply": {
         "model": "citiesinlife:block/water_pipe_arm",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "down": "leg"
+      },
+      "apply": {
+        "model": "citiesinlife:block/water_pipe_leg",
         "x": 90
       }
     },

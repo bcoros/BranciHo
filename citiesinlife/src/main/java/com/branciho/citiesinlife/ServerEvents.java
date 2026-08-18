@@ -4,6 +4,7 @@ import com.branciho.citiesinlife.net.ServerActions;
 import com.branciho.citiesinlife.plant.PlantSurvey;
 import com.branciho.citiesinlife.sim.CitizenDirector;
 import com.branciho.citiesinlife.sim.CitySimulation;
+import com.branciho.citiesinlife.sim.CreativeFunding;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -31,6 +32,7 @@ public final class ServerEvents {
     @SubscribeEvent
     public static void onServerTick(ServerTickEvent.Post event) {
         MinecraftServer server = event.getServer();
+        CreativeFunding.tick(server);
         CitySimulation.tick(server);
         CitizenDirector.tick(server);
 

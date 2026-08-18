@@ -183,6 +183,9 @@ public final class ModBlocks {
                             .strength(3.0F, 9.0F)
                             .requiresCorrectToolForDrops()
                             .sound(SoundType.METAL)
+                            // It never splits; the random tick is only how a pipe laid before legs
+                            // existed notices it should be standing on something.
+                            .randomTicks()
                             .forceSolidOn()
                             .noOcclusion()));
 
@@ -236,6 +239,9 @@ public final class ModBlocks {
                     .strength(2.0F, 4.0F)
                     .requiresCorrectToolForDrops()
                     .sound(SoundType.COPPER)
+                    // As with the other pipes: the only thing random ticks do here is put an older
+                    // tap's sides right.
+                    .randomTicks()
                     .forceSolidOn()
                     .noOcclusion()));
 
