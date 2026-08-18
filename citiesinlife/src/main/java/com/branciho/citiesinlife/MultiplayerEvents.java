@@ -10,13 +10,17 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.OwnableEntity;
+import net.minecraft.world.entity.TraceableEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.EntityHitResult;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.entity.ProjectileImpactEvent;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 import net.neoforged.neoforge.event.entity.player.AttackEntityEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
@@ -148,6 +152,14 @@ public final class MultiplayerEvents {
         }
     }
 
+    /** The same, for interactions aimed at a particular spot on somebody rather than at them. */
+    @SubscribeEvent
+    public static void onInteractEntitySpecific(PlayerInteractEvent.EntityInteractSpecific event) {
+        if (protectedCitizen(event.getEntity(), event.getTarget())) {
+            event.setCanceled(true);
+        }
+    }
+
     // --------------------------------------------------------------- citizens
 
     @SubscribeEvent
@@ -158,26 +170,99 @@ public final class MultiplayerEvents {
     }
 
     /**
-     * The same rule for anything that reaches a citizen without a fist behind it.
+     * Everything else that could hurt a citizen.
      *
-     * <p>Arrows, potions, a snowball. Covering only the melee event would leave "you cannot kill
-     * their citizens" true at one block and false at thirty, which is not a rule, it is a nuisance.
+     * <p>This asks about the <em>victim</em> first, which the first version of it did not, and that
+     * was the whole flaw. Keyed off the attacker, the rule only held when a player was named on the
+     * damage — so a dispenser of arrows on a clock, TNT lit by a lever, a respawn anchor, or simply
+     * shoving somebody into a lava pit all went through untouched, because none of them name anybody.
+     * The guarantee was true at one block and false at thirty-one different ranges.
+     *
+     * <p>So a citizen is now hurt by exactly one thing: a player its city has given the right to.
+     * Everything else — fire, falling, drowning, a zombie, an unattributed explosion — leaves it
+     * alone. That is broader than "other players cannot kill your people", deliberately: it is the
+     * only version of the rule that closes the whole class rather than one vector at a time, and it
+     * has the side benefit that a city's people stop quietly disappearing overnight.
      */
     @SubscribeEvent
     public static void onIncomingDamage(LivingIncomingDamageEvent event) {
-        // getEntity() is whoever is responsible, which for an arrow is the archer rather than the
-        // arrow; getDirectEntity() catches the case where a player is the thing that actually hit.
+        if (!(event.getEntity() instanceof CitizenEntity citizen)) {
+            return;
+        }
+        City owner = cityOf(citizen);
+        if (owner == null) {
+            return;
+        }
         Player blamed = responsibleFor(event.getSource());
-        if (blamed != null && protectedCitizen(blamed, event.getEntity())) {
-            event.setCanceled(true);
+        if (blamed instanceof ServerPlayer player && entitled(player, owner)) {
+            return;
+        }
+        event.setCanceled(true);
+        if (blamed instanceof ServerPlayer player) {
+            warn(player, owner, "message.citiesinlife.protected_citizen");
         }
     }
 
+    /**
+     * A hook is not damage, and it moves people.
+     *
+     * <p>Reel a citizen out of its own city and every rule above still holds where it now stands —
+     * which is exactly the point of doing it. Cancelling the impact means the hook never catches.
+     */
+    @SubscribeEvent
+    public static void onProjectileImpact(ProjectileImpactEvent event) {
+        if (!(event.getRayTraceResult() instanceof EntityHitResult hit)
+                || !(hit.getEntity() instanceof CitizenEntity citizen)) {
+            return;
+        }
+        City owner = cityOf(citizen);
+        if (owner == null) {
+            return;
+        }
+        if (event.getProjectile().getOwner() instanceof ServerPlayer player && entitled(player, owner)) {
+            return;
+        }
+        event.setCanceled(true);
+    }
+
+    /**
+     * Who is actually to blame for a hit.
+     *
+     * <p>Four links, because the game hides the culprit behind at least that many: the archer behind
+     * an arrow, the owner behind a wolf, the player who primed the TNT. Anything further out than
+     * this genuinely has nobody behind it, and the caller treats that as "nobody may".
+     */
     private static @Nullable Player responsibleFor(DamageSource source) {
         if (source.getEntity() instanceof Player player) {
             return player;
         }
-        return source.getDirectEntity() instanceof Player direct ? direct : null;
+        if (source.getDirectEntity() instanceof Player direct) {
+            return direct;
+        }
+        if (source.getDirectEntity() instanceof TraceableEntity traceable
+                && traceable.getOwner() instanceof Player shooter) {
+            return shooter;
+        }
+        if (source.getEntity() instanceof OwnableEntity ownable
+                && ownable.getOwner() instanceof Player keeper) {
+            return keeper;
+        }
+        return null;
+    }
+
+    /** The city a citizen belongs to, or null if it has none or its city is gone. */
+    private static @Nullable City cityOf(CitizenEntity citizen) {
+        MinecraftServer server = citizen.level().getServer();
+        UUID cityId = citizen.cityId();
+        if (server == null || cityId == null) {
+            return null;
+        }
+        return CityData.get(server).city(cityId);
+    }
+
+    private static boolean entitled(ServerPlayer player, City owner) {
+        MinecraftServer server = player.getServer();
+        return server != null && Diplomacy.mayInterfereWith(server, player, owner);
     }
 
     /**
