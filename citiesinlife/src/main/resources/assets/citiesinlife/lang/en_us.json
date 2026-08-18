@@ -309,5 +309,8 @@
   "message.citiesinlife.seized": "%s is yours now - registered as %s",
   "message.citiesinlife.building_lost": "%s has taken one of your buildings",
   "hud.citiesinlife.war_wand_banner": "War Planner Wand",
-  "hud.citiesinlife.left_click_seize": "Left click to take the building"
+  "hud.citiesinlife.left_click_seize": "Left click to take the building",
+  "item.citiesinlife.service_rifle": "Service Rifle",
+  "tooltip.citiesinlife.rifle_1": "Right click to fire",
+  "tooltip.citiesinlife.rifle_2": "Soldiers given one will shoot with it"
 }

@@ -9,6 +9,7 @@ import com.branciho.citiesinlife.item.PipeLineToolItem;
 import com.branciho.citiesinlife.item.PowerLineToolItem;
 import com.branciho.citiesinlife.item.WarPlannerWandItem;
 import com.branciho.citiesinlife.item.RepairToolItem;
+import com.branciho.citiesinlife.item.ServiceRifleItem;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.neoforged.bus.api.IEventBus;
@@ -118,6 +119,9 @@ public final class ModItems {
 
     public static final DeferredItem<MilitaryToolItem> MILITARY_TOOL = ITEMS.register("military_tool",
             () -> new MilitaryToolItem(new Item.Properties().stacksTo(1)));
+
+    public static final DeferredItem<ServiceRifleItem> SERVICE_RIFLE = ITEMS.register("service_rifle",
+            () -> new ServiceRifleItem(new Item.Properties().stacksTo(1)));
 
     private ModItems() {
     }

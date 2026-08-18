@@ -51,6 +51,7 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.SERVICE_SPAWNER.get());
                         output.accept(ModItems.MILITARY_TOOL.get());
                         output.accept(ModItems.WAR_PLANNER_WAND.get());
+                        output.accept(ModItems.SERVICE_RIFLE.get());
                     })
                     .build());
 

@@ -9,6 +9,7 @@ import com.branciho.citiesinlife.entity.ai.FireDutyGoal;
 import com.branciho.citiesinlife.entity.ai.MedicGoal;
 import com.branciho.citiesinlife.entity.ai.PoliceGoal;
 import com.branciho.citiesinlife.entity.ai.RefuseGoal;
+import com.branciho.citiesinlife.entity.ai.RifleGoal;
 import com.branciho.citiesinlife.entity.ai.SoldierGoal;
 import com.branciho.citiesinlife.entity.ai.SoldierTargetGoal;
 import com.branciho.citiesinlife.service.ServiceType;
@@ -104,13 +105,18 @@ public class ServiceEntity extends PathfinderMob implements CityMember {
     @Override
     protected void registerGoals() {
         goalSelector.addGoal(0, new FloatGoal(this));
-        goalSelector.addGoal(1, new MeleeAttackGoal(this, 1.2D, true));
-        goalSelector.addGoal(2, new PoliceGoal(this));
-        goalSelector.addGoal(2, new FireDutyGoal(this));
-        goalSelector.addGoal(2, new MedicGoal(this));
-        goalSelector.addGoal(2, new RefuseGoal(this));
-        goalSelector.addGoal(2, new SoldierGoal(this));
+        // Shooting outranks swinging, so an armed soldier holds their distance instead of charging
+        // into a knife fight they did not need to be in.
+        goalSelector.addGoal(1, new RifleGoal(this));
+        goalSelector.addGoal(2, new MeleeAttackGoal(this, 1.2D, true));
+        // These two hold no movement flags: they only decide who to fight, and have to keep
+        // deciding while the goals above are already running.
+        goalSelector.addGoal(3, new PoliceGoal(this));
         goalSelector.addGoal(3, new SoldierTargetGoal(this));
+        goalSelector.addGoal(4, new FireDutyGoal(this));
+        goalSelector.addGoal(4, new MedicGoal(this));
+        goalSelector.addGoal(4, new RefuseGoal(this));
+        goalSelector.addGoal(4, new SoldierGoal(this));
         goalSelector.addGoal(6, new WaterAvoidingRandomStrollGoal(this, 0.9D));
         goalSelector.addGoal(7, new LookAtPlayerGoal(this, Player.class, 8.0F));
         goalSelector.addGoal(8, new RandomLookAroundGoal(this));
