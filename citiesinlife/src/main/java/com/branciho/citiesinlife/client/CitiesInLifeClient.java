@@ -3,6 +3,8 @@ package com.branciho.citiesinlife.client;
 import com.branciho.citiesinlife.CitiesInLife;
 import com.branciho.citiesinlife.client.render.CitizenModel;
 import com.branciho.citiesinlife.client.render.CitizenRenderer;
+import com.branciho.citiesinlife.client.render.ServiceModel;
+import com.branciho.citiesinlife.client.render.ServiceRenderer;
 import com.branciho.citiesinlife.client.render.TurbineModel;
 import com.branciho.citiesinlife.client.render.WindmillModel;
 import com.branciho.citiesinlife.client.render.WindmillRenderer;
@@ -56,6 +58,7 @@ public final class CitiesInLifeClient {
         event.registerLayerDefinition(TurbineModel.LAYER, TurbineModel::create);
         event.registerLayerDefinition(WindmillModel.LAYER, WindmillModel::create);
         event.registerLayerDefinition(CitizenModel.LAYER, CitizenModel::createBodyLayer);
+        event.registerLayerDefinition(ServiceModel.LAYER, ServiceModel::createBodyLayer);
     }
 
     @SubscribeEvent
@@ -65,6 +68,7 @@ public final class CitiesInLifeClient {
         event.registerBlockEntityRenderer(ModBlockEntities.TURBINE.get(), TurbineRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.WINDMILL.get(), WindmillRenderer::new);
         event.registerEntityRenderer(ModEntities.CITIZEN.get(), CitizenRenderer::new);
+        event.registerEntityRenderer(ModEntities.SERVICE.get(), ServiceRenderer::new);
     }
 
     @SubscribeEvent

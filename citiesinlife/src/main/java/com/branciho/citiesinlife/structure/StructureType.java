@@ -1,7 +1,9 @@
 package com.branciho.citiesinlife.structure;
 
+import com.branciho.citiesinlife.service.ServiceType;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.StringRepresentable;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * What a selected structure has been declared to be.
@@ -33,6 +35,37 @@ public enum StructureType implements StringRepresentable {
 
     FACTORY("factory", 0xFFD859, 4),
 
+    /** Where the police come from. Sparse floors: a station is mostly cells and corridor. */
+    POLICE_STATION("police_station", 0x3A6BE0, 14, ServiceType.POLICE),
+
+    /** The fire station. Half of it is the engine bay, so it employs fewer people than it looks. */
+    FIRE_STATION("fire_station", 0xE04A3A, 16, ServiceType.FIRE),
+
+    /** A hospital. The densest of the services, because a ward is all staff. */
+    HOSPITAL("hospital", 0xF2F4F7, 9, ServiceType.HOSPITAL),
+
+    /**
+     * A park.
+     *
+     * <p>The only registered thing in the mod that is deliberately outdoors, which is why it is not
+     * measured by floors — there are none. What matters about a park is how much ground it covers,
+     * and the box the player drew already says that.
+     */
+    PARK("park", 0x3FBF5F, 0, ServiceType.PARK, false),
+
+    /** The depot the bin lorries go out from. */
+    GARBAGE_DEPOT("garbage_depot", 0x8A7A5C, 18, ServiceType.GARBAGE),
+
+    /**
+     * The barracks.
+     *
+     * <p>Employs nobody, on purpose. Soldiers are hired through the Military Tool and paid out of
+     * the treasury; counting them again as jobs would have the city's own economy pay for its army
+     * twice over. Not measured for the same reason a power plant is not: it is a marker saying "the
+     * army lives here", and its floor space means nothing.
+     */
+    MILITARY_BASE("military_base", 0x5A6B3A, 0, ServiceType.MILITARY, false),
+
     /**
      * A building the mod should look inside for power machinery.
      *
@@ -44,7 +77,7 @@ public enum StructureType implements StringRepresentable {
      * <p>Solar panels need no equivalent because a panel is one block that is either wired up or not.
      * Windmills and reactors will be buildings, so they will use this too.
      */
-    POWER_PLANT("power_plant", 0xE0662F, 0);
+    POWER_PLANT("power_plant", 0xE0662F, 0, null, false);
 
     /** Floor cells consumed by one dwelling. */
     public static final double CELLS_PER_DWELLING = 16.0D;
@@ -69,10 +102,27 @@ public enum StructureType implements StringRepresentable {
     private final int colour;
     private final int cellsPerJob;
 
+    /** The service this building runs, or null if it is an ordinary part of the city. */
+    private final @Nullable ServiceType service;
+
+    /** Whether looking inside this building tells us anything about how many people it holds. */
+    private final boolean measured;
+
     StructureType(String id, int colour, int cellsPerJob) {
+        this(id, colour, cellsPerJob, null, true);
+    }
+
+    StructureType(String id, int colour, int cellsPerJob, ServiceType service) {
+        this(id, colour, cellsPerJob, service, true);
+    }
+
+    StructureType(String id, int colour, int cellsPerJob, @Nullable ServiceType service,
+                  boolean measured) {
         this.id = id;
         this.colour = colour;
         this.cellsPerJob = cellsPerJob;
+        this.service = service;
+        this.measured = measured;
     }
 
     public String id() {
@@ -96,10 +146,16 @@ public enum StructureType implements StringRepresentable {
      * Whether measuring the inside of this building tells us anything.
      *
      * <p>A power plant is a marker rather than a capacity, so reporting "no usable floors found" for
-     * a boiler house would be advice about a problem it does not have.
+     * a boiler house would be advice about a problem it does not have. A park and a military base
+     * are markers in the same way.
      */
     public boolean measured() {
-        return this != POWER_PLANT;
+        return measured;
+    }
+
+    /** Which service a Service NPC Spawner standing inside this building would run. */
+    public @Nullable ServiceType service() {
+        return service;
     }
 
     public Component displayName() {

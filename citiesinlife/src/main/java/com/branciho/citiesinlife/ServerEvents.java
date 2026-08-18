@@ -5,6 +5,8 @@ import com.branciho.citiesinlife.plant.PlantSurvey;
 import com.branciho.citiesinlife.sim.CitizenDirector;
 import com.branciho.citiesinlife.sim.CitySimulation;
 import com.branciho.citiesinlife.sim.CreativeFunding;
+import com.branciho.citiesinlife.sim.ServiceDirector;
+import com.branciho.citiesinlife.sim.WarDirector;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -35,6 +37,8 @@ public final class ServerEvents {
         CreativeFunding.tick(server);
         CitySimulation.tick(server);
         CitizenDirector.tick(server);
+        ServiceDirector.tick(server);
+        WarDirector.tick(server);
 
         if (server.getTickCount() % SYNC_INTERVAL_TICKS == 0) {
             for (ServerPlayer player : server.getPlayerList().getPlayers()) {

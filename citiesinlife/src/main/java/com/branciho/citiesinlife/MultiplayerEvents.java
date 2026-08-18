@@ -2,8 +2,10 @@ package com.branciho.citiesinlife;
 
 import com.branciho.citiesinlife.city.City;
 import com.branciho.citiesinlife.city.CityData;
+import com.branciho.citiesinlife.city.CityMember;
 import com.branciho.citiesinlife.city.Diplomacy;
 import com.branciho.citiesinlife.entity.CitizenEntity;
+import com.branciho.citiesinlife.entity.ServiceEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
@@ -186,10 +188,10 @@ public final class MultiplayerEvents {
      */
     @SubscribeEvent
     public static void onIncomingDamage(LivingIncomingDamageEvent event) {
-        if (!(event.getEntity() instanceof CitizenEntity citizen)) {
+        if (!(event.getEntity() instanceof CityMember member)) {
             return;
         }
-        City owner = cityOf(citizen);
+        City owner = cityOf(member);
         if (owner == null) {
             return;
         }
@@ -197,10 +199,35 @@ public final class MultiplayerEvents {
         if (blamed instanceof ServerPlayer player && entitled(player, owner)) {
             return;
         }
+        if (sanctioned(event.getSource(), event.getEntity(), owner)) {
+            return;
+        }
         event.setCanceled(true);
         if (blamed instanceof ServerPlayer player) {
             warn(player, owner, "message.citiesinlife.protected_citizen");
         }
+    }
+
+    /**
+     * The three fights the city itself allows.
+     *
+     * <p>Blanket protection is the right default and it has one problem: it also protects people
+     * from the city's own consequences. A criminal could not touch anybody, an officer could not
+     * arrest them, and an invading army stood in the enemy's streets unable to do a thing. Each of
+     * these is checked against the same relationships a player is checked against, so none of them
+     * is a hole somebody can climb through by dressing up as a policeman.
+     */
+    private static boolean sanctioned(DamageSource source, Entity victim, City owner) {
+        Entity attacker = source.getEntity();
+        if (attacker instanceof CitizenEntity thug) {
+            // A citizen only ever raises a hand as a criminal, and only to their own neighbours.
+            return thug.criminal() && owner.id().equals(thug.cityId());
+        }
+        if (attacker instanceof ServiceEntity officer) {
+            boolean wanted = victim instanceof CitizenEntity citizen && citizen.criminal();
+            return officer.mayHarm(owner, wanted);
+        }
+        return false;
     }
 
     /**
@@ -212,10 +239,10 @@ public final class MultiplayerEvents {
     @SubscribeEvent
     public static void onProjectileImpact(ProjectileImpactEvent event) {
         if (!(event.getRayTraceResult() instanceof EntityHitResult hit)
-                || !(hit.getEntity() instanceof CitizenEntity citizen)) {
+                || !(hit.getEntity() instanceof CityMember member)) {
             return;
         }
-        City owner = cityOf(citizen);
+        City owner = cityOf(member);
         if (owner == null) {
             return;
         }
@@ -250,10 +277,10 @@ public final class MultiplayerEvents {
         return null;
     }
 
-    /** The city a citizen belongs to, or null if it has none or its city is gone. */
-    private static @Nullable City cityOf(CitizenEntity citizen) {
-        MinecraftServer server = citizen.level().getServer();
-        UUID cityId = citizen.cityId();
+    /** The city somebody belongs to, or null if they have none or their city is gone. */
+    private static @Nullable City cityOf(CityMember member) {
+        MinecraftServer server = ((Entity) member).level().getServer();
+        UUID cityId = member.cityId();
         if (server == null || cityId == null) {
             return null;
         }
@@ -273,11 +300,11 @@ public final class MultiplayerEvents {
      * still their citizen.
      */
     private static boolean protectedCitizen(Player attacker, Entity target) {
-        if (!(target instanceof CitizenEntity citizen) || !(attacker instanceof ServerPlayer player)) {
+        if (!(target instanceof CityMember member) || !(attacker instanceof ServerPlayer player)) {
             return false;
         }
         MinecraftServer server = player.getServer();
-        UUID cityId = citizen.cityId();
+        UUID cityId = member.cityId();
         if (server == null || cityId == null) {
             return false;
         }

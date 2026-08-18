@@ -1,7 +1,9 @@
 package com.branciho.citiesinlife.entity;
 
 import com.branciho.citiesinlife.city.CityData;
+import com.branciho.citiesinlife.city.CityMember;
 import com.branciho.citiesinlife.entity.ai.CitizenSleepGoal;
+import com.branciho.citiesinlife.entity.ai.CommitMurderGoal;
 import com.branciho.citiesinlife.entity.ai.CitizenWorkGoal;
 import com.branciho.citiesinlife.entity.ai.StrollOnPathGoal;
 import com.branciho.citiesinlife.path.PathNetwork;
@@ -47,7 +49,7 @@ import java.util.UUID;
  * graph was the obvious alternative and is exactly the thing that breaks the first time a junction is
  * missing.
  */
-public class CitizenEntity extends PathfinderMob {
+public class CitizenEntity extends PathfinderMob implements CityMember {
 
     /** How many faces citizens come in. Purely cosmetic; the director picks one at random. */
     public static final int SKINS = 4;
@@ -63,12 +65,38 @@ public class CitizenEntity extends PathfinderMob {
     public static final byte ACTIVITY_TYPING = 1;
     public static final byte ACTIVITY_SERVING = 2;
 
+    /**
+     * Whether this one has snapped.
+     *
+     * <p>The only crime in this city is one citizen killing another, and it is meant to be rare
+     * enough that most players will never see it twice. It is synched because the flag is the whole
+     * of the police's job: an officer is spawned because somebody is wearing this, and goes home
+     * again when nobody is.
+     */
+    private static final EntityDataAccessor<Boolean> DATA_CRIMINAL =
+            SynchedEntityData.defineId(CitizenEntity.class, EntityDataSerializers.BOOLEAN);
+
+    /** How far a criminal will go looking for somebody to take it out on. */
+    private static final double VICTIM_RANGE = 20.0D;
+
+    /**
+     * How long somebody stays dangerous before they give it up on their own.
+     *
+     * <p>Five minutes. A city with no police station should be a worse place to live, not a
+     * permanently broken one — without this, one bad afternoon leaves a killer walking the streets
+     * for the rest of the save picking off everybody who spawns.
+     */
+    private static final int CRIME_TICKS = 6_000;
+
     /** The city this one belongs to, so the director can count its own. */
     private @Nullable UUID cityId;
 
     /** The bed it sleeps in, and the desk or till it works at. Either may be gone by morning. */
     private @Nullable BlockPos home;
     private @Nullable BlockPos workstation;
+
+    /** Game time this one comes to their senses, if they have lost them. */
+    private long criminalUntil;
 
     /**
      * Whether this one works nights.
@@ -91,6 +119,10 @@ public class CitizenEntity extends PathfinderMob {
         return PathfinderMob.createMobAttributes()
                 .add(Attributes.MAX_HEALTH, 20.0D)
                 .add(Attributes.MOVEMENT_SPEED, 0.32D)
+                // Ordinary people can throw a punch. Nothing uses this until one of them turns, and
+                // an attribute that is missing when it is finally needed is a crash rather than a
+                // harmless zero.
+                .add(Attributes.ATTACK_DAMAGE, 3.0D)
                 .add(Attributes.FOLLOW_RANGE, 48.0D);
     }
 
@@ -99,11 +131,15 @@ public class CitizenEntity extends PathfinderMob {
         super.defineSynchedData(builder);
         builder.define(DATA_SKIN, 0);
         builder.define(DATA_ACTIVITY, ACTIVITY_IDLE);
+        builder.define(DATA_CRIMINAL, false);
     }
 
     @Override
     protected void registerGoals() {
         goalSelector.addGoal(0, new FloatGoal(this));
+        // Above work and sleep, because somebody who has decided to do this is not going to the
+        // office first.
+        goalSelector.addGoal(1, new CommitMurderGoal(this));
         // Work and sleep come first because they are the only things with a schedule. Everything
         // below them is what a citizen does with the rest of its day.
         goalSelector.addGoal(2, new CitizenWorkGoal(this));
@@ -150,6 +186,52 @@ public class CitizenEntity extends PathfinderMob {
         return paths;
     }
 
+    // ------------------------------------------------------------------ crime
+
+    public boolean criminal() {
+        return entityData.get(DATA_CRIMINAL);
+    }
+
+    public void setCriminal(boolean criminal) {
+        if (entityData.get(DATA_CRIMINAL) != criminal) {
+            entityData.set(DATA_CRIMINAL, criminal);
+        }
+        if (criminal) {
+            criminalUntil = level().getGameTime() + CRIME_TICKS;
+        } else {
+            criminalUntil = 0L;
+            setTarget(null);
+        }
+    }
+
+    /**
+     * Somebody nearby to take it out on.
+     *
+     * <p>Their own neighbours only. A criminal who wandered across the city boundary and attacked a
+     * stranger would be somebody else's police force's problem, and working out whose is a knot not
+     * worth tying for a thing that happens once an hour.
+     */
+    public @Nullable CitizenEntity findVictim() {
+        if (cityId == null) {
+            return null;
+        }
+        CitizenEntity nearest = null;
+        double best = VICTIM_RANGE * VICTIM_RANGE;
+        for (CitizenEntity other : level().getEntitiesOfClass(CitizenEntity.class,
+                getBoundingBox().inflate(VICTIM_RANGE))) {
+            if (other == this || !other.isAlive() || other.criminal()
+                    || !cityId.equals(other.cityId())) {
+                continue;
+            }
+            double distance = distanceToSqr(other);
+            if (distance < best) {
+                best = distance;
+                nearest = other;
+            }
+        }
+        return nearest;
+    }
+
     // ----------------------------------------------------------------- living
 
     @Override
@@ -158,6 +240,10 @@ public class CitizenEntity extends PathfinderMob {
         if (level().isClientSide) {
             return;
         }
+        if (criminal() && level().getGameTime() >= criminalUntil) {
+            setCriminal(false);
+        }
+
         // A razed city leaves its people behind. Nothing counts them against a cap any longer and
         // nothing protects them from being killed, so they would wander a dead city forever as a
         // small permanent leak. They go with it.
@@ -205,6 +291,7 @@ public class CitizenEntity extends PathfinderMob {
 
     // --------------------------------------------------------------- identity
 
+    @Override
     public @Nullable UUID cityId() {
         return cityId;
     }
@@ -274,6 +361,8 @@ public class CitizenEntity extends PathfinderMob {
             tag.putLong("workstation", workstation.asLong());
         }
         tag.putBoolean("nightShift", nightShift);
+        tag.putBoolean("criminal", criminal());
+        tag.putLong("criminalUntil", criminalUntil);
         tag.putInt("skin", skin());
     }
 
@@ -284,6 +373,10 @@ public class CitizenEntity extends PathfinderMob {
         home = tag.contains("home") ? BlockPos.of(tag.getLong("home")) : null;
         workstation = tag.contains("workstation") ? BlockPos.of(tag.getLong("workstation")) : null;
         nightShift = tag.getBoolean("nightShift");
+        setCriminal(tag.getBoolean("criminal"));
+        if (tag.contains("criminalUntil")) {
+            criminalUntil = tag.getLong("criminalUntil");
+        }
         setSkin(tag.getInt("skin"));
     }
 }

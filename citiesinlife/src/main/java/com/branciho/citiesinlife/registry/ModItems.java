@@ -107,6 +107,9 @@ public final class ModItems {
     public static final DeferredItem<BlockItem> END_PIPE =
             ITEMS.registerSimpleBlockItem("end_pipe", ModBlocks.END_PIPE);
 
+    public static final DeferredItem<BlockItem> SERVICE_SPAWNER =
+            ITEMS.registerSimpleBlockItem("service_spawner", ModBlocks.SERVICE_SPAWNER);
+
     private ModItems() {
     }
 

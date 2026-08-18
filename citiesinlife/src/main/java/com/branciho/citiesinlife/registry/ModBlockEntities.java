@@ -9,6 +9,7 @@ import com.branciho.citiesinlife.blockentity.TurbineBlockEntity;
 import com.branciho.citiesinlife.blockentity.ChimneyBlockEntity;
 import com.branciho.citiesinlife.blockentity.OfficeSpaceBlockEntity;
 import com.branciho.citiesinlife.blockentity.RegisterCounterBlockEntity;
+import com.branciho.citiesinlife.blockentity.ServiceSpawnerBlockEntity;
 import com.branciho.citiesinlife.blockentity.WaterStorageBlockEntity;
 import com.branciho.citiesinlife.blockentity.WindmillBlockEntity;
 import net.minecraft.core.registries.Registries;
@@ -82,6 +83,12 @@ public final class ModBlockEntities {
             END_PIPE = BLOCK_ENTITIES.register("end_pipe",
                     () -> BlockEntityType.Builder
                             .of(EndPipeBlockEntity::new, ModBlocks.END_PIPE.get())
+                            .build(null));
+
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ServiceSpawnerBlockEntity>>
+            SERVICE_SPAWNER = BLOCK_ENTITIES.register("service_spawner",
+                    () -> BlockEntityType.Builder
+                            .of(ServiceSpawnerBlockEntity::new, ModBlocks.SERVICE_SPAWNER.get())
                             .build(null));
 
     private ModBlockEntities() {

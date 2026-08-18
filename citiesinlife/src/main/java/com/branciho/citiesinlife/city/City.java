@@ -9,6 +9,7 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.Level;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -95,6 +96,20 @@ public final class City {
     /** The same for water: what the people need, and what actually came out of the tanks. */
     private int waterNeeded;
     private int waterSupplied;
+
+    /**
+     * How much rubbish is piled up, and how much ground the city has given over to parks.
+     *
+     * <p>Refuse is the one utility that works backwards: everything else is a supply that has to
+     * keep up with a demand, and this is a demand that has to be kept down. Left alone it climbs
+     * with the population until it starts putting people off living here.
+     *
+     * <p>Park area is measured in square metres of ground the player drew a box around, not in floor
+     * space, because a park has no floors. It is the only registered thing in the mod that is meant
+     * to be outdoors.
+     */
+    private int refuse;
+    private int parkArea;
 
     public City(UUID id, String name, UUID owner, ResourceKey<Level> dimension) {
         this.id = id;
@@ -278,6 +293,114 @@ public final class City {
         this.waterNeeded = Math.max(0, needed);
     }
 
+    // ------------------------------------------------------------------ army
+
+    /**
+     * One soldier on the city's books.
+     *
+     * <p>The record is the soldier, not the body walking about. Bodies are spawned from the barracks
+     * when the chunk is loaded and discarded when it is not; the roll survives either way, which is
+     * why firing somebody is a decision and unloading a chunk is not.
+     *
+     * @param weapon    the registry id of what they carry, or empty for bare hands. Kept as a
+     *                  string rather than as an item so a save still opens if the mod that supplied
+     *                  the gun is uninstalled.
+     * @param trainingDoneAt game time the current course finishes, or 0 if they are not on one
+     */
+    public record Soldier(UUID id, String name, int training, String weapon, long trainingDoneAt) {
+
+        public Soldier withTraining(int level) {
+            return new Soldier(id, name, level, weapon, 0L);
+        }
+
+        public Soldier withWeapon(String item) {
+            return new Soldier(id, name, training, item, trainingDoneAt);
+        }
+
+        public Soldier training(long finishesAt) {
+            return new Soldier(id, name, training, weapon, finishesAt);
+        }
+
+        public boolean inTraining() {
+            return trainingDoneAt > 0L;
+        }
+    }
+
+    /** What hiring, and then improving, one soldier costs. */
+    public static final long HIRE_COST = 1_500L;
+    public static final long TRAIN_COST = 1_200L;
+
+    /** How long a course takes. Two minutes, so training is a decision made before a war. */
+    public static final int TRAIN_TICKS = 2_400;
+
+    /** How many soldiers one city may keep. A barracks, not a nation. */
+    public static final int MAX_ARMY = 8;
+
+    private final List<Soldier> army = new ArrayList<>();
+
+    public List<Soldier> army() {
+        return army;
+    }
+
+    public @Nullable Soldier soldier(UUID id) {
+        for (Soldier soldier : army) {
+            if (soldier.id().equals(id)) {
+                return soldier;
+            }
+        }
+        return null;
+    }
+
+    public boolean enlist(Soldier soldier) {
+        if (army.size() >= MAX_ARMY) {
+            return false;
+        }
+        return army.add(soldier);
+    }
+
+    public boolean discharge(UUID id) {
+        return army.removeIf(soldier -> soldier.id().equals(id));
+    }
+
+    /** Put an updated record back in the same place, so the list does not shuffle under the screen. */
+    public boolean replace(Soldier updated) {
+        for (int i = 0; i < army.size(); i++) {
+            if (army.get(i).id().equals(updated.id())) {
+                army.set(i, updated);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // ---------------------------------------------------------- services
+
+    public int refuse() {
+        return refuse;
+    }
+
+    public void addRefuse(int amount) {
+        refuse = Math.max(0, refuse + amount);
+    }
+
+    /**
+     * How much rubbish this city can have lying about before anybody minds.
+     *
+     * <p>Scaled to the population, so a hamlet is not judged by a capital's standards. A city with
+     * no collection at all creeps past this and then keeps going.
+     */
+    public int refuseTolerance() {
+        return 200 + population * 2;
+    }
+
+    public int parkArea() {
+        return parkArea;
+    }
+
+    public void setParkArea(int parkArea) {
+        this.parkArea = Math.max(0, parkArea);
+    }
+
     // ------------------------------------------------------------- diplomacy
 
     /** Whether this city has given another the run of its land. */
@@ -360,6 +483,20 @@ public final class City {
         tag.putInt("powerProduced", powerProduced);
         tag.putInt("waterNeeded", waterNeeded);
         tag.putInt("waterSupplied", waterSupplied);
+        tag.putInt("refuse", refuse);
+        tag.putInt("parkArea", parkArea);
+        ListTag armyList = new ListTag();
+        for (Soldier soldier : army) {
+            CompoundTag entry = new CompoundTag();
+            entry.putUUID("id", soldier.id());
+            entry.putString("name", soldier.name());
+            entry.putInt("training", soldier.training());
+            entry.putString("weapon", soldier.weapon());
+            entry.putLong("trainingDoneAt", soldier.trainingDoneAt());
+            armyList.add(entry);
+        }
+        tag.put("army", armyList);
+
         tag.put("granted", writeIds(granted));
         tag.put("wars", writeIds(wars));
         return tag;
@@ -406,6 +543,19 @@ public final class City {
         city.powerProduced = tag.getInt("powerProduced");
         city.waterNeeded = tag.getInt("waterNeeded");
         city.waterSupplied = tag.getInt("waterSupplied");
+        city.refuse = tag.getInt("refuse");
+        city.parkArea = tag.getInt("parkArea");
+        ListTag armyList = tag.getList("army", Tag.TAG_COMPOUND);
+        for (int i = 0; i < armyList.size(); i++) {
+            CompoundTag entry = armyList.getCompound(i);
+            city.army.add(new Soldier(
+                    entry.getUUID("id"),
+                    entry.getString("name"),
+                    entry.getInt("training"),
+                    entry.getString("weapon"),
+                    entry.getLong("trainingDoneAt")));
+        }
+
         readIds(tag, "granted", city.granted);
         readIds(tag, "wars", city.wars);
         return city;

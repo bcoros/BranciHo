@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/cube_bottom_top",
+  "textures": {
+    "top": "citiesinlife:block/service_spawner_top",
+    "bottom": "citiesinlife:block/service_spawner_top",
+    "side": "citiesinlife:block/service_spawner_side"
+  }
+}

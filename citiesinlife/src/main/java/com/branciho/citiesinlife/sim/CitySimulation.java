@@ -5,6 +5,7 @@ import com.branciho.citiesinlife.city.CityData;
 import com.branciho.citiesinlife.blockentity.WaterStorageBlockEntity;
 import com.branciho.citiesinlife.power.PowerGrid;
 import com.branciho.citiesinlife.structure.Structure;
+import com.branciho.citiesinlife.structure.StructureType;
 import com.branciho.citiesinlife.water.WaterGrid;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import net.minecraft.core.BlockPos;
@@ -86,6 +87,28 @@ public final class CitySimulation {
     private static final int JOBS_PER_WATER = 50;
 
     /**
+     * How much rubbish a city makes per growth step, before its size is taken into account.
+     *
+     * <p>Refuse is the one utility that runs backwards. Everything else is a supply that has to keep
+     * up with a demand; this is a demand that has to be kept <em>down</em>, and a city that ignores
+     * it does not stop — it just stops being somewhere anybody wants to move to.
+     */
+    private static final int REFUSE_BASE = 2;
+    private static final int RESIDENTS_PER_REFUSE = 150;
+
+    /** How much of normal growth a city manages while it is knee deep in its own rubbish. */
+    private static final double BURIED_GROWTH = 0.4D;
+
+    /**
+     * How much park it takes to house one more person than the buildings alone would.
+     *
+     * <p>Parks do not create housing; they make the housing that exists somewhere people want to
+     * be. Twenty square metres a head is a generous rate, and deliberately so — a park is expensive
+     * ground to give up and should be visibly worth it.
+     */
+    private static final int PARK_AREA_PER_RESIDENT = 20;
+
+    /**
      * How much of normal growth a city manages with no water at all.
      *
      * <p>Harsher than a blackout, because you can read by candlelight and you cannot drink by it.
@@ -115,6 +138,7 @@ public final class CitySimulation {
             recalculate(data, city);
             updatePower(server, grid, city);
             updateWater(server, water, city);
+            makeRubbish(city);
             grow(city);
             collectTaxes(city);
         }
@@ -217,14 +241,30 @@ public final class CitySimulation {
                 + (int) Math.ceil(jobs / (double) JOBS_PER_WATER);
     }
 
+    /**
+     * Rubbish piles up on its own.
+     *
+     * <p>Nothing in the mod removes it except a bin man, which is the whole argument for building a
+     * depot: every other service answers something that might never happen, and this one answers
+     * something that is happening right now in every city that has anybody in it.
+     */
+    private static void makeRubbish(City city) {
+        city.addRefuse(REFUSE_BASE + city.population() / RESIDENTS_PER_REFUSE);
+    }
+
     /** Recompute what the city's buildings offer. Pure capacity, no growth. */
     private static void recalculate(CityData data, City city) {
         int housing = 0;
         int jobs = 0;
+        int parks = 0;
         for (Structure structure : data.structuresOf(city)) {
             housing += structure.residents();
             jobs += structure.jobs();
+            if (structure.type() == StructureType.PARK) {
+                parks += structure.footprint();
+            }
         }
+        city.setParkArea(parks);
         city.setCapacity(housing, jobs);
         city.setPower(city.powerProduced(), demandFor(housing, jobs));
         // Water demand is set here too, not only on the water tick, so registering a tower shows its
@@ -242,7 +282,10 @@ public final class CitySimulation {
      * not fill up, which is the first real planning decision the player makes.
      */
     private static int supportable(City city) {
-        return Math.min(city.housing(), city.jobs() * 2 + 20);
+        // Parks are the one thing that makes a city worth living in beyond the arithmetic of beds
+        // and desks, so they lift the ceiling rather than adding housing that does not exist.
+        int drawn = city.jobs() * 2 + 20 + city.parkArea() / PARK_AREA_PER_RESIDENT;
+        return Math.min(city.housing(), drawn);
     }
 
     private static void grow(City city) {
@@ -258,6 +301,9 @@ public final class CitySimulation {
         if (city.waterNeeded() > 0 && city.waterSupplied() < city.waterNeeded()) {
             double covered = city.waterSupplied() / (double) city.waterNeeded();
             rate *= UNWATERED_GROWTH + (1.0D - UNWATERED_GROWTH) * covered;
+        }
+        if (city.refuse() > city.refuseTolerance()) {
+            rate *= BURIED_GROWTH;
         }
 
         int delta = (int) Math.round((target - population) * rate);

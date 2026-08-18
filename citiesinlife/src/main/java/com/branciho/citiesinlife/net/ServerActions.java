@@ -617,6 +617,13 @@ public final class ServerActions {
             reject(player, "already_claimed");
             return;
         }
+        // A city at war buys no land. Whatever it is going to hold at the end of this, it has to
+        // take - otherwise the answer to being invaded is to buy a wall of chunks around yourself
+        // faster than the other side can walk across them.
+        if (!city.wars().isEmpty()) {
+            reject(player, "at_war_no_land");
+            return;
+        }
         if (data.cityAtChunk(level.dimension(), key) != null) {
             reject(player, "chunk_owned");
             return;

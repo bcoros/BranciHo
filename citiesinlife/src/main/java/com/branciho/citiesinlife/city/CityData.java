@@ -4,10 +4,12 @@ import com.branciho.citiesinlife.CitiesInLife;
 import com.branciho.citiesinlife.structure.Structure;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
@@ -67,6 +69,14 @@ public final class CityData extends SavedData {
 
     /** dimension -> chunk key -> structures touching that chunk. */
     private final Map<ResourceKey<Level>, Map<Long, List<UUID>>> structureIndex = new HashMap<>();
+
+    /**
+     * Chunks somebody's soldiers are standing in and slowly taking.
+     *
+     * <p>Kept here rather than in its own save file because a siege is a fact about two cities and
+     * dies with either of them, and this is the only place that knows when a city stops existing.
+     */
+    private final Map<ResourceKey<Level>, Map<Long, Siege>> sieges = new HashMap<>();
 
     public static CityData get(MinecraftServer server) {
         return server.overworld().getDataStorage().computeIfAbsent(
@@ -148,8 +158,83 @@ public final class CityData extends SavedData {
             other.forget(city.id());
         }
 
+        // A siege this city was pressing, or one being pressed on its ground, is nothing at all now.
+        Map<Long, Siege> besieged = sieges.get(city.dimension());
+        if (besieged != null) {
+            for (long chunkKey : city.claimedChunks()) {
+                besieged.remove(chunkKey);
+            }
+        }
+        for (Map<Long, Siege> index : sieges.values()) {
+            index.values().removeIf(siege -> siege.attacker().equals(city.id()));
+        }
+        sieges.values().removeIf(Map::isEmpty);
+
         setDirty();
         return removed;
+    }
+
+    // ---------------------------------------------------------------- sieges
+
+    /**
+     * A chunk being taken: who is taking it and how far along they are.
+     *
+     * <p>Progress rather than a timer, so a chunk with four soldiers in it falls four times as fast
+     * and one that has been left alone stays exactly where it was rather than quietly resetting.
+     */
+    public record Siege(UUID attacker, int progress) {
+    }
+
+    /** How much progress it takes to hold a chunk outright. */
+    public static final int SIEGE_TARGET = 100;
+
+    public @Nullable Siege siege(ResourceKey<Level> dimension, long chunkKey) {
+        Map<Long, Siege> index = sieges.get(dimension);
+        return index == null ? null : index.get(chunkKey);
+    }
+
+    /**
+     * Push a siege forward, and say whether that finished it.
+     *
+     * <p>A different attacker arriving starts the count again from theirs. Two armies pushing the
+     * same chunk at once and sharing a progress bar would mean whoever turned up second inherited
+     * the first one's work.
+     */
+    public boolean advanceSiege(ResourceKey<Level> dimension, long chunkKey, UUID attacker, int amount) {
+        Map<Long, Siege> index = sieges.computeIfAbsent(dimension, key -> new HashMap<>());
+        Siege current = index.get(chunkKey);
+        int progress = current != null && current.attacker().equals(attacker)
+                ? current.progress() + amount
+                : amount;
+        index.put(chunkKey, new Siege(attacker, progress));
+        setDirty();
+        return progress >= SIEGE_TARGET;
+    }
+
+    public void clearSiege(ResourceKey<Level> dimension, long chunkKey) {
+        Map<Long, Siege> index = sieges.get(dimension);
+        if (index != null && index.remove(chunkKey) != null) {
+            if (index.isEmpty()) {
+                sieges.remove(dimension);
+            }
+            setDirty();
+        }
+    }
+
+    /**
+     * Take a chunk off one city and give it to another.
+     *
+     * <p>Unlike unclaiming, this does not refuse ground with a building on it. That refusal exists
+     * to stop a player stranding their own structure outside their own borders; conquest is the one
+     * case where the building changing hands is the entire point, and the War Planner Wand is what
+     * finishes the job.
+     */
+    public void transferChunk(City from, City to, long chunkKey) {
+        from.unclaim(chunkKey);
+        to.claim(chunkKey);
+        territoryIndex.computeIfAbsent(to.dimension(), key -> new HashMap<>()).put(chunkKey, to.id());
+        clearSiege(to.dimension(), chunkKey);
+        setDirty();
     }
 
     // -------------------------------------------------------- creative money
@@ -363,6 +448,19 @@ public final class CityData extends SavedData {
         }
         tag.put("structures", structureList);
 
+        ListTag siegeList = new ListTag();
+        for (Map.Entry<ResourceKey<Level>, Map<Long, Siege>> perDimension : sieges.entrySet()) {
+            for (Map.Entry<Long, Siege> entry : perDimension.getValue().entrySet()) {
+                CompoundTag siege = new CompoundTag();
+                siege.putString("dimension", perDimension.getKey().location().toString());
+                siege.putLong("chunk", entry.getKey());
+                siege.putUUID("attacker", entry.getValue().attacker());
+                siege.putInt("progress", entry.getValue().progress());
+                siegeList.add(siege);
+            }
+        }
+        tag.put("sieges", siegeList);
+
         ListTag optedOut = new ListTag();
         for (UUID playerId : creativeMoneyOff) {
             CompoundTag entry = new CompoundTag();
@@ -408,6 +506,16 @@ public final class CityData extends SavedData {
             }
             data.structures.put(structure.id(), structure);
             data.indexStructure(structure);
+        }
+
+        ListTag siegeList = tag.getList("sieges", Tag.TAG_COMPOUND);
+        for (int i = 0; i < siegeList.size(); i++) {
+            CompoundTag siege = siegeList.getCompound(i);
+            ResourceKey<Level> dimension = ResourceKey.create(Registries.DIMENSION,
+                    ResourceLocation.parse(siege.getString("dimension")));
+            data.sieges.computeIfAbsent(dimension, key -> new HashMap<>()).put(
+                    siege.getLong("chunk"),
+                    new Siege(siege.getUUID("attacker"), siege.getInt("progress")));
         }
 
         ListTag optedOut = tag.getList("creativeMoneyOff", Tag.TAG_COMPOUND);

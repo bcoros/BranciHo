@@ -7,6 +7,7 @@ import com.branciho.citiesinlife.block.ChimneyBlock;
 import com.branciho.citiesinlife.block.IndestructiblePipeBlock;
 import com.branciho.citiesinlife.block.OfficeSpaceBlock;
 import com.branciho.citiesinlife.block.RegisterCounterBlock;
+import com.branciho.citiesinlife.block.ServiceSpawnerBlock;
 import com.branciho.citiesinlife.block.WindmillBlock;
 import com.branciho.citiesinlife.block.WindmillColour;
 import com.branciho.citiesinlife.block.EndPipeBlock;
@@ -244,6 +245,20 @@ public final class ModBlocks {
                     .randomTicks()
                     .forceSolidOn()
                     .noOcclusion()));
+
+    /**
+     * The one block every service shares.
+     *
+     * <p>Stone-strength and no pickaxe needed: it is a fitting inside a building the player has
+     * already built, and making them fetch a tool to move it a square left would be a small misery
+     * repeated six times over.
+     */
+    public static final DeferredBlock<ServiceSpawnerBlock> SERVICE_SPAWNER =
+            BLOCKS.register("service_spawner",
+                    () -> new ServiceSpawnerBlock(BlockBehaviour.Properties.of()
+                            .mapColor(MapColor.COLOR_LIGHT_GRAY)
+                            .strength(2.5F, 5.0F)
+                            .sound(SoundType.METAL)));
 
     private ModBlocks() {
     }

@@ -48,6 +48,7 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.WATER_STORAGE.get());
                         output.accept(ModItems.OFFICE_SPACE.get());
                         output.accept(ModItems.REGISTER_COUNTER.get());
+                        output.accept(ModItems.SERVICE_SPAWNER.get());
                     })
                     .build());
 

@@ -122,6 +122,16 @@ public final class Structure {
         return type.jobsFor(usableCells());
     }
 
+    /**
+     * How much ground this structure covers, in square metres.
+     *
+     * <p>Only a park uses this, and it is why a park is not measured by floors: there are none to
+     * count. How much of the city has been given over to grass is the whole of what a park is worth.
+     */
+    public int footprint() {
+        return (max.getX() - min.getX() + 1) * (max.getZ() - min.getZ() + 1);
+    }
+
     public boolean contains(BlockPos pos) {
         return pos.getX() >= min.getX() && pos.getX() <= max.getX()
                 && pos.getY() >= min.getY() && pos.getY() <= max.getY()

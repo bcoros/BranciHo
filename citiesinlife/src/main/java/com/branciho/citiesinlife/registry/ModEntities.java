@@ -2,6 +2,7 @@ package com.branciho.citiesinlife.registry;
 
 import com.branciho.citiesinlife.CitiesInLife;
 import com.branciho.citiesinlife.entity.CitizenEntity;
+import com.branciho.citiesinlife.entity.ServiceEntity;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
@@ -27,6 +28,21 @@ public final class ModEntities {
                     .clientTrackingRange(10)
                     .build("citizen"));
 
+    /**
+     * Everybody in a uniform, of any service.
+     *
+     * <p>One type rather than five. The role is a byte on the entity, because a police officer and a
+     * bin man differ only in which errand they are running - and five entity types would be five
+     * registrations, five renderers and five places to fix the same walk.
+     */
+    public static final DeferredHolder<EntityType<?>, EntityType<ServiceEntity>> SERVICE =
+            ENTITIES.register("service", () -> EntityType.Builder
+                    .<ServiceEntity>of(ServiceEntity::new, MobCategory.MISC)
+                    .sized(0.6F, 1.95F)
+                    .eyeHeight(1.74F)
+                    .clientTrackingRange(10)
+                    .build("service"));
+
     private ModEntities() {
     }
 
@@ -42,5 +58,6 @@ public final class ModEntities {
     @SubscribeEvent
     public static void createAttributes(EntityAttributeCreationEvent event) {
         event.put(CITIZEN.get(), CitizenEntity.createAttributes().build());
+        event.put(SERVICE.get(), ServiceEntity.createAttributes().build());
     }
 }
