@@ -25,8 +25,8 @@ public class CityScreen extends Screen {
 
     private static final int PANEL_WIDTH = 244;
     // Two more rows than it started with: power gained a water twin, and both need room for the
-    // line that appears underneath when they fall short.
-    private static final int PANEL_HEIGHT = 234;
+    // line that appears underneath when they fall short. Refuse added a third of the same shape.
+    private static final int PANEL_HEIGHT = 262;
 
     private int left;
     private int top;
@@ -125,6 +125,19 @@ public class CityScreen extends Screen {
         if (!watered) {
             graphics.drawString(this.font,
                     Component.translatable("screen.citiesinlife.water_short"),
+                    left + 12, y, COLOUR_BAD, false);
+        }
+        y += 14;
+
+        // Refuse is the one utility that runs backwards - lower is better - so it is shown as a
+        // fraction of what the city can stand rather than as a bare number nobody could read.
+        boolean clean = city.refuse() <= city.refuseTolerance();
+        y = row(graphics, y, "screen.citiesinlife.refuse",
+                Component.literal(format(city.refuse()) + " / " + format(city.refuseTolerance())),
+                clean ? COLOUR_GOOD : COLOUR_BAD);
+        if (!clean) {
+            graphics.drawString(this.font,
+                    Component.translatable("screen.citiesinlife.refuse_high"),
                     left + 12, y, COLOUR_BAD, false);
         }
         y += 14;

@@ -208,10 +208,15 @@ public final class ServerActions {
         CitySimulation.refresh(data, city);
 
         if (!type.measured()) {
-            // A power plant is a marker, so residents and jobs would both read zero and look broken.
-            // Say what it is actually for instead.
-            player.sendSystemMessage(Component.translatable(
-                    "message.citiesinlife.registered_plant", name));
+            // A marker rather than a capacity: residents and jobs would both read zero and look
+            // broken, so say what the building is actually for instead. There are three of these
+            // now, and a power plant's message is no use for a park.
+            player.sendSystemMessage(Component.translatable(switch (type) {
+                case POWER_PLANT -> "message.citiesinlife.registered_plant";
+                case PARK -> "message.citiesinlife.registered_park";
+                case MILITARY_BASE -> "message.citiesinlife.registered_base";
+                default -> "message.citiesinlife.registered_marker";
+            }, name));
             sync(player);
             return;
         }
@@ -1421,6 +1426,8 @@ public final class ServerActions {
                         city.waterSupplied(),
                         city.waterNeeded(),
                         city.nextClaimCost(),
+                        city.refuse(),
+                        city.refuseTolerance(),
                         city.creativeFunded(),
                         city.claimedChunks().toLongArray()));
 

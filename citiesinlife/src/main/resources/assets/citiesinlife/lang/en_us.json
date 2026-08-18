@@ -312,5 +312,10 @@
   "hud.citiesinlife.left_click_seize": "Left click to take the building",
   "item.citiesinlife.service_rifle": "Service Rifle",
   "tooltip.citiesinlife.rifle_1": "Right click to fire",
-  "tooltip.citiesinlife.rifle_2": "Soldiers given one will shoot with it"
+  "tooltip.citiesinlife.rifle_2": "Soldiers given one will shoot with it",
+  "screen.citiesinlife.refuse": "Refuse",
+  "screen.citiesinlife.refuse_high": "Rubbish is piling up - build a Garbage Depot",
+  "message.citiesinlife.registered_park": "Registered %s - a park lowers crime and draws people in",
+  "message.citiesinlife.registered_base": "Registered %s - open the Military Tool to hire soldiers",
+  "message.citiesinlife.registered_marker": "Registered %s"
 }

@@ -4,6 +4,9 @@ import com.branciho.citiesinlife.structure.StructureType;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * What the War Planner Wand will do to the building it is pointed at.
  *
@@ -34,15 +37,29 @@ public final class ClientWarWand {
      *
      * <p>Wrapping through null rather than putting it first means one press either way from the
      * start of the list gets you back to it.
+     *
+     * <p>A city hall is not offered. The server refuses to make a seized building into one — that
+     * would hand somebody a second seat of government — and an option that is always refused is
+     * worse than no option.
      */
     public static void cycle(int direction) {
-        StructureType[] all = StructureType.SELECTABLE;
+        List<StructureType> all = choices();
         if (rewriteAs == null) {
-            rewriteAs = direction > 0 ? all[0] : all[all.length - 1];
+            rewriteAs = direction > 0 ? all.get(0) : all.get(all.size() - 1);
             return;
         }
-        int next = rewriteAs.ordinal() + direction;
-        rewriteAs = next < 0 || next >= all.length ? null : all[next];
+        int next = all.indexOf(rewriteAs) + direction;
+        rewriteAs = next < 0 || next >= all.size() ? null : all.get(next);
+    }
+
+    private static List<StructureType> choices() {
+        List<StructureType> options = new ArrayList<>();
+        for (StructureType type : StructureType.SELECTABLE) {
+            if (type != StructureType.CITY_CORE) {
+                options.add(type);
+            }
+        }
+        return options;
     }
 
     public static Component describe() {
