@@ -15,9 +15,11 @@ import com.branciho.citiesinlife.net.payload.LinkOutletPayload;
 import com.branciho.citiesinlife.net.payload.LinkWaterPayload;
 import com.branciho.citiesinlife.net.payload.ArmySyncPayload;
 import com.branciho.citiesinlife.net.payload.MarkPathPayload;
+import com.branciho.citiesinlife.net.payload.MarkRoadPayload;
 import com.branciho.citiesinlife.net.payload.MilitaryActionPayload;
 import com.branciho.citiesinlife.net.payload.NeighbourCitiesPayload;
 import com.branciho.citiesinlife.net.payload.PathSyncPayload;
+import com.branciho.citiesinlife.net.payload.RoadSyncPayload;
 import com.branciho.citiesinlife.net.payload.PowerLinesPayload;
 import com.branciho.citiesinlife.net.payload.RegisterStructurePayload;
 import com.branciho.citiesinlife.net.payload.SeizeStructurePayload;
@@ -29,6 +31,8 @@ import com.branciho.citiesinlife.blockentity.ServiceSpawnerBlockEntity;
 import com.branciho.citiesinlife.entity.ServiceEntity;
 import com.branciho.citiesinlife.registry.ModEntities;
 import com.branciho.citiesinlife.path.PathNetwork;
+import com.branciho.citiesinlife.road.RoadNetwork;
+import com.branciho.citiesinlife.road.RoadTile;
 import com.branciho.citiesinlife.plant.PlantSurvey;
 import com.branciho.citiesinlife.power.PowerBlock;
 import com.branciho.citiesinlife.power.PowerGrid;
@@ -86,6 +90,9 @@ public final class ServerActions {
 
     /** The chunk each player was last sent pavement for, so it is not re-sent every tick. */
     private static final Map<UUID, Long> lastPathChunk = new HashMap<>();
+
+    /** The chunk each player was last sent road for. Same reasoning as pavement. */
+    private static final Map<UUID, Long> lastRoadChunk = new HashMap<>();
 
     /**
      * How far around the player another city's land is sent for the map, in chunks.
@@ -835,6 +842,82 @@ public final class ServerActions {
         CitiesInLifeNetwork.sendTo(player, new PathSyncPayload(near.toLongArray()));
     }
 
+    // ------------------------------------------------------------------ roads
+
+    /**
+     * Paint - or clear - a box of ground as road, with a direction of travel on it.
+     *
+     * <p>Answers to the same rule as pavement, for the same reason: it changes how a city's people
+     * behave without ever touching a block, so the block events miss it entirely and the check has
+     * to be made here, chunk by chunk across the whole box.
+     *
+     * <p>Unlike pavement a road is not neutral ground. It is still not property - a road between two
+     * towns belongs to neither - but a car will only follow one across someone else's border when it
+     * is marked as a highway, which is decided in {@link RoadNetwork} and not here.
+     */
+    public static void markRoad(ServerPlayer player, MarkRoadPayload payload) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        BlockPos a = payload.pointA();
+        BlockPos b = payload.pointB();
+        if (tooFar(player, a) || tooFar(player, b)) {
+            reject(player, "too_far");
+            return;
+        }
+        BlockPos min = new BlockPos(
+                Math.min(a.getX(), b.getX()), Math.min(a.getY(), b.getY()), Math.min(a.getZ(), b.getZ()));
+        BlockPos max = new BlockPos(
+                Math.max(a.getX(), b.getX()), Math.max(a.getY(), b.getY()), Math.max(a.getZ(), b.getZ()));
+
+        if (!mayEditWholeBox(server, player, min, max)) {
+            reject(player, "protected_land_tool");
+            return;
+        }
+
+        // Never trust the brush. A client can ask for any int; only the bits this mod understands
+        // are stored, and a paint with no kind at all is refused rather than written as a blank tile
+        // that the network could not tell from an empty one.
+        int flags = payload.flags() & RoadTile.ALL;
+        if (!payload.remove() && flags == 0) {
+            reject(player, "road_no_kind");
+            syncRoads(player, true);
+            return;
+        }
+
+        int changed = RoadNetwork.get(server).mark(
+                player.serverLevel().dimension(), min, max, flags, payload.remove());
+        if (changed == 0) {
+            reject(player, payload.remove() ? "no_road_there" : "already_road");
+        } else {
+            player.sendSystemMessage(Component.translatable(payload.remove()
+                    ? "message.citiesinlife.road_cleared"
+                    : "message.citiesinlife.road_marked", changed));
+        }
+        syncRoads(player, true);
+    }
+
+    /** Send the road around the player, on the same terms as pavement. */
+    public static void syncRoads(ServerPlayer player, boolean force) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        long chunkKey = ChunkPos.asLong(player.chunkPosition().x, player.chunkPosition().z);
+        Long last = lastRoadChunk.get(player.getUUID());
+        if (!force && last != null && last == chunkKey) {
+            return;
+        }
+        lastRoadChunk.put(player.getUUID(), chunkKey);
+
+        RoadNetwork roads = RoadNetwork.get(server);
+        LongArrayList near = roads.near(player.serverLevel().dimension(), player.blockPosition(),
+                PATH_SYNC_RADIUS, RoadSyncPayload.MAX_TILES);
+        CitiesInLifeNetwork.sendTo(player, new RoadSyncPayload(
+                near.toLongArray(), roads.flagsFor(player.serverLevel().dimension(), near)));
+    }
+
     /**
      * Turn this player's creative treasury off, or back on.
      *
@@ -1152,6 +1235,7 @@ public final class ServerActions {
     /** Forget a player who has left, so this map does not grow for the life of the server. */
     public static void forget(ServerPlayer player) {
         lastPathChunk.remove(player.getUUID());
+        lastRoadChunk.remove(player.getUUID());
     }
 
     // ------------------------------------------------------------- diplomacy
@@ -1399,6 +1483,7 @@ public final class ServerActions {
         CitiesInLifeNetwork.sendTo(player, new PowerLinesPayload(nearbyLines(server, player)));
         CitiesInLifeNetwork.sendTo(player, new WaterLinesPayload(nearbyWaterLines(server, player)));
         syncPaths(player, false);
+        syncRoads(player, false);
     }
 
     /** Push the player's city and the structures around them. */
@@ -1435,6 +1520,7 @@ public final class ServerActions {
         CitiesInLifeNetwork.sendTo(player, new PowerLinesPayload(nearbyLines(server, player)));
         CitiesInLifeNetwork.sendTo(player, new WaterLinesPayload(nearbyWaterLines(server, player)));
         syncPaths(player, true);
+        syncRoads(player, true);
         syncNeighbours(player);
     }
 

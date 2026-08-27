@@ -21,6 +21,7 @@ public final class ModCreativeTabs {
                     .displayItems((parameters, output) -> {
                         output.accept(ModItems.PLANNER_WAND.get());
                         output.accept(ModItems.PATH_TOOL.get());
+                        output.accept(ModItems.ROAD_TOOL.get());
                         output.accept(ModItems.POWER_LINE_TOOL.get());
                         output.accept(ModItems.SOLAR_PANEL.get());
                         output.accept(ModItems.POWER_MAST.get());

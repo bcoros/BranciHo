@@ -5,6 +5,7 @@ import com.branciho.citiesinlife.client.screen.CityScreen;
 import com.branciho.citiesinlife.client.screen.ConfirmDeleteCityScreen;
 import com.branciho.citiesinlife.client.screen.MilitaryScreen;
 import com.branciho.citiesinlife.client.screen.NameCityScreen;
+import com.branciho.citiesinlife.client.screen.RoadToolScreen;
 import com.branciho.citiesinlife.net.CitiesInLifeNetwork;
 import com.branciho.citiesinlife.net.ClientArmyCache;
 import com.branciho.citiesinlife.net.ClientCityCache;
@@ -14,6 +15,7 @@ import com.branciho.citiesinlife.net.payload.LinkPowerPayload;
 import com.branciho.citiesinlife.net.payload.LinkOutletPayload;
 import com.branciho.citiesinlife.net.payload.LinkWaterPayload;
 import com.branciho.citiesinlife.net.payload.MarkPathPayload;
+import com.branciho.citiesinlife.net.payload.MarkRoadPayload;
 import com.branciho.citiesinlife.net.payload.RegisterStructurePayload;
 import com.branciho.citiesinlife.net.payload.RequestArmyPayload;
 import com.branciho.citiesinlife.net.payload.SeizeStructurePayload;
@@ -71,6 +73,16 @@ public final class ClientEvents {
      */
     static boolean holdingPathTool(LocalPlayer player) {
         return player.getMainHandItem().is(ModItems.PATH_TOOL.get());
+    }
+
+    /**
+     * The road tool draws its box exactly as the path tool does.
+     *
+     * <p>Package-private because {@link SelectionRenderer} asks the same question to decide whether
+     * to show the road overlay.
+     */
+    static boolean holdingRoadTool(LocalPlayer player) {
+        return player.getMainHandItem().is(ModItems.ROAD_TOOL.get());
     }
 
     /**
@@ -162,6 +174,13 @@ public final class ClientEvents {
                 player.displayClientMessage(ClientWarWand.describe(), true);
             }
         }
+        // Only with the tool in hand: R is a common key and stealing it everywhere would be rude.
+        while (KeyBindings.OPEN_ROAD_TOOL.consumeClick()) {
+            if (holdingRoadTool(player)) {
+                minecraft.setScreen(new RoadToolScreen());
+            }
+        }
+
         while (KeyBindings.TOGGLE_MEASURE_MODE.consumeClick()) {
             if (holdingWand) {
                 ClientSelection.toggleMeasureMode();
@@ -192,7 +211,8 @@ public final class ClientEvents {
         if (holdingMilitaryTool(player)) {
             openMilitary(Minecraft.getInstance());
             event.setCanceled(true);
-        } else if (holdingWand(player) || holdingPathTool(player) || holdingWarWand(player)) {
+        } else if (holdingWand(player) || holdingPathTool(player) || holdingRoadTool(player)
+                || holdingWarWand(player)) {
             handlePlannerRightClick(player);
             event.setCanceled(true);
         } else if (holdingLineTool(player)) {
@@ -232,7 +252,8 @@ public final class ClientEvents {
 
         if (holdingMilitaryTool(player)) {
             openMilitary(minecraft);
-        } else if (holdingWand(player) || holdingPathTool(player) || holdingWarWand(player)) {
+        } else if (holdingWand(player) || holdingPathTool(player) || holdingRoadTool(player)
+                || holdingWarWand(player)) {
             handlePlannerRightClick(player);
         } else if (holdingLineTool(player) && player.isShiftKeyDown()) {
             ClientPowerTool.clear();
@@ -324,14 +345,17 @@ public final class ClientEvents {
 
         boolean wand = holdingWand(player);
         boolean pathTool = holdingPathTool(player);
+        boolean roadTool = holdingRoadTool(player);
         boolean warWand = holdingWarWand(player);
-        if (!wand && !pathTool && !warWand) {
+        if (!wand && !pathTool && !roadTool && !warWand) {
             return;
         }
 
         if (ClientSelection.phase() == ClientSelection.Phase.COMPLETE) {
             if (pathTool) {
                 confirmPath(player);
+            } else if (roadTool) {
+                confirmRoad(player);
             } else if (warWand) {
                 confirmSeizure();
             } else {
@@ -382,6 +406,22 @@ public final class ClientEvents {
             return;
         }
         CitiesInLifeNetwork.sendToServer(new MarkPathPayload(a, b, player.isShiftKeyDown()));
+        ClientSelection.cancel();
+    }
+
+    /**
+     * Turn the box into road of whatever kind the brush is set to, or take road away.
+     *
+     * <p>Sneaking flips it, exactly as it does for pavement and for the two line tools.
+     */
+    private static void confirmRoad(LocalPlayer player) {
+        BlockPos a = ClientSelection.pointA();
+        BlockPos b = ClientSelection.pointB();
+        if (a == null || b == null) {
+            return;
+        }
+        CitiesInLifeNetwork.sendToServer(
+                new MarkRoadPayload(a, b, ClientRoadTool.flags(), player.isShiftKeyDown()));
         ClientSelection.cancel();
     }
 
@@ -439,6 +479,7 @@ public final class ClientEvents {
         ClientArmyCache.clear();
         ClientSelection.reset();
         ClientWarWand.reset();
+        ClientRoadTool.reset();
         ClientPowerTool.clear();
         ClientPipeTool.clear();
         StructureMode.deactivate();

@@ -4,6 +4,7 @@ import com.branciho.citiesinlife.CitiesInLife;
 import com.branciho.citiesinlife.item.ExtinguisherItem;
 import com.branciho.citiesinlife.item.MilitaryToolItem;
 import com.branciho.citiesinlife.item.PathToolItem;
+import com.branciho.citiesinlife.item.RoadToolItem;
 import com.branciho.citiesinlife.item.PlannerWandItem;
 import com.branciho.citiesinlife.item.PipeLineToolItem;
 import com.branciho.citiesinlife.item.PowerLineToolItem;
@@ -97,6 +98,9 @@ public final class ModItems {
 
     public static final DeferredItem<PathToolItem> PATH_TOOL = ITEMS.register("path_tool",
             () -> new PathToolItem(new Item.Properties().stacksTo(1)));
+
+    public static final DeferredItem<RoadToolItem> ROAD_TOOL = ITEMS.register("road_tool",
+            () -> new RoadToolItem(new Item.Properties().stacksTo(1)));
 
     public static final DeferredItem<BlockItem> OFFICE_SPACE =
             ITEMS.registerSimpleBlockItem("office_space", ModBlocks.OFFICE_SPACE);

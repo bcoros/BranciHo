@@ -81,6 +81,19 @@ public final class KeyBindings {
             GLFW.GLFW_KEY_RIGHT,
             CATEGORY);
 
+    /**
+     * Opens the road tool's panel.
+     *
+     * <p>A letter, for the reason at the top of this file. R because the tool is in hand when it is
+     * pressed, so it only has to avoid clashing with what a player does while building.
+     */
+    public static final KeyMapping OPEN_ROAD_TOOL = new KeyMapping(
+            "key.citiesinlife.open_road_tool",
+            KeyConflictContext.IN_GAME,
+            InputConstants.Type.KEYSYM,
+            GLFW.GLFW_KEY_R,
+            CATEGORY);
+
     private KeyBindings() {
     }
 }

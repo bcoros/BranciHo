@@ -1,11 +1,13 @@
 package com.branciho.citiesinlife.client;
 
 import com.branciho.citiesinlife.registry.ModItems;
+import com.branciho.citiesinlife.road.RoadTile;
 import com.branciho.citiesinlife.structure.StructureType;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 
 /**
@@ -48,6 +50,12 @@ public final class PlannerHud {
             drawStructureModeBanner(graphics, minecraft);
         }
 
+        // Before the war branch, because that one ends in a return and order decides what wins.
+        if (player.getMainHandItem().is(ModItems.ROAD_TOOL.get())) {
+            drawRoadPanel(graphics, minecraft);
+            return;
+        }
+
         if (player.getMainHandItem().is(ModItems.WAR_PLANNER_WAND.get())) {
             drawWarBanner(graphics, minecraft);
             return;
@@ -88,6 +96,55 @@ public final class PlannerHud {
         graphics.drawCenteredString(minecraft.font, mode, screenWidth / 2, top + 18, COLOUR_TEXT);
         graphics.drawCenteredString(minecraft.font, hint, screenWidth / 2, top + 30,
                 ClientSelection.phase() == ClientSelection.Phase.COMPLETE ? COLOUR_SET : COLOUR_DIM);
+    }
+
+    /**
+     * What the road tool is about to paint, without opening the panel.
+     *
+     * <p>This layer hides itself the moment any screen opens, so the brush shown in {@code
+     * RoadToolScreen} is invisible the instant that screen is closed. A player who set a brush,
+     * closed the window and then saw no confirmation anywhere would paint the wrong thing, so the
+     * same state has to be legible in both places.
+     */
+    private static void drawRoadPanel(GuiGraphics graphics, Minecraft minecraft) {
+        final var font = minecraft.font;
+        final int height = 92;
+        final int top = Math.max(8, (minecraft.getWindow().getGuiScaledHeight() - height) / 2);
+
+        panel(graphics, PANEL_X, top, PANEL_WIDTH, height);
+
+        int y = top + PADDING;
+        graphics.drawString(font, Component.translatable("hud.citiesinlife.road_panel"),
+                PANEL_X + PADDING, y, COLOUR_TEXT, false);
+        y += 12;
+        graphics.fill(PANEL_X + PADDING, y, PANEL_X + PANEL_WIDTH - PADDING, y + 1, COLOUR_TITLE_BAR);
+        y += 6;
+
+        y = valueRow(graphics, y, "hud.citiesinlife.road_brush", ClientRoadTool.brush().displayName());
+
+        // The four letters, each lit or dim. This is the only place outside the panel where a
+        // one-way street can be told from a two-way one before it is painted.
+        graphics.drawString(font, Component.translatable("hud.citiesinlife.road_directions"),
+                PANEL_X + PADDING, y, COLOUR_DIM, false);
+        int x = PANEL_X + PANEL_WIDTH - PADDING - 4 * 10;
+        for (Direction direction : new Direction[]{
+                Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST}) {
+            boolean on = !ClientRoadTool.directionsMatter()
+                    || (ClientRoadTool.directions() & RoadTile.bit(direction)) != 0;
+            graphics.drawString(font, Component.translatable(
+                            "screen.citiesinlife.dir_" + direction.getName()),
+                    x, y, on ? COLOUR_SET : COLOUR_UNSET, false);
+            x += 10;
+        }
+        y += 11;
+
+        boolean hasA = ClientSelection.pointA() != null;
+        boolean hasB = ClientSelection.phase() == ClientSelection.Phase.COMPLETE;
+        y = statusRow(graphics, y, "hud.citiesinlife.point_a", hasA);
+        y = statusRow(graphics, y, "hud.citiesinlife.point_b", hasB);
+
+        graphics.drawString(font, Component.translatable("hud.citiesinlife.road_open_ui"),
+                PANEL_X + PADDING, y + 2, COLOUR_DIM, false);
     }
 
     private static void drawPlannerPanel(GuiGraphics graphics, Minecraft minecraft) {

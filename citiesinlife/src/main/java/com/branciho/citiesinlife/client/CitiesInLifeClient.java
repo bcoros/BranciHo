@@ -44,6 +44,7 @@ public final class CitiesInLifeClient {
         event.register(KeyBindings.TYPE_NEXT);
         event.register(KeyBindings.TOGGLE_MEASURE_MODE);
         event.register(KeyBindings.TOGGLE_CREATIVE_MONEY);
+        event.register(KeyBindings.OPEN_ROAD_TOOL);
     }
 
     @SubscribeEvent

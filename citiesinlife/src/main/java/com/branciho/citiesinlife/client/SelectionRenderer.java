@@ -4,6 +4,7 @@ import com.branciho.citiesinlife.block.PowerMastBlock;
 import com.branciho.citiesinlife.block.TurbineBlock;
 import com.branciho.citiesinlife.net.ClientCityCache;
 import com.branciho.citiesinlife.net.payload.StructureSyncPayload;
+import com.branciho.citiesinlife.road.RoadTile;
 import com.branciho.citiesinlife.structure.StructureType;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
@@ -12,6 +13,7 @@ import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -46,6 +48,13 @@ public final class SelectionRenderer {
     private static final double MAX_PATH_DISTANCE_SQR = 64.0D * 64.0D;
     private static final int MAX_PATHS_DRAWN = 2048;
 
+    /** How much road is drawn at once. */
+    private static final int MAX_ROADS_DRAWN = 2048;
+
+    /** How far a direction tick sticks out from the middle of its tile. */
+    private static final double TICK_INNER = 0.15D;
+    private static final double TICK_OUTER = 0.42D;
+
     /** How far above the marked block its outline floats, so it does not fight with the surface. */
     private static final double PATH_LIFT = 1.015D;
 
@@ -69,9 +78,15 @@ public final class SelectionRenderer {
         boolean showingPaths = (StructureMode.active() || ClientEvents.holdingPathTool(minecraft.player))
                 && ClientCityCache.paths().length > 0;
 
+        // Road is shown on the same terms as pavement, and for the same reason: once drawn it is
+        // scenery, and the only time it matters is while you are thinking about it.
+        boolean showingRoads = (StructureMode.active() || ClientEvents.holdingRoadTool(minecraft.player))
+                && ClientCityCache.roadTiles().length > 0;
+
         AABB selection = ClientSelection.bounds();
         boolean anything = selection != null || StructureMode.active()
-                || !ClientCityCache.powerLines().isEmpty() || showingPipes || showingPaths;
+                || !ClientCityCache.powerLines().isEmpty() || showingPipes || showingPaths
+                || showingRoads;
         if (!anything) {
             return;
         }
@@ -88,6 +103,9 @@ public final class SelectionRenderer {
         }
         if (showingPaths) {
             drawPaths(poseStack, consumer, minecraft.player.position());
+        }
+        if (showingRoads) {
+            drawRoads(poseStack, consumer, minecraft.player.position());
         }
         if (StructureMode.active()) {
             drawRegisteredStructures(poseStack, consumer, minecraft.player.position());
@@ -109,6 +127,7 @@ public final class SelectionRenderer {
         // opposite consequence, so it must not look the same.
         Minecraft minecraft = Minecraft.getInstance();
         boolean pathTool = minecraft.player != null && ClientEvents.holdingPathTool(minecraft.player);
+        boolean roadTool = minecraft.player != null && ClientEvents.holdingRoadTool(minecraft.player);
         boolean warWand = minecraft.player != null && ClientEvents.holdingWarWand(minecraft.player);
 
         float[] rgb;
@@ -119,6 +138,10 @@ public final class SelectionRenderer {
         } else if (pathTool) {
             // The same amber the marked ground is drawn in, so it is obvious what the box will become.
             rgb = new float[]{1.00F, 0.82F, 0.32F};
+        } else if (roadTool) {
+            // Blue, distinct from pavement's amber: the two tools draw the same box over the same
+            // ground and the only way to tell which is armed is the colour.
+            rgb = new float[]{0.45F, 0.62F, 0.95F};
         } else if (StructureMode.active()) {
             rgb = new float[]{1.00F, 0.30F, 0.30F};
         } else if (complete) {
@@ -172,6 +195,73 @@ public final class SelectionRenderer {
                     new AABB(x + 0.02D, y + PATH_LIFT, z + 0.02D,
                             x + 0.98D, y + PATH_LIFT, z + 0.98D),
                     1.00F, 0.82F, 0.32F, 0.85F);
+        }
+    }
+
+    /**
+     * The road, drawn flat like pavement, with a tick on each side traffic may leave by.
+     *
+     * <p>Those ticks are the whole point of drawing it at all. A one-way street and a two-way street
+     * cover exactly the same blocks, so without them the overlay could not tell the player the one
+     * thing about a road they cannot see from standing on it.
+     */
+    private static void drawRoads(PoseStack poseStack, VertexConsumer consumer, Vec3 eye) {
+        long[] tiles = ClientCityCache.roadTiles();
+        int[] flags = ClientCityCache.roadFlags();
+        int count = Math.min(tiles.length, flags.length);
+        int drawn = 0;
+        for (int i = 0; i < count; i++) {
+            if (drawn >= MAX_ROADS_DRAWN) {
+                return;
+            }
+            long packed = tiles[i];
+            double x = BlockPos.getX(packed);
+            double y = BlockPos.getY(packed);
+            double z = BlockPos.getZ(packed);
+            if (eye.distanceToSqr(x + 0.5D, y + 0.5D, z + 0.5D) > MAX_PATH_DISTANCE_SQR) {
+                continue;
+            }
+            drawn++;
+
+            int tile = flags[i];
+            float r;
+            float g;
+            float b;
+            if (RoadTile.is(tile, RoadTile.PARKING)) {
+                r = 0.35F;
+                g = 0.85F;
+                b = 0.50F;
+            } else if (RoadTile.is(tile, RoadTile.INTERSECTION)) {
+                r = 0.95F;
+                g = 0.95F;
+                b = 0.95F;
+            } else if (RoadTile.is(tile, RoadTile.HIGHWAY)) {
+                r = 1.00F;
+                g = 0.62F;
+                b = 0.20F;
+            } else {
+                r = 0.45F;
+                g = 0.62F;
+                b = 0.95F;
+            }
+
+            LevelRenderer.renderLineBox(poseStack, consumer,
+                    new AABB(x + 0.02D, y + PATH_LIFT, z + 0.02D,
+                            x + 0.98D, y + PATH_LIFT, z + 0.98D),
+                    r, g, b, 0.85F);
+
+            Vec3 centre = new Vec3(x + 0.5D, y + PATH_LIFT, z + 0.5D);
+            for (Direction direction : Direction.Plane.HORIZONTAL) {
+                if (!RoadTile.allows(tile, direction)) {
+                    continue;
+                }
+                double dx = direction.getStepX();
+                double dz = direction.getStepZ();
+                segment(poseStack, consumer,
+                        centre.add(dx * TICK_INNER, 0.0D, dz * TICK_INNER),
+                        centre.add(dx * TICK_OUTER, 0.0D, dz * TICK_OUTER),
+                        r, g, b);
+            }
         }
     }
 

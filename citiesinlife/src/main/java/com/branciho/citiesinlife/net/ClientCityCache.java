@@ -5,6 +5,7 @@ import com.branciho.citiesinlife.net.payload.ConfirmDeleteCityPayload;
 import com.branciho.citiesinlife.net.payload.ForeignLandPayload;
 import com.branciho.citiesinlife.net.payload.NeighbourCitiesPayload;
 import com.branciho.citiesinlife.net.payload.PathSyncPayload;
+import com.branciho.citiesinlife.net.payload.RoadSyncPayload;
 import com.branciho.citiesinlife.net.payload.PowerLinesPayload;
 import com.branciho.citiesinlife.net.payload.StructureSyncPayload;
 import com.branciho.citiesinlife.net.payload.WaterLinesPayload;
@@ -35,6 +36,8 @@ public final class ClientCityCache {
     private static List<long[]> waterLines = List.of();
     private static LongSet claimedChunks = new LongOpenHashSet();
     private static long[] paths = new long[0];
+    private static long[] roadTiles = new long[0];
+    private static int[] roadFlags = new int[0];
     private static List<NeighbourCitiesPayload.Entry> neighbours = List.of();
     private static Long2ByteOpenHashMap foreignLand = new Long2ByteOpenHashMap();
     private static @Nullable ConfirmDeleteCityPayload pendingDeleteConfirm;
@@ -65,6 +68,12 @@ public final class ClientCityCache {
 
     public static void accept(PathSyncPayload payload) {
         paths = payload.marked();
+    }
+
+    /** Road and its direction flags, kept as two parallel arrays exactly as they arrived. */
+    public static void accept(RoadSyncPayload payload) {
+        roadTiles = payload.tiles();
+        roadFlags = payload.flags();
     }
 
     public static void accept(NeighbourCitiesPayload payload) {
@@ -140,6 +149,14 @@ public final class ClientCityCache {
         return structures;
     }
 
+    public static long[] roadTiles() {
+        return roadTiles;
+    }
+
+    public static int[] roadFlags() {
+        return roadFlags;
+    }
+
     public static boolean claims(long chunkKey) {
         return claimedChunks.contains(chunkKey);
     }
@@ -161,6 +178,8 @@ public final class ClientCityCache {
         waterLines = List.of();
         claimedChunks = new LongOpenHashSet();
         paths = new long[0];
+        roadTiles = new long[0];
+        roadFlags = new int[0];
         neighbours = List.of();
         foreignLand = new Long2ByteOpenHashMap();
         pendingDeleteConfirm = null;
