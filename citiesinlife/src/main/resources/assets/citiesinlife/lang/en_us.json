@@ -357,5 +357,22 @@
   "message.citiesinlife.already_road": "That is already road, running the same way",
   "message.citiesinlife.no_road_there": "There is no road in that box",
   "message.citiesinlife.road_no_kind": "Choose what to paint first - press R",
-  "entity.citiesinlife.car": "Car"
+  "entity.citiesinlife.car": "Car",
+  "block.citiesinlife.tourist_airplane": "Tourist Airport",
+  "block.citiesinlife.transport_airplane": "Transport Airport",
+  "entity.citiesinlife.tourist": "Tourist",
+  "tooltip.citiesinlife.tourist_airplane_1": "Visitors start arriving around it",
+  "tooltip.citiesinlife.tourist_airplane_2": "Nothing to set up - put it down and wait",
+  "tooltip.citiesinlife.transport_airplane_1": "Right click two of these with an empty hand to link them",
+  "tooltip.citiesinlife.transport_airplane_2": "Right click a linked one to fly to the other end",
+  "tooltip.citiesinlife.transport_airplane_3": "Citizens standing on it fly too, when it helps them",
+  "message.citiesinlife.airfields_full": "You already have all %s of your airports standing",
+  "message.citiesinlife.airplane_link_started": "Airport chosen - now right click the other one",
+  "message.citiesinlife.airplane_linked": "The two airports are linked",
+  "message.citiesinlife.airplane_same_block": "That is the same airport",
+  "message.citiesinlife.airplane_not_linkable": "The other airport is gone",
+  "message.citiesinlife.airplane_uncounted": "This airport was not placed by hand, so it does nothing",
+  "message.citiesinlife.airplane_far_end_gone": "The airport at the other end is gone",
+  "message.citiesinlife.airplane_far_end_protected": "You may not land in that city",
+  "message.citiesinlife.airplane_no_room": "There is nowhere to stand at the other end"
 }

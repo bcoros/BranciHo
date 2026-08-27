@@ -48,9 +48,18 @@ public final class CityData extends SavedData {
      * 1 when those fields were added, so nothing noticed the format change and old worlds loaded
      * silently wrong. 3 marks a city's diplomatic relations - which read back tolerantly from an
      * older save, but leaving the number alone after a shape change is the exact habit that caused
-     * the problem at 2. 4 marks the creative treasury and who has turned it off.
+     * the problem at 2. 4 marks the creative treasury and who has turned it off. 5 marks the
+     * airfields and who placed each one, which is what the twenty-per-player cap is counted from.
      */
-    private static final int DATA_VERSION = 4;
+    private static final int DATA_VERSION = 5;
+
+    /**
+     * How many airfields one player may have standing at once.
+     *
+     * <p>A cap rather than a cost, because an airfield is not bought, it is placed. Twenty is
+     * generous for one city and small enough that a link between two of them still means something.
+     */
+    public static final int MAX_AIRFIELDS_PER_PLAYER = 20;
 
     private final Map<UUID, City> cities = new LinkedHashMap<>();
     private final Map<UUID, Structure> structures = new LinkedHashMap<>();
@@ -63,6 +72,24 @@ public final class CityData extends SavedData {
      * what makes the setting arrive switched on for somebody who has just joined.
      */
     private final Set<UUID> creativeMoneyOff = new HashSet<>();
+
+    /**
+     * dimension -> packed position -> the player who placed the airfield there.
+     *
+     * <p>Saved, and the authority on whether an airfield works at all. Enforcing the cap only at
+     * placement would leave anything that arrived another way - /fill, /clone, another mod - both
+     * uncounted and fully functional, which in a mod built around creative building is the whole
+     * cap defeated.
+     */
+    private final Map<ResourceKey<Level>, Map<Long, UUID>> airfields = new HashMap<>();
+
+    /**
+     * How many each player has, derived from {@link #airfields} and never saved.
+     *
+     * <p>Rebuilt in load. A derived index that is only correct in the session that built it is
+     * exactly what territoryIndex exists to warn about.
+     */
+    private final Map<UUID, Integer> airfieldCounts = new HashMap<>();
 
     /** dimension -> chunk key -> owning city. */
     private final Map<ResourceKey<Level>, Map<Long, UUID>> territoryIndex = new HashMap<>();
@@ -430,6 +457,66 @@ public final class CityData extends SavedData {
         }
     }
 
+    // ------------------------------------------------------------- airfields
+
+    public int airfieldCount(UUID playerId) {
+        return airfieldCounts.getOrDefault(playerId, 0);
+    }
+
+    public boolean canPlaceAirfield(UUID playerId) {
+        return airfieldCount(playerId) < MAX_AIRFIELDS_PER_PLAYER;
+    }
+
+    /** Record an airfield against the player who put it there. False when they are at the cap. */
+    public boolean claimAirfield(UUID playerId, ResourceKey<Level> dimension, BlockPos pos) {
+        if (!canPlaceAirfield(playerId)) {
+            return false;
+        }
+        Map<Long, UUID> perDimension = airfields.computeIfAbsent(dimension, key -> new HashMap<>());
+        UUID previous = perDimension.put(pos.asLong(), playerId);
+        if (previous != null) {
+            decrement(previous);
+        }
+        airfieldCounts.merge(playerId, 1, Integer::sum);
+        setDirty();
+        return true;
+    }
+
+    /** Forget an airfield that has been broken. */
+    public boolean releaseAirfield(ResourceKey<Level> dimension, BlockPos pos) {
+        Map<Long, UUID> perDimension = airfields.get(dimension);
+        if (perDimension == null) {
+            return false;
+        }
+        UUID owner = perDimension.remove(pos.asLong());
+        if (owner == null) {
+            return false;
+        }
+        if (perDimension.isEmpty()) {
+            airfields.remove(dimension);
+        }
+        decrement(owner);
+        setDirty();
+        return true;
+    }
+
+    public @Nullable UUID airfieldOwner(ResourceKey<Level> dimension, BlockPos pos) {
+        Map<Long, UUID> perDimension = airfields.get(dimension);
+        return perDimension == null ? null : perDimension.get(pos.asLong());
+    }
+
+    private void decrement(UUID playerId) {
+        Integer count = airfieldCounts.get(playerId);
+        if (count == null) {
+            return;
+        }
+        if (count <= 1) {
+            airfieldCounts.remove(playerId);
+        } else {
+            airfieldCounts.put(playerId, count - 1);
+        }
+    }
+
     // ------------------------------------------------------------ persistence
 
     @Override
@@ -468,6 +555,18 @@ public final class CityData extends SavedData {
             optedOut.add(entry);
         }
         tag.put("creativeMoneyOff", optedOut);
+
+        ListTag airfieldList = new ListTag();
+        for (Map.Entry<ResourceKey<Level>, Map<Long, UUID>> perDimension : airfields.entrySet()) {
+            for (Map.Entry<Long, UUID> entry : perDimension.getValue().entrySet()) {
+                CompoundTag airfield = new CompoundTag();
+                airfield.putString("dimension", perDimension.getKey().location().toString());
+                airfield.putLong("pos", entry.getKey());
+                airfield.putUUID("owner", entry.getValue());
+                airfieldList.add(airfield);
+            }
+        }
+        tag.put("airfields", airfieldList);
         return tag;
     }
 
@@ -521,6 +620,17 @@ public final class CityData extends SavedData {
         ListTag optedOut = tag.getList("creativeMoneyOff", Tag.TAG_COMPOUND);
         for (int i = 0; i < optedOut.size(); i++) {
             data.creativeMoneyOff.add(optedOut.getCompound(i).getUUID("id"));
+        }
+
+        ListTag airfieldList = tag.getList("airfields", Tag.TAG_COMPOUND);
+        for (int i = 0; i < airfieldList.size(); i++) {
+            CompoundTag airfield = airfieldList.getCompound(i);
+            ResourceKey<Level> dimension = ResourceKey.create(Registries.DIMENSION,
+                    ResourceLocation.parse(airfield.getString("dimension")));
+            UUID owner = airfield.getUUID("owner");
+            data.airfields.computeIfAbsent(dimension, key -> new HashMap<>())
+                    .put(airfield.getLong("pos"), owner);
+            data.airfieldCounts.merge(owner, 1, Integer::sum);
         }
 
         data.migrate(version);

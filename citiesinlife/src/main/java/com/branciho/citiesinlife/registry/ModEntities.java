@@ -4,6 +4,7 @@ import com.branciho.citiesinlife.CitiesInLife;
 import com.branciho.citiesinlife.entity.CarEntity;
 import com.branciho.citiesinlife.entity.CitizenEntity;
 import com.branciho.citiesinlife.entity.ServiceEntity;
+import com.branciho.citiesinlife.entity.TouristEntity;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
@@ -62,6 +63,20 @@ public final class ModEntities {
                     .clientTrackingRange(12)
                     .build("car"));
 
+    /**
+     * A visitor.
+     *
+     * <p>Its own type rather than a citizen with a flag, because CitizenDirector counts citizens
+     * against the city's cap and a tourist must not take a resident's place.
+     */
+    public static final DeferredHolder<EntityType<?>, EntityType<TouristEntity>> TOURIST =
+            ENTITIES.register("tourist", () -> EntityType.Builder
+                    .<TouristEntity>of(TouristEntity::new, MobCategory.MISC)
+                    .sized(0.6F, 1.95F)
+                    .eyeHeight(1.74F)
+                    .clientTrackingRange(10)
+                    .build("tourist"));
+
     private ModEntities() {
     }
 
@@ -78,5 +93,7 @@ public final class ModEntities {
     public static void createAttributes(EntityAttributeCreationEvent event) {
         event.put(CITIZEN.get(), CitizenEntity.createAttributes().build());
         event.put(SERVICE.get(), ServiceEntity.createAttributes().build());
+        // No line for CAR: it is a plain Entity, and this event accepts living things only.
+        event.put(TOURIST.get(), TouristEntity.createAttributes().build());
     }
 }

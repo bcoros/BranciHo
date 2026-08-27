@@ -7,6 +7,8 @@ import com.branciho.citiesinlife.client.render.CitizenModel;
 import com.branciho.citiesinlife.client.render.CitizenRenderer;
 import com.branciho.citiesinlife.client.render.ServiceModel;
 import com.branciho.citiesinlife.client.render.ServiceRenderer;
+import com.branciho.citiesinlife.client.render.TouristModel;
+import com.branciho.citiesinlife.client.render.TouristRenderer;
 import com.branciho.citiesinlife.client.render.TurbineModel;
 import com.branciho.citiesinlife.client.render.WindmillModel;
 import com.branciho.citiesinlife.client.render.WindmillRenderer;
@@ -63,6 +65,7 @@ public final class CitiesInLifeClient {
         event.registerLayerDefinition(WindmillModel.LAYER, WindmillModel::create);
         event.registerLayerDefinition(CitizenModel.LAYER, CitizenModel::createBodyLayer);
         event.registerLayerDefinition(ServiceModel.LAYER, ServiceModel::createBodyLayer);
+        event.registerLayerDefinition(TouristModel.LAYER, TouristModel::createBodyLayer);
     }
 
     @SubscribeEvent
@@ -74,6 +77,7 @@ public final class CitiesInLifeClient {
         event.registerEntityRenderer(ModEntities.CITIZEN.get(), CitizenRenderer::new);
         event.registerEntityRenderer(ModEntities.SERVICE.get(), ServiceRenderer::new);
         event.registerEntityRenderer(ModEntities.CAR.get(), CarRenderer::new);
+        event.registerEntityRenderer(ModEntities.TOURIST.get(), TouristRenderer::new);
     }
 
     @SubscribeEvent

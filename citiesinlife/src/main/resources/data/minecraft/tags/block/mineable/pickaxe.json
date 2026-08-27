@@ -20,6 +20,8 @@
     "citiesinlife:windmill_green",
     "citiesinlife:alarm",
     "citiesinlife:end_pipe",
-    "citiesinlife:service_spawner"
+    "citiesinlife:service_spawner",
+    "citiesinlife:tourist_airplane",
+    "citiesinlife:transport_airplane"
   ]
 }

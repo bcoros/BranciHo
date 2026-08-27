@@ -36,6 +36,12 @@ public final class ModItems {
     public static final DeferredItem<BlockItem> POWER_MAST =
             ITEMS.registerSimpleBlockItem("power_mast", ModBlocks.POWER_MAST);
 
+    public static final DeferredItem<BlockItem> TOURIST_AIRPLANE =
+            ITEMS.registerSimpleBlockItem("tourist_airplane", ModBlocks.TOURIST_AIRPLANE);
+
+    public static final DeferredItem<BlockItem> TRANSPORT_AIRPLANE =
+            ITEMS.registerSimpleBlockItem("transport_airplane", ModBlocks.TRANSPORT_AIRPLANE);
+
     public static final DeferredItem<BlockItem> TRANSIT_STATION =
             ITEMS.registerSimpleBlockItem("transit_station", ModBlocks.TRANSIT_STATION);
 

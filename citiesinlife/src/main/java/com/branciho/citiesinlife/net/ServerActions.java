@@ -31,6 +31,8 @@ import com.branciho.citiesinlife.blockentity.ServiceSpawnerBlockEntity;
 import com.branciho.citiesinlife.entity.ServiceEntity;
 import com.branciho.citiesinlife.registry.ModEntities;
 import com.branciho.citiesinlife.path.PathNetwork;
+import com.branciho.citiesinlife.blockentity.TransportAirplaneBlockEntity;
+import com.branciho.citiesinlife.block.TransportAirplaneBlock;
 import com.branciho.citiesinlife.road.RoadNetwork;
 import com.branciho.citiesinlife.road.RoadTile;
 import com.branciho.citiesinlife.plant.PlantSurvey;
@@ -93,6 +95,9 @@ public final class ServerActions {
 
     /** The chunk each player was last sent road for. Same reasoning as pavement. */
     private static final Map<UUID, Long> lastRoadChunk = new HashMap<>();
+
+    /** Half-made airport links, per player, waiting for their second click. */
+    private static final Map<UUID, BlockPos> pendingAirplaneLink = new HashMap<>();
 
     /**
      * How far around the player another city's land is sent for the map, in chunks.
@@ -918,6 +923,98 @@ public final class ServerActions {
                 near.toLongArray(), roads.flagsFor(player.serverLevel().dimension(), near)));
     }
 
+    // -------------------------------------------------------------- airfields
+
+    /**
+     * One gesture: link a pair of airports, or fly between an already linked pair.
+     *
+     * <p>Which of the two it is depends on the state of the block clicked, not on a modifier key.
+     * See {@link TransportAirplaneBlock} for why there is no sneak in this - a sneaking player
+     * holding anything never reaches the block at all.
+     */
+    public static void useAirplane(ServerPlayer player, BlockPos pos) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        ServerLevel level = player.serverLevel();
+        if (!(level.getBlockEntity(pos) instanceof TransportAirplaneBlockEntity here)) {
+            return;
+        }
+
+        // An airport nobody is accountable for does nothing, the same as it spawns nobody.
+        if (CityData.get(server).airfieldOwner(level.dimension(), pos) == null) {
+            reject(player, "airplane_uncounted");
+            return;
+        }
+
+        BlockPos partner = here.partner();
+        if (partner != null) {
+            fly(player, level, partner);
+            return;
+        }
+
+        // Linking is an edit to somebody's build, so it answers to the same rule as breaking a
+        // block there.
+        if (!Diplomacy.mayInterfere(server, player, pos)) {
+            reject(player, "protected_land_tool");
+            return;
+        }
+
+        BlockPos pending = pendingAirplaneLink.get(player.getUUID());
+        if (pending == null) {
+            pendingAirplaneLink.put(player.getUUID(), pos);
+            player.displayClientMessage(
+                    Component.translatable("message.citiesinlife.airplane_link_started"), true);
+            return;
+        }
+        if (pending.equals(pos)) {
+            pendingAirplaneLink.remove(player.getUUID());
+            reject(player, "airplane_same_block");
+            return;
+        }
+        if (!(level.getBlockEntity(pending) instanceof TransportAirplaneBlockEntity other)) {
+            pendingAirplaneLink.remove(player.getUUID());
+            reject(player, "airplane_not_linkable");
+            return;
+        }
+
+        here.setPartner(pending);
+        other.setPartner(pos);
+        pendingAirplaneLink.remove(player.getUUID());
+        player.sendSystemMessage(Component.translatable("message.citiesinlife.airplane_linked"));
+    }
+
+    /**
+     * Put the player down at the far end.
+     *
+     * <p>Re-checked at the moment of use rather than trusted from when the link was made. Ground
+     * changes hands, and a pad built on land somebody has since claimed must not be a way in.
+     */
+    private static void fly(ServerPlayer player, ServerLevel level, BlockPos partner) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        if (!level.isLoaded(partner)
+                || !(level.getBlockState(partner).getBlock() instanceof TransportAirplaneBlock)) {
+            reject(player, "airplane_far_end_gone");
+            return;
+        }
+        if (!Diplomacy.mayInterfere(server, player, partner)) {
+            reject(player, "airplane_far_end_protected");
+            return;
+        }
+        BlockPos arrival = TransportAirplaneBlockEntity.landingSpot(level, partner);
+        if (arrival == null) {
+            reject(player, "airplane_no_room");
+            return;
+        }
+        // The six-argument ServerPlayer override, which is the one that tells the client it moved.
+        player.teleportTo(level, arrival.getX() + 0.5D, arrival.getY(), arrival.getZ() + 0.5D,
+                player.getYRot(), player.getXRot());
+    }
+
     /**
      * Turn this player's creative treasury off, or back on.
      *
@@ -1236,6 +1333,7 @@ public final class ServerActions {
     public static void forget(ServerPlayer player) {
         lastPathChunk.remove(player.getUUID());
         lastRoadChunk.remove(player.getUUID());
+        pendingAirplaneLink.remove(player.getUUID());
     }
 
     // ------------------------------------------------------------- diplomacy

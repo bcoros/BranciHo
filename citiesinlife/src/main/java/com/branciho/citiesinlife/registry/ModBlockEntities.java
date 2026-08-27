@@ -5,6 +5,8 @@ import com.branciho.citiesinlife.blockentity.AlarmBlockEntity;
 import com.branciho.citiesinlife.blockentity.BoilerBlockEntity;
 import com.branciho.citiesinlife.blockentity.EndPipeBlockEntity;
 import com.branciho.citiesinlife.blockentity.FactoryOutputBlockEntity;
+import com.branciho.citiesinlife.blockentity.TouristAirplaneBlockEntity;
+import com.branciho.citiesinlife.blockentity.TransportAirplaneBlockEntity;
 import com.branciho.citiesinlife.blockentity.TurbineBlockEntity;
 import com.branciho.citiesinlife.blockentity.ChimneyBlockEntity;
 import com.branciho.citiesinlife.blockentity.OfficeSpaceBlockEntity;
@@ -89,6 +91,18 @@ public final class ModBlockEntities {
             SERVICE_SPAWNER = BLOCK_ENTITIES.register("service_spawner",
                     () -> BlockEntityType.Builder
                             .of(ServiceSpawnerBlockEntity::new, ModBlocks.SERVICE_SPAWNER.get())
+                            .build(null));
+
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TouristAirplaneBlockEntity>>
+            TOURIST_AIRPLANE = BLOCK_ENTITIES.register("tourist_airplane",
+                    () -> BlockEntityType.Builder
+                            .of(TouristAirplaneBlockEntity::new, ModBlocks.TOURIST_AIRPLANE.get())
+                            .build(null));
+
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TransportAirplaneBlockEntity>>
+            TRANSPORT_AIRPLANE = BLOCK_ENTITIES.register("transport_airplane",
+                    () -> BlockEntityType.Builder
+                            .of(TransportAirplaneBlockEntity::new, ModBlocks.TRANSPORT_AIRPLANE.get())
                             .build(null));
 
     private ModBlockEntities() {

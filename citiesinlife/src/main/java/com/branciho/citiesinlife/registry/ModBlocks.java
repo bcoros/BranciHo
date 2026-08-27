@@ -21,7 +21,9 @@ import com.branciho.citiesinlife.block.WaterStorageBlock;
 import com.branciho.citiesinlife.block.FactoryOutputBlock;
 import com.branciho.citiesinlife.block.PowerMastBlock;
 import com.branciho.citiesinlife.block.SolarPanelBlock;
+import com.branciho.citiesinlife.block.TouristAirplaneBlock;
 import com.branciho.citiesinlife.block.TransitStationBlock;
+import com.branciho.citiesinlife.block.TransportAirplaneBlock;
 import com.branciho.citiesinlife.block.TurbineBlock;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
@@ -50,6 +52,27 @@ public final class ModBlocks {
                     .sound(SoundType.WOOD)
                     .forceSolidOn()
                     .noOcclusion()));
+
+    /**
+     * The tourist airport. Full cube, so no forceSolidOn/noOcclusion pair - this codebase only uses
+     * those together for models that do not fill their block.
+     */
+    public static final DeferredBlock<TouristAirplaneBlock> TOURIST_AIRPLANE =
+            BLOCKS.register("tourist_airplane",
+                    () -> new TouristAirplaneBlock(BlockBehaviour.Properties.of()
+                            .mapColor(MapColor.COLOR_LIGHT_GRAY)
+                            .strength(3.0F, 6.0F)
+                            .requiresCorrectToolForDrops()
+                            .sound(SoundType.METAL)));
+
+    /** The transport airport. Same shell; what differs is entirely in the block entity. */
+    public static final DeferredBlock<TransportAirplaneBlock> TRANSPORT_AIRPLANE =
+            BLOCKS.register("transport_airplane",
+                    () -> new TransportAirplaneBlock(BlockBehaviour.Properties.of()
+                            .mapColor(MapColor.COLOR_GRAY)
+                            .strength(3.0F, 6.0F)
+                            .requiresCorrectToolForDrops()
+                            .sound(SoundType.METAL)));
 
     public static final DeferredBlock<TransitStationBlock> TRANSIT_STATION = BLOCKS.register("transit_station",
             () -> new TransitStationBlock(BlockBehaviour.Properties.of()
