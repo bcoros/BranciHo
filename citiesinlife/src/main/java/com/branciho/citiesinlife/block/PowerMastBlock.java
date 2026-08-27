@@ -1,5 +1,6 @@
 package com.branciho.citiesinlife.block;
 
+import com.branciho.citiesinlife.power.MastBlock;
 import com.branciho.citiesinlife.power.PowerBlock;
 import com.branciho.citiesinlife.power.PowerGrid;
 import com.branciho.citiesinlife.power.PowerRole;
@@ -33,7 +34,7 @@ import org.jetbrains.annotations.Nullable;
  * <p>Masts carry power and nothing else. Their long reach is the reason a solar farm can sit out in
  * the desert and still feed a city.
  */
-public class PowerMastBlock extends Block implements PowerBlock {
+public class PowerMastBlock extends Block implements PowerBlock, MastBlock {
 
     /** 0 is the foot, 2 is the crossarm at the top. */
     public static final IntegerProperty SEGMENT = IntegerProperty.create("segment", 0, 2);
@@ -160,6 +161,11 @@ public class PowerMastBlock extends Block implements PowerBlock {
     }
 
     @Override
+    public int mastHeight() {
+        return HEIGHT;
+    }
+
+    @Override
     public BlockPos networkPos(BlockGetter level, BlockPos pos, BlockState state) {
         return baseOf(level, pos, state);
     }
@@ -168,10 +174,5 @@ public class PowerMastBlock extends Block implements PowerBlock {
     private static BlockPos baseOf(BlockGetter level, BlockPos pos, BlockState state) {
         int segment = state.getBlock() instanceof PowerMastBlock ? state.getValue(SEGMENT) : 0;
         return pos.below(segment);
-    }
-
-    /** Where a line attaches visually: the crossarm, not the foot. */
-    public static BlockPos attachPoint(BlockPos base) {
-        return base.above(HEIGHT - 1);
     }
 }

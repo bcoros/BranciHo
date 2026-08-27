@@ -36,6 +36,9 @@ public final class ModItems {
     public static final DeferredItem<BlockItem> POWER_MAST =
             ITEMS.registerSimpleBlockItem("power_mast", ModBlocks.POWER_MAST);
 
+    public static final DeferredItem<BlockItem> GRID_PYLON =
+            ITEMS.registerSimpleBlockItem("grid_pylon", ModBlocks.GRID_PYLON);
+
     public static final DeferredItem<BlockItem> TOURIST_AIRPLANE =
             ITEMS.registerSimpleBlockItem("tourist_airplane", ModBlocks.TOURIST_AIRPLANE);
 

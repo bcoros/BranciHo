@@ -59,7 +59,7 @@ public final class ModEntities {
     public static final DeferredHolder<EntityType<?>, EntityType<CarEntity>> CAR =
             ENTITIES.register("car", () -> EntityType.Builder
                     .<CarEntity>of(CarEntity::new, MobCategory.MISC)
-                    .sized(2.0F, 1.2F)
+                    .sized(3.5F, 2.1F)
                     .clientTrackingRange(12)
                     .build("car"));
 

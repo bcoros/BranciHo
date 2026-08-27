@@ -19,6 +19,7 @@ import com.branciho.citiesinlife.block.ValveBlock;
 import com.branciho.citiesinlife.block.WaterPipeBlock;
 import com.branciho.citiesinlife.block.WaterStorageBlock;
 import com.branciho.citiesinlife.block.FactoryOutputBlock;
+import com.branciho.citiesinlife.block.GridPylonBlock;
 import com.branciho.citiesinlife.block.PowerMastBlock;
 import com.branciho.citiesinlife.block.SolarPanelBlock;
 import com.branciho.citiesinlife.block.TouristAirplaneBlock;
@@ -50,6 +51,19 @@ public final class ModBlocks {
                     .mapColor(MapColor.WOOD)
                     .strength(1.5F, 3.0F)
                     .sound(SoundType.WOOD)
+                    .forceSolidOn()
+                    .noOcclusion()));
+
+    /**
+     * The steel lattice pylon. Metal, tougher than the wooden mast, and mined with a pickaxe rather
+     * than an axe - so it belongs in the pickaxe tag, not the axe one.
+     */
+    public static final DeferredBlock<GridPylonBlock> GRID_PYLON = BLOCKS.register("grid_pylon",
+            () -> new GridPylonBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.METAL)
+                    .strength(3.5F, 8.0F)
+                    .requiresCorrectToolForDrops()
+                    .sound(SoundType.METAL)
                     .forceSolidOn()
                     .noOcclusion()));
 

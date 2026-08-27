@@ -1,6 +1,6 @@
 package com.branciho.citiesinlife.client;
 
-import com.branciho.citiesinlife.block.PowerMastBlock;
+import com.branciho.citiesinlife.power.MastBlock;
 import com.branciho.citiesinlife.block.TurbineBlock;
 import com.branciho.citiesinlife.net.ClientCityCache;
 import com.branciho.citiesinlife.net.payload.StructureSyncPayload;
@@ -374,9 +374,11 @@ public final class SelectionRenderer {
      */
     private static Vec3 attachPoint(Level level, long packed) {
         BlockPos pos = BlockPos.of(packed);
-        if (level.getBlockState(pos).getBlock() instanceof PowerMastBlock) {
-            BlockPos top = PowerMastBlock.attachPoint(pos);
-            return new Vec3(top.getX() + 0.5D, top.getY() + 0.75D, top.getZ() + 0.5D);
+        if (level.getBlockState(pos).getBlock() instanceof MastBlock mast) {
+            // Asked of the block rather than named, so the seven-block pylon and the three-block
+            // wooden mast each get their own top without this method knowing either exists.
+            return new Vec3(pos.getX() + 0.5D, pos.getY() + mast.mastHeight() - 0.25D,
+                    pos.getZ() + 0.5D);
         }
         if (level.getBlockState(pos).getBlock() instanceof TurbineBlock) {
             return new Vec3(pos.getX() + 0.5D, pos.getY() + 1.4D, pos.getZ() + 0.5D);

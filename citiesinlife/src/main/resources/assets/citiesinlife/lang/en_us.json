@@ -86,6 +86,7 @@
   "message.citiesinlife.unclaimed": "Released chunk %s, %s",
   "block.citiesinlife.solar_panel": "Solar Panel",
   "block.citiesinlife.power_mast": "Power Mast",
+  "block.citiesinlife.grid_pylon": "Grid Pylon",
   "block.citiesinlife.transit_station": "Transit Station",
   "item.citiesinlife.power_line_tool": "Power Line Tool",
   "tooltip.citiesinlife.line_1": "Right click one power block, then another, to run a line",

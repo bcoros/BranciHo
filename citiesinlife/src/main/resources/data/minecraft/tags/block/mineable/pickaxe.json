@@ -22,6 +22,7 @@
     "citiesinlife:end_pipe",
     "citiesinlife:service_spawner",
     "citiesinlife:tourist_airplane",
-    "citiesinlife:transport_airplane"
+    "citiesinlife:transport_airplane",
+    "citiesinlife:grid_pylon"
   ]
 }

@@ -28,8 +28,28 @@ public class CarRenderer extends EntityRenderer<CarEntity> {
 
     private static final ResourceLocation TEXTURE = CitiesInLife.id("textures/entity/car/car.png");
 
-    /** Radians of wheel rotation per block travelled: one turn per 2*pi*r, with r = 3/16 of a block. */
-    private static final float ROLL_PER_BLOCK = 1.0F / (3.0F / 16.0F);
+    /**
+     * How much bigger the car is drawn than it is authored.
+     *
+     * <p>The mesh describes a car two blocks long, which sounded right on paper and turned out to
+     * look like a toy parked next to a person who is nearly two blocks tall on their own. At this
+     * scale it is about three and a half blocks long and a little taller than the player, which is
+     * roughly the proportion a real car has to a real driver.
+     *
+     * <p>Scaling here rather than re-authoring the mesh, because the model is scaled about the
+     * origin and the wheels already sit with their bottoms on it - so the car grows upward and
+     * stays on the road. Re-authoring would also have meant redrawing every UV.
+     */
+    private static final float SCALE = 1.75F;
+
+    /**
+     * Radians of wheel rotation per block travelled: one turn per 2*pi*r.
+     *
+     * <p>r is 3/16 of a block as authored, so the drawn wheel is that much larger again - and a
+     * bigger wheel turns more slowly over the same ground. Forgetting that is how a car ends up
+     * driving with its wheels visibly spinning too fast for the speed it is doing.
+     */
+    private static final float ROLL_PER_BLOCK = 1.0F / (3.0F / 16.0F * SCALE);
 
     private final ModelPart root;
     private final ModelPart[] wheels;
@@ -42,7 +62,7 @@ public class CarRenderer extends EntityRenderer<CarEntity> {
                 root.getChild(CarModel.WHEEL_FRONT_RIGHT),
                 root.getChild(CarModel.WHEEL_REAR_LEFT),
                 root.getChild(CarModel.WHEEL_REAR_RIGHT)};
-        this.shadowRadius = 1.0F;
+        this.shadowRadius = 1.0F * SCALE;
     }
 
     @Override
@@ -54,7 +74,7 @@ public class CarRenderer extends EntityRenderer<CarEntity> {
         poseStack.mulPose(Axis.YP.rotationDegrees(-entityYaw));
         // Geometry is authored with Y downwards; this puts it the right way up. No half-block
         // translate here - that is a block-entity correction and would slide the car sideways.
-        poseStack.scale(1.0F, -1.0F, -1.0F);
+        poseStack.scale(SCALE, -SCALE, -SCALE);
 
         float roll = car.travelled(partialTick) * ROLL_PER_BLOCK;
         for (ModelPart wheel : wheels) {

@@ -68,7 +68,8 @@ public class CarEntity extends Entity {
         // passenger about.
         setNoGravity(true);
         this.noPhysics = true;
-        // Three blocks long, so a hitbox-sized cull test pops it out of view on the diagonal.
+        // Three and a half blocks long, so a hitbox-sized cull test pops it out of view on the
+        // diagonal.
         this.noCulling = true;
     }
 
