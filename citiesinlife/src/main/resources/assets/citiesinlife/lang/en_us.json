@@ -191,6 +191,7 @@
   "tooltip.citiesinlife.upgrade_1": "Sneak + left click a machine to buy it one level up",
   "tooltip.citiesinlife.upgrade_2": "Sewage Collector x3  |  Starter Pump x2  |  Turbine x1",
   "tooltip.citiesinlife.upgrade_3": "Paid for out of the treasury of the city it stands in",
+  "message.citiesinlife.sewage_no_city": "This collector is standing on unclaimed ground - claim the chunk and it will start working.",
   "message.citiesinlife.sewage_blocked": "No outfall reachable - run pipes out past your borders and finish with an End Pipe. (Capacity %s.)",
   "message.citiesinlife.sewage_working": "Sewer: %s / %s per step, level %s",
   "message.citiesinlife.not_upgradeable": "Nothing about that can be upgraded.",

@@ -61,10 +61,10 @@ public class EndPipeBlockEntity extends BlockEntity {
         }
         if (level.getGameTime() % CHECK_INTERVAL == 0L) {
             MinecraftServer server = serverLevel.getServer();
-            WaterGrid grid = WaterGrid.get(server);
-            pipe.supply = grid.supplyReaching(serverLevel, pos);
+            WaterGrid.Reading reading = WaterGrid.get(server).readingAt(serverLevel, pos);
+            pipe.supply = reading.supply();
 
-            boolean nowSewage = grid.sewageReaching(serverLevel, pos);
+            boolean nowSewage = reading.sewage();
             if (nowSewage != pipe.sewage) {
                 // Plumbing a sewer into a run that was pouring clean water has to take the clean
                 // water away first, or the old block sits there for good with nothing left that

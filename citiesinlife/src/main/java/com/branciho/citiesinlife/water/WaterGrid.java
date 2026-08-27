@@ -266,22 +266,6 @@ public final class WaterGrid extends SavedData {
         return deliveries;
     }
 
-    /**
-     * What actually reaches one particular block of plumbing.
-     *
-     * <p>Same walk the city's tanks get, started from somewhere else. An end pipe is not a tank and
-     * belongs to no city, but the question it asks is identical: is there a pump on the other end of
-     * all this, and is it winning against the leaks.
-     */
-    public int supplyReaching(ServerLevel level, BlockPos start) {
-        final int[] supply = {0};
-        LongArrayList seed = new LongArrayList();
-        seed.add(start.asLong());
-        walk(level, seed, (pos, state, block) ->
-                supply[0] += block.waterOutput(level, pos, state) - block.waterLoss(level, pos, state));
-        return Math.max(0, supply[0]);
-    }
-
     /** Everything the city's plumbing delivers, added up, for the city panel. */
     public int supplyFor(ServerLevel level, City city) {
         int total = 0;
@@ -427,22 +411,37 @@ public final class WaterGrid extends SavedData {
     }
 
     /**
-     * Whether a working sewer is on this run of pipe, asked from anywhere on it.
+     * Everything an end pipe needs to know about its run, from one walk.
      *
-     * <p>The end pipe asks this to decide what colour to pour. It deliberately does not check
-     * whether the collector is connected to anything, because this <em>is</em> the connection - if
-     * the walk got here, the sewer can get here too.
+     * @param supply what the pumps are winning by, after leaks
+     * @param sewage whether a sewage collector is on this same plumbing
      */
-    public boolean sewageReaching(ServerLevel level, BlockPos start) {
-        final boolean[] found = {false};
+    public record Reading(int supply, boolean sewage) {
+    }
+
+    /**
+     * What is on this run of pipe: how much water, and whether it is the dirty kind.
+     *
+     * <p>One walk answering both questions rather than two answering one each. The end pipe asks
+     * every ten ticks and the walk is bounded at several thousand nodes, so asking twice would have
+     * doubled the running cost of every tap in the world to learn something the first walk had
+     * already been past.
+     *
+     * <p>It deliberately does not check whether the collector has an outfall of its own, because
+     * this <em>is</em> the connection - if the walk got here, the sewer can get here too.
+     */
+    public Reading readingAt(ServerLevel level, BlockPos start) {
+        final int[] supply = {0};
+        final boolean[] sewage = {false};
         LongArrayList seed = new LongArrayList();
         seed.add(start.asLong());
         walk(level, seed, (pos, state, block) -> {
+            supply[0] += block.waterOutput(level, pos, state) - block.waterLoss(level, pos, state);
             if (block.waterRole() == WaterRole.SEWAGE) {
-                found[0] = true;
+                sewage[0] = true;
             }
         });
-        return found[0];
+        return new Reading(Math.max(0, supply[0]), sewage[0]);
     }
 
     // ------------------------------------------------------------ persistence

@@ -1,6 +1,7 @@
 package com.branciho.citiesinlife.block;
 
 import com.branciho.citiesinlife.blockentity.SewageCollectorBlockEntity;
+import com.branciho.citiesinlife.city.CityData;
 import com.branciho.citiesinlife.upgrade.Upgradeable;
 import com.branciho.citiesinlife.water.WaterBlock;
 import com.branciho.citiesinlife.water.WaterGrid;
@@ -12,6 +13,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseEntityBlock;
 import net.minecraft.world.level.block.RenderShape;
@@ -61,15 +63,31 @@ public class SewageCollectorBlock extends BaseEntityBlock implements WaterBlock,
         return new SewageCollectorBlockEntity(pos, state);
     }
 
-    /** Right click to ask whether it has anywhere to send anything. */
+    /**
+     * Right click to ask whether it has anywhere to send anything.
+     *
+     * <p>The "standing outside any city" case is answered here rather than by the collector itself,
+     * and it has to be: a collector on unclaimed ground is never visited by the city simulation at
+     * all, so its own idea of how it is doing was last updated never. It would have reported "no
+     * outfall reachable" and sent the player off to check pipework that was fine.
+     */
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos,
                                                Player player, BlockHitResult hit) {
-        if (!level.isClientSide
-                && level.getBlockEntity(pos) instanceof SewageCollectorBlockEntity collector) {
+        if (level.isClientSide) {
+            return InteractionResult.SUCCESS;
+        }
+        if (level instanceof ServerLevel serverLevel
+                && CityData.get(serverLevel.getServer()).cityAtChunk(serverLevel.dimension(),
+                        ChunkPos.asLong(pos.getX() >> 4, pos.getZ() >> 4)) == null) {
+            player.displayClientMessage(
+                    Component.translatable("message.citiesinlife.sewage_no_city"), true);
+            return InteractionResult.CONSUME;
+        }
+        if (level.getBlockEntity(pos) instanceof SewageCollectorBlockEntity collector) {
             player.displayClientMessage(collector.status(), true);
         }
-        return InteractionResult.sidedSuccess(level.isClientSide);
+        return InteractionResult.CONSUME;
     }
 
     @Override
