@@ -20,6 +20,8 @@ import com.branciho.citiesinlife.block.WaterPipeBlock;
 import com.branciho.citiesinlife.block.WaterStorageBlock;
 import com.branciho.citiesinlife.block.FactoryOutputBlock;
 import com.branciho.citiesinlife.block.GridPylonBlock;
+import com.branciho.citiesinlife.block.SewageBlock;
+import com.branciho.citiesinlife.block.SewageCollectorBlock;
 import com.branciho.citiesinlife.block.PowerMastBlock;
 import com.branciho.citiesinlife.block.SolarPanelBlock;
 import com.branciho.citiesinlife.block.TouristAirplaneBlock;
@@ -189,6 +191,35 @@ public final class ModBlocks {
                     .strength(3.0F, 6.0F)
                     .requiresCorrectToolForDrops()
                     .sound(SoundType.METAL)));
+
+    /**
+     * The sewage collector. A tank's counterpart, and built like one: metal, mined with a pickaxe.
+     */
+    public static final DeferredBlock<SewageCollectorBlock> SEWAGE_COLLECTOR =
+            BLOCKS.register("sewage_collector",
+                    () -> new SewageCollectorBlock(BlockBehaviour.Properties.of()
+                            .mapColor(MapColor.TERRACOTTA_BROWN)
+                            .strength(3.0F, 6.0F)
+                            .requiresCorrectToolForDrops()
+                            .sound(SoundType.METAL)));
+
+    /**
+     * What comes out of an outfall.
+     *
+     * <p>No loot table and instantly breakable, because it is scenery the machine puts down and
+     * takes away again. {@code replaceable} so anything placed into it simply displaces it, the way
+     * water behaves, and {@code noOcclusion} so it does not black out the block beneath.
+     */
+    public static final DeferredBlock<SewageBlock> SEWAGE = BLOCKS.register("sewage",
+            () -> new SewageBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.TERRACOTTA_BROWN)
+                    .replaceable()
+                    .noCollission()
+                    .noLootTable()
+                    .instabreak()
+                    .sound(SoundType.SLIME_BLOCK)
+                    .forceSolidOn()
+                    .noOcclusion()));
 
     /**
      * The four windmill liveries.

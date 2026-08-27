@@ -95,6 +95,16 @@ public final class City {
 
     /** The same for water: what the people need, and what actually came out of the tanks. */
     private int waterNeeded;
+
+    /**
+     * Sewage: how much the city makes, and how much of that is actually taken away.
+     *
+     * <p>Production is not something you build. Everything else on the city panel is a thing the
+     * player chose to make; this is the bill for having chosen to have a city at all, and the only
+     * decision is whether to deal with it.
+     */
+    private int sewageProduced;
+    private int sewageHandled;
     private int waterSupplied;
 
     /**
@@ -293,6 +303,24 @@ public final class City {
         this.waterNeeded = Math.max(0, needed);
     }
 
+    public int sewageProduced() {
+        return sewageProduced;
+    }
+
+    public int sewageHandled() {
+        return sewageHandled;
+    }
+
+    public void setSewage(int handled, int produced) {
+        this.sewageHandled = Math.max(0, handled);
+        this.sewageProduced = Math.max(0, produced);
+    }
+
+    /** What is going untreated. The number that turns into rubbish and unhappiness. */
+    public int sewageUntreated() {
+        return Math.max(0, sewageProduced - sewageHandled);
+    }
+
     // ------------------------------------------------------------------ army
 
     /**
@@ -482,6 +510,8 @@ public final class City {
         tag.putInt("powerNeeded", powerNeeded);
         tag.putInt("powerProduced", powerProduced);
         tag.putInt("waterNeeded", waterNeeded);
+        tag.putInt("sewageProduced", sewageProduced);
+        tag.putInt("sewageHandled", sewageHandled);
         tag.putInt("waterSupplied", waterSupplied);
         tag.putInt("refuse", refuse);
         tag.putInt("parkArea", parkArea);
@@ -542,6 +572,8 @@ public final class City {
         city.powerNeeded = tag.getInt("powerNeeded");
         city.powerProduced = tag.getInt("powerProduced");
         city.waterNeeded = tag.getInt("waterNeeded");
+        city.sewageProduced = tag.getInt("sewageProduced");
+        city.sewageHandled = tag.getInt("sewageHandled");
         city.waterSupplied = tag.getInt("waterSupplied");
         city.refuse = tag.getInt("refuse");
         city.parkArea = tag.getInt("parkArea");

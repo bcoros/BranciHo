@@ -16,6 +16,7 @@ import com.branciho.citiesinlife.net.payload.LinkOutletPayload;
 import com.branciho.citiesinlife.net.payload.LinkWaterPayload;
 import com.branciho.citiesinlife.net.payload.MarkPathPayload;
 import com.branciho.citiesinlife.net.payload.MarkRoadPayload;
+import com.branciho.citiesinlife.net.payload.UpgradePayload;
 import com.branciho.citiesinlife.net.payload.RegisterStructurePayload;
 import com.branciho.citiesinlife.net.payload.RequestArmyPayload;
 import com.branciho.citiesinlife.net.payload.SeizeStructurePayload;
@@ -83,6 +84,10 @@ public final class ClientEvents {
      */
     static boolean holdingRoadTool(LocalPlayer player) {
         return player.getMainHandItem().is(ModItems.ROAD_TOOL.get());
+    }
+
+    static boolean holdingUpgradeTool(LocalPlayer player) {
+        return player.getMainHandItem().is(ModItems.UPGRADE_TOOL.get());
     }
 
     /**
@@ -343,6 +348,18 @@ public final class ClientEvents {
             return;
         }
 
+        // Sneak + left click with the upgrade tool buys the machine you are pointing at a level.
+        // Same gesture as the pipe tool's, for the same reason: sneaking with something in hand
+        // never reaches a block's right-click handler at all.
+        if (holdingUpgradeTool(player)) {
+            if (player.isShiftKeyDown()) {
+                handleUpgradeClick(minecraft, player);
+            }
+            event.setSwingHand(false);
+            event.setCanceled(true);
+            return;
+        }
+
         boolean wand = holdingWand(player);
         boolean pathTool = holdingPathTool(player);
         boolean roadTool = holdingRoadTool(player);
@@ -365,6 +382,17 @@ public final class ClientEvents {
         // Neither tool ever breaks anything, so swallow the swing either way.
         event.setSwingHand(false);
         event.setCanceled(true);
+    }
+
+    /** Send off an upgrade for whatever the player is pointing at. */
+    private static void handleUpgradeClick(Minecraft minecraft, LocalPlayer player) {
+        if (!(minecraft.hitResult instanceof BlockHitResult hit)
+                || minecraft.hitResult.getType() != HitResult.Type.BLOCK) {
+            player.displayClientMessage(
+                    Component.translatable("hud.citiesinlife.upgrade_nothing"), true);
+            return;
+        }
+        CitiesInLifeNetwork.sendToServer(new UpgradePayload(hit.getBlockPos()));
     }
 
     /**

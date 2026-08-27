@@ -44,6 +44,8 @@ import com.branciho.citiesinlife.sim.CreativeFunding;
 import com.branciho.citiesinlife.structure.MeasureMode;
 import com.branciho.citiesinlife.structure.Structure;
 import com.branciho.citiesinlife.structure.StructureType;
+import com.branciho.citiesinlife.upgrade.Upgradeable;
+import com.branciho.citiesinlife.net.payload.UpgradePayload;
 import com.branciho.citiesinlife.water.WaterBlock;
 import com.branciho.citiesinlife.water.WaterGrid;
 import com.branciho.citiesinlife.water.WaterRole;
@@ -603,6 +605,15 @@ public final class ServerActions {
         }
         if (from == WaterRole.STORAGE && to == WaterRole.STORAGE) {
             return "two_tanks";
+        }
+        if (from == WaterRole.SEWAGE && to == WaterRole.SEWAGE) {
+            return "two_collectors";
+        }
+        // A tank wired straight to a sewer is somebody about to drink their own drains. They can
+        // still do it the long way round, through pipes, and the tap will go brown to tell them.
+        if ((from == WaterRole.SEWAGE && to == WaterRole.STORAGE)
+                || (from == WaterRole.STORAGE && to == WaterRole.SEWAGE)) {
+            return "sewage_into_tank";
         }
         if (from.isPump() && to.isPump()) {
             return null;
@@ -1675,6 +1686,8 @@ public final class ServerActions {
                         city.powerNeeded(),
                         city.waterSupplied(),
                         city.waterNeeded(),
+                        city.sewageHandled(),
+                        city.sewageProduced(),
                         city.nextClaimCost(),
                         city.refuse(),
                         city.refuseTolerance(),
@@ -1772,6 +1785,73 @@ public final class ServerActions {
 
     private static boolean tooFar(ServerPlayer player, BlockPos pos) {
         return player.blockPosition().distSqr(pos) > (double) MAX_REACH * MAX_REACH;
+    }
+
+    // --------------------------------------------------------------- upgrades
+
+    /**
+     * Buy a machine one level up, paid for out of the city's treasury.
+     *
+     * <p>The money comes from the city whose ground the machine stands on, not from the city the
+     * player happens to run. That matters on a shared server: upgrading somebody else's turbine
+     * out of their own treasury would be a very odd kind of gift.
+     */
+    public static void upgrade(ServerPlayer player, UpgradePayload payload) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        BlockPos pos = payload.pos();
+        if (tooFar(player, pos)) {
+            reject(player, "too_far");
+            return;
+        }
+        if (!Diplomacy.mayInterfere(server, player, pos)) {
+            reject(player, "protected_land_tool");
+            return;
+        }
+
+        ServerLevel level = player.serverLevel();
+        BlockState state = level.getBlockState(pos);
+        if (!(state.getBlock() instanceof Upgradeable machine)) {
+            reject(player, "not_upgradeable");
+            return;
+        }
+
+        int tier = machine.tierAt(level, pos, state);
+        if (tier >= machine.maxTier()) {
+            player.sendSystemMessage(Component.translatable(
+                    "message.citiesinlife.already_top_tier", tier + 1));
+            return;
+        }
+
+        CityData data = CityData.get(server);
+        City city = data.cityAtChunk(level.dimension(),
+                ChunkPos.asLong(pos.getX() >> 4, pos.getZ() >> 4));
+        if (city == null) {
+            reject(player, "upgrade_needs_city");
+            return;
+        }
+
+        long cost = machine.upgradeCost(tier);
+        if (!city.withdraw(cost)) {
+            player.sendSystemMessage(Component.translatable(
+                    "message.citiesinlife.upgrade_too_dear", cost, city.treasury()));
+            return;
+        }
+
+        if (!machine.upgrade(level, pos, state)) {
+            // Refund rather than swallow. A machine that took the money and did nothing would be
+            // indistinguishable from one that worked, right up until the numbers did not move.
+            city.deposit(cost);
+            reject(player, "upgrade_failed");
+            return;
+        }
+        data.setDirty();
+
+        player.sendSystemMessage(machine.describe(level, pos, level.getBlockState(pos)));
+        player.sendSystemMessage(Component.translatable("message.citiesinlife.upgrade_paid", cost));
+        sync(player);
     }
 
     private static void reject(ServerPlayer player, String key) {

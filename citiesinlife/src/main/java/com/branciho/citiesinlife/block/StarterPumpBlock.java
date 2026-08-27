@@ -1,12 +1,16 @@
 package com.branciho.citiesinlife.block;
 
+import com.branciho.citiesinlife.upgrade.Upgradeable;
 import com.branciho.citiesinlife.water.WaterRole;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.minecraft.world.level.material.Fluids;
 
 /**
@@ -19,20 +23,52 @@ import net.minecraft.world.level.material.Fluids;
  * <p>One per pumping station. Two starter pumps on the same run of links is refused when the link is
  * drawn rather than quietly ignored later.
  */
-public class StarterPumpBlock extends AbstractPumpBlock {
+public class StarterPumpBlock extends AbstractPumpBlock implements Upgradeable {
 
-    /** Units a working intake lifts per simulation step. */
+    /**
+     * How good this particular intake is. Two upgrades, so 0, 1 or 2.
+     *
+     * <p>A block state rather than a block entity, because this is the whole of what an upgraded
+     * pump remembers and a block entity ticking away on every pump in the world to hold one small
+     * number would be an unreasonable price for it.
+     */
+    public static final IntegerProperty TIER = IntegerProperty.create("tier", 0, 2);
+
+    public static final int MAX_TIER = 2;
+
+    /** Units a working intake lifts per simulation step at tier 0. */
     public static final int OUTPUT = 40;
+
+    /** Each upgrade adds this much again. Tiers 0-2 give 40, 60, 80. */
+    public static final int OUTPUT_PER_TIER = 20;
+
+    /** What the first upgrade costs. The second is twice this. */
+    private static final long UPGRADE_BASE_COST = 750L;
 
     public StarterPumpBlock(Properties properties) {
         super(properties);
+        registerDefaultState(defaultBlockState().setValue(TIER, 0));
+    }
+
+    @Override
+    protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+        super.createBlockStateDefinition(builder);
+        builder.add(TIER);
+    }
+
+    /** What an intake at this tier lifts, working. */
+    public static int outputAt(int tier) {
+        return OUTPUT + tier * OUTPUT_PER_TIER;
     }
 
     @Override
     protected Component statusOf(Level level, BlockPos pos) {
+        int tier = level.getBlockState(pos).hasProperty(TIER)
+                ? level.getBlockState(pos).getValue(TIER) : 0;
         return Component.translatable(touchesWater(level, pos)
-                ? "message.citiesinlife.pump_wet"
-                : "message.citiesinlife.pump_dry");
+                        ? "message.citiesinlife.pump_wet"
+                        : "message.citiesinlife.pump_dry",
+                outputAt(tier), tier + 1);
     }
 
     @Override
@@ -47,7 +83,44 @@ public class StarterPumpBlock extends AbstractPumpBlock {
 
     @Override
     public int waterOutput(BlockGetter level, BlockPos pos, BlockState state) {
-        return touchesWater(level, pos) ? OUTPUT : 0;
+        if (!touchesWater(level, pos)) {
+            return 0;
+        }
+        return outputAt(state.hasProperty(TIER) ? state.getValue(TIER) : 0);
+    }
+
+    // ------------------------------------------------------------- upgrading
+
+    @Override
+    public int maxTier() {
+        return MAX_TIER;
+    }
+
+    @Override
+    public int tierAt(BlockGetter level, BlockPos pos, BlockState state) {
+        return state.hasProperty(TIER) ? state.getValue(TIER) : 0;
+    }
+
+    @Override
+    public long upgradeCost(int fromTier) {
+        return UPGRADE_BASE_COST * (fromTier + 1);
+    }
+
+    @Override
+    public boolean upgrade(Level level, BlockPos pos, BlockState state) {
+        int tier = tierAt(level, pos, state);
+        if (tier >= MAX_TIER) {
+            return false;
+        }
+        level.setBlock(pos, state.setValue(TIER, tier + 1), Block.UPDATE_ALL);
+        return true;
+    }
+
+    @Override
+    public Component describe(BlockGetter level, BlockPos pos, BlockState state) {
+        int tier = tierAt(level, pos, state);
+        return Component.translatable("message.citiesinlife.upgraded_pump",
+                tier + 1, outputAt(tier));
     }
 
     /**

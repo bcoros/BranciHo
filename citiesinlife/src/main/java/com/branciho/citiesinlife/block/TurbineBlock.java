@@ -5,9 +5,11 @@ import com.branciho.citiesinlife.power.PowerBlock;
 import com.branciho.citiesinlife.power.PowerGrid;
 import com.branciho.citiesinlife.power.PowerRole;
 import com.branciho.citiesinlife.registry.ModBlockEntities;
+import com.branciho.citiesinlife.upgrade.Upgradeable;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
@@ -35,7 +37,7 @@ import org.jetbrains.annotations.Nullable;
  * <p>Almost all of what you see is drawn by the block entity renderer, because the machine is three
  * blocks wide and the rotor turns. The block itself occupies one position.
  */
-public class TurbineBlock extends BaseEntityBlock implements PowerBlock {
+public class TurbineBlock extends BaseEntityBlock implements PowerBlock, Upgradeable {
 
     public static final MapCodec<TurbineBlock> CODEC = simpleCodec(TurbineBlock::new);
 
@@ -103,5 +105,42 @@ public class TurbineBlock extends BaseEntityBlock implements PowerBlock {
             PowerGrid.get(serverLevel.getServer()).removeNode(level.dimension(), pos);
         }
         super.onRemove(state, level, pos, newState, moved);
+    }
+
+    // ------------------------------------------------------------- upgrading
+
+    @Override
+    public int maxTier() {
+        return TurbineBlockEntity.MAX_TIER;
+    }
+
+    @Override
+    public int tierAt(BlockGetter level, BlockPos pos, BlockState state) {
+        return level.getBlockEntity(pos) instanceof TurbineBlockEntity turbine ? turbine.tier() : 0;
+    }
+
+    /**
+     * Dearer than the pump or the sewer, because it is worth more.
+     *
+     * <p>A turbine at tier 1 gets half as much again out of coal that already cost something to
+     * fetch, and out of wind that cost nothing at all. Pricing it the same as an intake would make
+     * it the only upgrade anybody ever bought.
+     */
+    @Override
+    public long upgradeCost(int fromTier) {
+        return 2500L;
+    }
+
+    @Override
+    public boolean upgrade(Level level, BlockPos pos, BlockState state) {
+        return level.getBlockEntity(pos) instanceof TurbineBlockEntity turbine && turbine.upgrade();
+    }
+
+    @Override
+    public Component describe(BlockGetter level, BlockPos pos, BlockState state) {
+        int percent = level.getBlockEntity(pos) instanceof TurbineBlockEntity turbine
+                ? Math.round(turbine.outputMultiplier() * 100.0F) : 100;
+        return Component.translatable("message.citiesinlife.upgraded_turbine",
+                tierAt(level, pos, state) + 1, percent);
     }
 }

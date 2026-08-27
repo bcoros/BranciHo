@@ -5,6 +5,7 @@ import com.branciho.citiesinlife.item.ExtinguisherItem;
 import com.branciho.citiesinlife.item.MilitaryToolItem;
 import com.branciho.citiesinlife.item.PathToolItem;
 import com.branciho.citiesinlife.item.RoadToolItem;
+import com.branciho.citiesinlife.item.UpgradeToolItem;
 import com.branciho.citiesinlife.item.PlannerWandItem;
 import com.branciho.citiesinlife.item.PipeLineToolItem;
 import com.branciho.citiesinlife.item.PowerLineToolItem;
@@ -122,6 +123,12 @@ public final class ModItems {
 
     public static final DeferredItem<BlockItem> END_PIPE =
             ITEMS.registerSimpleBlockItem("end_pipe", ModBlocks.END_PIPE);
+
+    public static final DeferredItem<BlockItem> SEWAGE_COLLECTOR =
+            ITEMS.registerSimpleBlockItem("sewage_collector", ModBlocks.SEWAGE_COLLECTOR);
+
+    public static final DeferredItem<UpgradeToolItem> UPGRADE_TOOL = ITEMS.register("upgrade_tool",
+            () -> new UpgradeToolItem(new Item.Properties().stacksTo(1)));
 
     public static final DeferredItem<BlockItem> SERVICE_SPAWNER =
             ITEMS.registerSimpleBlockItem("service_spawner", ModBlocks.SERVICE_SPAWNER);

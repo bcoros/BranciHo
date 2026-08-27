@@ -2,6 +2,7 @@ package com.branciho.citiesinlife.sim;
 
 import com.branciho.citiesinlife.city.City;
 import com.branciho.citiesinlife.city.CityData;
+import com.branciho.citiesinlife.blockentity.SewageCollectorBlockEntity;
 import com.branciho.citiesinlife.blockentity.WaterStorageBlockEntity;
 import com.branciho.citiesinlife.power.PowerGrid;
 import com.branciho.citiesinlife.structure.Structure;
@@ -124,6 +125,14 @@ public final class CitySimulation {
      */
     private static final double UNPOWERED_GROWTH = 0.25D;
 
+    /**
+     * How much rubbish a unit of untreated sewage is worth per step.
+     *
+     * <p>Deliberately gentle. A city with no sewers at all should drift into a rubbish problem over
+     * a session, not be buried by one within a minute of somebody plumbing in their first tap.
+     */
+    private static final double SEWAGE_TO_REFUSE = 0.15D;
+
     private CitySimulation() {
     }
 
@@ -138,6 +147,7 @@ public final class CitySimulation {
             recalculate(data, city);
             updatePower(server, grid, city);
             updateWater(server, water, city);
+            updateSewage(server, water, city);
             makeRubbish(city);
             grow(city);
             collectTaxes(city);
@@ -227,6 +237,56 @@ public final class CitySimulation {
             }
         }
         city.setWater(drawn, demand);
+    }
+
+    /**
+     * Work out what the city's sewers managed this step.
+     *
+     * <p>Production is simply the water the city actually drank. That is not a simplification for
+     * its own sake - it is the one figure a player can already see and already controls, so a city
+     * that doubles its water use knows exactly why its sewage doubled too.
+     *
+     * <p>A collector only counts if it can reach an outfall outside every city's borders. One that
+     * cannot is standing there plumbed into a dead end, and saying so when it is clicked is the only
+     * way that is ever diagnosable.
+     */
+    private static void updateSewage(MinecraftServer server, WaterGrid grid, City city) {
+        int produced = city.waterSupplied();
+        ServerLevel level = server.getLevel(city.dimension());
+        if (level == null) {
+            city.setSewage(0, produced);
+            return;
+        }
+
+        CityData data = CityData.get(server);
+        LongArrayList collectors = grid.collectorsFor(level, city);
+        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+
+        int handled = 0;
+        for (long node : collectors) {
+            cursor.set(BlockPos.getX(node), BlockPos.getY(node), BlockPos.getZ(node));
+            if (!(level.getBlockEntity(cursor) instanceof SewageCollectorBlockEntity collector)) {
+                continue;
+            }
+            boolean connected = !grid.outfallsFrom(level, data, cursor.immutable()).isEmpty();
+            // Told even when it is doing nothing, because "nothing" is the interesting case and the
+            // block has no other way to find out.
+            int through = 0;
+            if (connected) {
+                through = Math.min(collector.capacity(), Math.max(0, produced - handled));
+                handled += through;
+            }
+            collector.report(through, connected);
+        }
+        city.setSewage(handled, produced);
+
+        // Untreated sewage piles up as rubbish. Reusing refuse rather than inventing a second
+        // unhappiness meter: it is the same complaint, it already has a tolerance scaled to the
+        // population, and the player already knows what to do about a rising rubbish figure.
+        int untreated = city.sewageUntreated();
+        if (untreated > 0) {
+            city.addRefuse((int) Math.ceil(untreated * SEWAGE_TO_REFUSE));
+        }
     }
 
     private static int demandFor(int housing, int jobs) {

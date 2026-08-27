@@ -2,6 +2,7 @@ package com.branciho.citiesinlife.blockentity;
 
 import com.branciho.citiesinlife.block.EndPipeBlock;
 import com.branciho.citiesinlife.registry.ModBlockEntities;
+import com.branciho.citiesinlife.registry.ModBlocks;
 import com.branciho.citiesinlife.water.WaterGrid;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -41,6 +42,15 @@ public class EndPipeBlockEntity extends BlockEntity {
     private boolean pouring;
     private int supply;
 
+    /**
+     * Whether this tap is an outfall rather than a tap.
+     *
+     * <p>Decided by what is on the run, not by a setting: a sewage collector anywhere on the same
+     * plumbing makes every end pipe on it an outfall. There is no way to have clean and dirty water
+     * in one loop of pipe, which is exactly as true in a real town as it is here.
+     */
+    private boolean sewage;
+
     public EndPipeBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.END_PIPE.get(), pos, state);
     }
@@ -51,16 +61,32 @@ public class EndPipeBlockEntity extends BlockEntity {
         }
         if (level.getGameTime() % CHECK_INTERVAL == 0L) {
             MinecraftServer server = serverLevel.getServer();
-            pipe.supply = WaterGrid.get(server).supplyReaching(serverLevel, pos);
+            WaterGrid grid = WaterGrid.get(server);
+            pipe.supply = grid.supplyReaching(serverLevel, pos);
 
-            if (pipe.supply > 0) {
+            boolean nowSewage = grid.sewageReaching(serverLevel, pos);
+            if (nowSewage != pipe.sewage) {
+                // Plumbing a sewer into a run that was pouring clean water has to take the clean
+                // water away first, or the old block sits there for good with nothing left that
+                // believes it put it there.
+                pipe.stopPouring(level, state);
+                pipe.sewage = nowSewage;
+                pipe.setChanged();
+            }
+
+            // A sewer needs no pump. Water is pushed uphill from a river; sewage only has to leave,
+            // so an outfall pours whenever there is a collector on the other end of it.
+            if (pipe.supply > 0 || pipe.sewage) {
                 pipe.startPouring(level, state);
             } else {
                 pipe.stopPouring(level, state);
             }
         }
 
-        if (pipe.supply > 0 && pipe.outlet != null && level.getGameTime() % BUCKET_INTERVAL == 0L) {
+        // Buckets only from a clean run. Handing somebody a bucket of sewage and calling it water
+        // would be a lie the boiler downstream has no way to catch.
+        if (pipe.supply > 0 && !pipe.sewage && pipe.outlet != null
+                && level.getGameTime() % BUCKET_INTERVAL == 0L) {
             pipe.fillSomething(level);
         }
     }
@@ -70,7 +96,8 @@ public class EndPipeBlockEntity extends BlockEntity {
     private void startPouring(Level level, BlockState state) {
         BlockPos spout = worldPosition.relative(state.getValue(EndPipeBlock.FACING));
         BlockState there = level.getBlockState(spout);
-        if (there.is(Blocks.WATER)) {
+        BlockState poured = poured();
+        if (there.is(poured.getBlock())) {
             pouring = true;
             return;
         }
@@ -78,9 +105,16 @@ public class EndPipeBlockEntity extends BlockEntity {
             // Aimed into a wall. Nothing to do about that but wait for somebody to move the wall.
             return;
         }
-        level.setBlock(spout, Blocks.WATER.defaultBlockState(), Block.UPDATE_ALL);
+        level.setBlock(spout, poured, Block.UPDATE_ALL);
         pouring = true;
         setChanged();
+    }
+
+    /** What this tap puts in the world: water, or the brown stuff. */
+    private BlockState poured() {
+        return sewage
+                ? ModBlocks.SEWAGE.get().defaultBlockState()
+                : Blocks.WATER.defaultBlockState();
     }
 
     /**
@@ -101,7 +135,8 @@ public class EndPipeBlockEntity extends BlockEntity {
                 ? state.getValue(EndPipeBlock.FACING)
                 : Direction.NORTH;
         BlockPos spout = worldPosition.relative(facing);
-        if (level.getBlockState(spout).is(Blocks.WATER)) {
+        BlockState there = level.getBlockState(spout);
+        if (there.is(Blocks.WATER) || there.is(ModBlocks.SEWAGE.get())) {
             level.setBlock(spout, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
         }
     }
@@ -163,6 +198,9 @@ public class EndPipeBlockEntity extends BlockEntity {
 
     /** One line: is there water, and is it filling anything. */
     public Component report() {
+        if (sewage) {
+            return Component.translatable("message.citiesinlife.tap_outfall");
+        }
         if (supply <= 0) {
             return Component.translatable("message.citiesinlife.tap_dry");
         }
@@ -180,6 +218,7 @@ public class EndPipeBlockEntity extends BlockEntity {
         super.loadAdditional(tag, registries);
         outlet = tag.contains("outlet") ? BlockPos.of(tag.getLong("outlet")) : null;
         pouring = tag.getBoolean("pouring");
+        sewage = tag.getBoolean("sewage");
     }
 
     @Override
@@ -189,5 +228,6 @@ public class EndPipeBlockEntity extends BlockEntity {
             tag.putLong("outlet", outlet.asLong());
         }
         tag.putBoolean("pouring", pouring);
+        tag.putBoolean("sewage", sewage);
     }
 }

@@ -1,6 +1,7 @@
 package com.branciho.citiesinlife.blockentity;
 
 import com.branciho.citiesinlife.registry.ModBlockEntities;
+import net.minecraft.util.Mth;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.particles.ParticleTypes;
@@ -36,6 +37,11 @@ public class TurbineBlockEntity extends BlockEntity {
     private static final int CHARGE_PER_TICK = 1;
 
     /** What a turbine on a coal boiler is worth, and what one on a windmill is worth. */
+    public static final int MAX_TIER = 1;
+
+    /** Half as much again out of the same steam, which is what the one upgrade buys. */
+    public static final float TIER_BONUS = 0.5F;
+
     public static final int COAL_OUTPUT = 150;
     public static final int WIND_OUTPUT = 50;
 
@@ -70,6 +76,15 @@ public class TurbineBlockEntity extends BlockEntity {
 
     private int charge;
     private int rating;
+
+    /**
+     * How well built this particular turbine is. One upgrade, so 0 or 1.
+     *
+     * <p>Applied as a multiplier on whatever is driving it rather than as a flat bonus, so the
+     * upgrade is worth having on a coal plant and worth having on a wind farm, in proportion to
+     * what each of those was worth in the first place.
+     */
+    private int tier;
     private int soot;
     private boolean running;
     private boolean clogged;
@@ -233,7 +248,26 @@ public class TurbineBlockEntity extends BlockEntity {
     }
 
     public int output() {
-        return running ? rating : 0;
+        return running ? Math.round(rating * outputMultiplier()) : 0;
+    }
+
+    public int tier() {
+        return tier;
+    }
+
+    /** What a turbine at this tier gets out of the same steam. */
+    public float outputMultiplier() {
+        return 1.0F + tier * TIER_BONUS;
+    }
+
+    /** Raise the tier by one. Returns false at the ceiling. */
+    public boolean upgrade() {
+        if (tier >= MAX_TIER) {
+            return false;
+        }
+        tier++;
+        setChanged();
+        return true;
     }
 
     public boolean running() {
@@ -279,6 +313,7 @@ public class TurbineBlockEntity extends BlockEntity {
         // a broken turbine and is not the player's fault.
         charge = tag.contains("charge") ? tag.getInt("charge") : tag.getInt("steam");
         rating = tag.contains("rating") ? tag.getInt("rating") : COAL_OUTPUT;
+        tier = Mth.clamp(tag.getInt("tier"), 0, MAX_TIER);
         soot = tag.getInt("soot");
         running = tag.getBoolean("running");
         clogged = tag.getBoolean("clogged");
@@ -291,6 +326,7 @@ public class TurbineBlockEntity extends BlockEntity {
         super.saveAdditional(tag, registries);
         tag.putInt("charge", charge);
         tag.putInt("rating", rating);
+        tag.putInt("tier", tier);
         tag.putInt("soot", soot);
         tag.putBoolean("running", running);
         tag.putBoolean("clogged", clogged);

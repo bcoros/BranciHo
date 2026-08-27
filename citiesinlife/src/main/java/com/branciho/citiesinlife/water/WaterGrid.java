@@ -1,6 +1,8 @@
 package com.branciho.citiesinlife.water;
 
+import com.branciho.citiesinlife.block.EndPipeBlock;
 import com.branciho.citiesinlife.city.City;
+import com.branciho.citiesinlife.city.CityData;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
@@ -368,6 +370,79 @@ public final class WaterGrid extends SavedData {
             }
         }
         return found;
+    }
+
+    // --------------------------------------------------------------- sewage
+
+    /** Every sewage collector standing on ground this city owns. */
+    public LongArrayList collectorsFor(ServerLevel level, City city) {
+        return nodesOfRole(level, city, WaterRole.SEWAGE);
+    }
+
+    private LongArrayList nodesOfRole(ServerLevel level, City city, WaterRole role) {
+        final LongArrayList found = new LongArrayList();
+        final Long2ObjectOpenHashMap<LongOpenHashSet> index = links.get(level.dimension());
+        if (index == null) {
+            return found;
+        }
+        final BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+        for (long node : index.keySet()) {
+            int x = BlockPos.getX(node);
+            int z = BlockPos.getZ(node);
+            if (!city.owns(ChunkPos.asLong(x >> 4, z >> 4))) {
+                continue;
+            }
+            cursor.set(x, BlockPos.getY(node), z);
+            BlockState state = level.getBlockState(cursor);
+            if (state.getBlock() instanceof WaterBlock block && block.waterRole() == role) {
+                found.add(node);
+            }
+        }
+        return found;
+    }
+
+    /**
+     * The outfalls this collector can actually reach: end pipes on the same run, standing on ground
+     * no city owns.
+     *
+     * <p>The territory test is the whole rule. An outfall inside the borders would let a player
+     * satisfy the entire utility with two blocks of pipe and a tap pointed at their own street,
+     * which is not what a sewer is. Somebody has to look at where it goes.
+     */
+    public LongArrayList outfallsFrom(ServerLevel level, CityData data, BlockPos collector) {
+        final LongArrayList outfalls = new LongArrayList();
+        LongArrayList seed = new LongArrayList();
+        seed.add(collector.asLong());
+        walk(level, seed, (pos, state, block) -> {
+            if (!(state.getBlock() instanceof EndPipeBlock)) {
+                return;
+            }
+            if (data.cityAtChunk(level.dimension(),
+                    ChunkPos.asLong(pos.getX() >> 4, pos.getZ() >> 4)) != null) {
+                return;
+            }
+            outfalls.add(pos.asLong());
+        });
+        return outfalls;
+    }
+
+    /**
+     * Whether a working sewer is on this run of pipe, asked from anywhere on it.
+     *
+     * <p>The end pipe asks this to decide what colour to pour. It deliberately does not check
+     * whether the collector is connected to anything, because this <em>is</em> the connection - if
+     * the walk got here, the sewer can get here too.
+     */
+    public boolean sewageReaching(ServerLevel level, BlockPos start) {
+        final boolean[] found = {false};
+        LongArrayList seed = new LongArrayList();
+        seed.add(start.asLong());
+        walk(level, seed, (pos, state, block) -> {
+            if (block.waterRole() == WaterRole.SEWAGE) {
+                found[0] = true;
+            }
+        });
+        return found[0];
     }
 
     // ------------------------------------------------------------ persistence

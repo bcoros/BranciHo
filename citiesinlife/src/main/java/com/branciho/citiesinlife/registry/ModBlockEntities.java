@@ -12,6 +12,7 @@ import com.branciho.citiesinlife.blockentity.ChimneyBlockEntity;
 import com.branciho.citiesinlife.blockentity.OfficeSpaceBlockEntity;
 import com.branciho.citiesinlife.blockentity.RegisterCounterBlockEntity;
 import com.branciho.citiesinlife.blockentity.ServiceSpawnerBlockEntity;
+import com.branciho.citiesinlife.blockentity.SewageCollectorBlockEntity;
 import com.branciho.citiesinlife.blockentity.WaterStorageBlockEntity;
 import com.branciho.citiesinlife.blockentity.WindmillBlockEntity;
 import net.minecraft.core.registries.Registries;
@@ -47,6 +48,12 @@ public final class ModBlockEntities {
             WATER_STORAGE = BLOCK_ENTITIES.register("water_storage",
                     () -> BlockEntityType.Builder
                             .of(WaterStorageBlockEntity::new, ModBlocks.WATER_STORAGE.get())
+                            .build(null));
+
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<SewageCollectorBlockEntity>>
+            SEWAGE_COLLECTOR = BLOCK_ENTITIES.register("sewage_collector",
+                    () -> BlockEntityType.Builder
+                            .of(SewageCollectorBlockEntity::new, ModBlocks.SEWAGE_COLLECTOR.get())
                             .build(null));
 
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<WindmillBlockEntity>>

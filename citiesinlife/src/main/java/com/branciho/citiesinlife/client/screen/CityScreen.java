@@ -26,7 +26,7 @@ public class CityScreen extends Screen {
     private static final int PANEL_WIDTH = 244;
     // Two more rows than it started with: power gained a water twin, and both need room for the
     // line that appears underneath when they fall short. Refuse added a third of the same shape.
-    private static final int PANEL_HEIGHT = 262;
+    private static final int PANEL_HEIGHT = 276;
 
     private int left;
     private int top;
@@ -125,6 +125,21 @@ public class CityScreen extends Screen {
         if (!watered) {
             graphics.drawString(this.font,
                     Component.translatable("screen.citiesinlife.water_short"),
+                    left + 12, y, COLOUR_BAD, false);
+        }
+        y += 14;
+
+        // Sewage reads the same way round as water on purpose - handled over produced - even though
+        // it is the one utility you would rather have less of. Two figures on the same panel that
+        // mean opposite things is how a player misreads their own city.
+        boolean drained = city.sewageProduced() == 0
+                || city.sewageHandled() >= city.sewageProduced();
+        y = row(graphics, y, "screen.citiesinlife.sewage",
+                Component.literal(format(city.sewageHandled()) + " / " + format(city.sewageProduced())),
+                drained ? COLOUR_GOOD : COLOUR_BAD);
+        if (!drained) {
+            graphics.drawString(this.font,
+                    Component.translatable("screen.citiesinlife.sewage_short"),
                     left + 12, y, COLOUR_BAD, false);
         }
         y += 14;

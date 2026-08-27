@@ -10,6 +10,7 @@ import com.branciho.citiesinlife.net.payload.DiplomacyPayload;
 import com.branciho.citiesinlife.net.payload.ForeignLandPayload;
 import com.branciho.citiesinlife.net.payload.LinkPowerPayload;
 import com.branciho.citiesinlife.net.payload.LinkOutletPayload;
+import com.branciho.citiesinlife.net.payload.UpgradePayload;
 import com.branciho.citiesinlife.net.payload.LinkWaterPayload;
 import com.branciho.citiesinlife.net.payload.MarkPathPayload;
 import com.branciho.citiesinlife.net.payload.MarkRoadPayload;
@@ -72,6 +73,10 @@ public final class CitiesInLifeNetwork {
         registrar.playToServer(LinkOutletPayload.TYPE, LinkOutletPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(
                         () -> onServer(context, player -> ServerActions.linkOutlet(player, payload))));
+
+        registrar.playToServer(UpgradePayload.TYPE, UpgradePayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(
+                        () -> onServer(context, player -> ServerActions.upgrade(player, payload))));
 
         registrar.playToServer(MarkPathPayload.TYPE, MarkPathPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(

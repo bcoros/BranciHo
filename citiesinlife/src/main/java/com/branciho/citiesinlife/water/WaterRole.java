@@ -32,7 +32,20 @@ public enum WaterRole {
     CONDUIT,
 
     /** A tank. Water collects here, and a city drinks from the tanks standing on its own ground. */
-    STORAGE;
+    STORAGE,
+
+    /**
+     * A sewage collector: the tank's opposite number.
+     *
+     * <p>Where a tank is the point water stops being plumbing and becomes something to drink, this
+     * is the point the city's used water becomes plumbing again. It is on the same network and it
+     * travels down the same pipes, deliberately - there is no such thing as a sewage pipe in this
+     * mod, and there is not going to be. A pipe is a pipe.
+     *
+     * <p>Which means a run carrying sewage is a run you should not also be drinking from. Nothing
+     * stops you plumbing both into one loop; it simply comes out of the tap brown.
+     */
+    SEWAGE;
 
     /** Whether this is one of the three pumps, which link to each other and to nothing else. */
     public boolean isPump() {
