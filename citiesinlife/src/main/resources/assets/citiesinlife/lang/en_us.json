@@ -356,5 +356,6 @@
   "message.citiesinlife.road_cleared": "Took up %s blocks of road",
   "message.citiesinlife.already_road": "That is already road, running the same way",
   "message.citiesinlife.no_road_there": "There is no road in that box",
-  "message.citiesinlife.road_no_kind": "Choose what to paint first - press R"
+  "message.citiesinlife.road_no_kind": "Choose what to paint first - press R",
+  "entity.citiesinlife.car": "Car"
 }

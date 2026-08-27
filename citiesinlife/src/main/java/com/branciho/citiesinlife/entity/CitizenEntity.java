@@ -66,6 +66,14 @@ public class CitizenEntity extends PathfinderMob implements CityMember {
     public static final byte ACTIVITY_SERVING = 2;
 
     /**
+     * In a car, being carried.
+     *
+     * <p>Worth a constant of its own purely because StrollOnPathGoal only runs while a citizen is
+     * ACTIVITY_IDLE, so this one value stops them trying to wander off mid-journey for free.
+     */
+    public static final byte ACTIVITY_DRIVING = 3;
+
+    /**
      * Whether this one has snapped.
      *
      * <p>The only crime in this city is one citizen killing another, and it is meant to be rare
@@ -90,6 +98,18 @@ public class CitizenEntity extends PathfinderMob implements CityMember {
 
     /** The city this one belongs to, so the director can count its own. */
     private @Nullable UUID cityId;
+
+    /** The car currently carrying this citizen, if any. */
+    private @Nullable UUID carId;
+
+    /**
+     * Ticks before this citizen will try to find a car again.
+     *
+     * <p>Deliberately not saved. A failed search means "there was no route from that car park just
+     * now", which is a fact about the world rather than about the citizen, and it should not
+     * survive a reload.
+     */
+    private int driveCooldown;
 
     /** The bed it sleeps in, and the desk or till it works at. Either may be gone by morning. */
     private @Nullable BlockPos home;
@@ -243,6 +263,18 @@ public class CitizenEntity extends PathfinderMob implements CityMember {
         if (criminal() && level().getGameTime() >= criminalUntil) {
             setCriminal(false);
         }
+        if (driveCooldown > 0) {
+            driveCooldown--;
+        }
+
+        // A car lost to a chunk unload or a crash would otherwise leave its passenger invisible and
+        // held still forever. This runs from aiStep, which is called before the AI gate, so it is
+        // the one check that still fires whatever state the citizen is in.
+        if (tickCount % 40 == 0 && activity() == ACTIVITY_DRIVING
+                && level() instanceof ServerLevel serverLevel
+                && (carId == null || !(serverLevel.getEntity(carId) instanceof CarEntity))) {
+            CarEntity.release(this);
+        }
 
         // A razed city leaves its people behind. Nothing counts them against a cap any longer and
         // nothing protects them from being killed, so they would wander a dead city forever as a
@@ -298,6 +330,22 @@ public class CitizenEntity extends PathfinderMob implements CityMember {
 
     public void setCityId(@Nullable UUID cityId) {
         this.cityId = cityId;
+    }
+
+    public @Nullable UUID carId() {
+        return carId;
+    }
+
+    public void setCarId(@Nullable UUID carId) {
+        this.carId = carId;
+    }
+
+    public boolean mayLookForCar() {
+        return driveCooldown <= 0;
+    }
+
+    public void holdOffDriving(int ticks) {
+        driveCooldown = ticks;
     }
 
     public @Nullable BlockPos home() {
@@ -364,6 +412,9 @@ public class CitizenEntity extends PathfinderMob implements CityMember {
         tag.putBoolean("criminal", criminal());
         tag.putLong("criminalUntil", criminalUntil);
         tag.putInt("skin", skin());
+        if (carId != null) {
+            tag.putUUID("car", carId);
+        }
     }
 
     @Override
@@ -378,5 +429,6 @@ public class CitizenEntity extends PathfinderMob implements CityMember {
             criminalUntil = tag.getLong("criminalUntil");
         }
         setSkin(tag.getInt("skin"));
+        carId = tag.hasUUID("car") ? tag.getUUID("car") : null;
     }
 }

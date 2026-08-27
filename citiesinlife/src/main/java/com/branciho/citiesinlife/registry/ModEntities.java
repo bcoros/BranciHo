@@ -1,6 +1,7 @@
 package com.branciho.citiesinlife.registry;
 
 import com.branciho.citiesinlife.CitiesInLife;
+import com.branciho.citiesinlife.entity.CarEntity;
 import com.branciho.citiesinlife.entity.CitizenEntity;
 import com.branciho.citiesinlife.entity.ServiceEntity;
 import net.minecraft.core.registries.Registries;
@@ -13,7 +14,7 @@ import net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
-/** The mod's one entity, and the attributes it needs to exist at all. */
+/** The mod's entities, and the attributes the living ones need to exist at all. */
 @EventBusSubscriber(modid = CitiesInLife.MOD_ID, bus = EventBusSubscriber.Bus.MOD)
 public final class ModEntities {
 
@@ -42,6 +43,24 @@ public final class ModEntities {
                     .eyeHeight(1.74F)
                     .clientTrackingRange(10)
                     .build("service"));
+
+    /**
+     * A citizen's car.
+     *
+     * <p>MISC and no attributes at all, because it is a plain Entity rather than a Mob - see
+     * {@link CarEntity} for why. Putting it through {@code EntityAttributeCreationEvent} would be a
+     * hard crash on startup, since that only accepts living things.
+     *
+     * <p>The hitbox is square in plan and the car is not: entity boxes cannot be rectangular, so
+     * this is the width of the longer side. It is never collided with anyway - the car is neither
+     * pickable nor pushable.
+     */
+    public static final DeferredHolder<EntityType<?>, EntityType<CarEntity>> CAR =
+            ENTITIES.register("car", () -> EntityType.Builder
+                    .<CarEntity>of(CarEntity::new, MobCategory.MISC)
+                    .sized(2.0F, 1.2F)
+                    .clientTrackingRange(12)
+                    .build("car"));
 
     private ModEntities() {
     }

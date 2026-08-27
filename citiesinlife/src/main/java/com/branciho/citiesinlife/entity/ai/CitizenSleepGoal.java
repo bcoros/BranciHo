@@ -1,6 +1,7 @@
 package com.branciho.citiesinlife.entity.ai;
 
 import com.branciho.citiesinlife.entity.CitizenEntity;
+import com.branciho.citiesinlife.road.Commute;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.level.block.BedBlock;
@@ -78,10 +79,15 @@ public class CitizenSleepGoal extends Goal {
             return;
         }
         if (citizen.blockPosition().distSqr(home) > ARRIVED * ARRIVED) {
+            if (Commute.driving(citizen)) {
+                return;
+            }
             if (repathIn-- <= 0) {
                 repathIn = REPATH_INTERVAL;
-                citizen.getNavigation().moveTo(
-                        home.getX() + 0.5D, home.getY(), home.getZ() + 0.5D, 1.0D);
+                if (!Commute.tryDrive(citizen, home)) {
+                    citizen.getNavigation().moveTo(
+                            home.getX() + 0.5D, home.getY(), home.getZ() + 0.5D, 1.0D);
+                }
             }
             return;
         }
@@ -92,6 +98,7 @@ public class CitizenSleepGoal extends Goal {
 
     @Override
     public void stop() {
+        Commute.abandon(citizen);
         if (citizen.isSleeping()) {
             citizen.stopSleeping();
         }

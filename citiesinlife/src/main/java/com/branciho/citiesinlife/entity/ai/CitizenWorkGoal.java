@@ -1,6 +1,7 @@
 package com.branciho.citiesinlife.entity.ai;
 
 import com.branciho.citiesinlife.entity.CitizenEntity;
+import com.branciho.citiesinlife.road.Commute;
 import com.branciho.citiesinlife.work.Workplace;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.ai.goal.Goal;
@@ -66,11 +67,20 @@ public class CitizenWorkGoal extends Goal {
                 new Vec3(spot.getX() + 0.5D, citizen.getY(), spot.getZ() + 0.5D));
 
         if (distance > ARRIVED) {
+            // Already in a car - the car is doing the moving and will put them down near the
+            // office. Touching the activity here would cancel the drive on the next tick.
+            if (Commute.driving(citizen)) {
+                return;
+            }
             citizen.setActivity(CitizenEntity.ACTIVITY_IDLE);
             if (repathIn-- <= 0) {
                 repathIn = REPATH_INTERVAL;
-                citizen.getNavigation().moveTo(
-                        spot.getX() + 0.5D, spot.getY(), spot.getZ() + 0.5D, 1.0D);
+                // A long commute is exactly what vanilla pathfinding cannot deliver, so try a car
+                // first. It only takes the journey on when it really can.
+                if (!Commute.tryDrive(citizen, spot)) {
+                    citizen.getNavigation().moveTo(
+                            spot.getX() + 0.5D, spot.getY(), spot.getZ() + 0.5D, 1.0D);
+                }
             }
             return;
         }
@@ -86,6 +96,9 @@ public class CitizenWorkGoal extends Goal {
 
     @Override
     public void stop() {
+        // canContinueToUse is literally canUse, so the shift ending or the job disappearing lands
+        // here mid-journey. Without this the car drives on with an invisible passenger inside.
+        Commute.abandon(citizen);
         citizen.setActivity(CitizenEntity.ACTIVITY_IDLE);
         citizen.getNavigation().stop();
     }

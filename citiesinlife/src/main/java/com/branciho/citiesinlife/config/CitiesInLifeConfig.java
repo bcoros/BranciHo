@@ -48,6 +48,25 @@ public final class CitiesInLifeConfig {
                     "not a feature. Turn on only if you need it for moderation.")
             .define("opsIgnoreCityBorders", false);
 
+    /** How far away a destination has to be before a citizen bothers with a car. */
+    public static final int DEFAULT_CAR_DISTANCE = 100;
+
+    public static final ModConfigSpec.BooleanValue CARS_ENABLED = BUILDER
+            .comment(
+                    "Whether citizens drive to distant destinations. Turning this off leaves the",
+                    "road tool and everything it draws working - citizens simply walk everywhere,",
+                    "as they did before. Cars are entities, so this is the other setting worth",
+                    "turning down on a slow machine.")
+            .define("carsEnabled", true);
+
+    public static final ModConfigSpec.IntValue CAR_DISTANCE = BUILDER
+            .comment(
+                    "How many blocks away a destination must be before a citizen fetches a car",
+                    "rather than walking. Note that citizens are only ever given jobs within 160",
+                    "blocks of home, so at the default of 100 a car is used for the longest",
+                    "commutes only.")
+            .defineInRange("carTravelDistance", DEFAULT_CAR_DISTANCE, 32, 512);
+
     public static final ModConfigSpec SPEC = BUILDER.build();
 
     private CitiesInLifeConfig() {
@@ -62,6 +81,16 @@ public final class CitiesInLifeConfig {
      */
     public static int citizensPerCity() {
         return SPEC.isLoaded() ? CITIZENS_PER_CITY.get() : DEFAULT_CITIZENS;
+    }
+
+    /** Safe at any time, for the same reason as above. */
+    public static boolean carsEnabled() {
+        return !SPEC.isLoaded() || CARS_ENABLED.get();
+    }
+
+    /** Safe at any time, for the same reason as above. */
+    public static int carDistance() {
+        return SPEC.isLoaded() ? CAR_DISTANCE.get() : DEFAULT_CAR_DISTANCE;
     }
 
     /** Safe at any time, for the same reason as above. Defaults to enforcing borders on everybody. */
