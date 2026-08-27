@@ -334,26 +334,7 @@ public final class WaterGrid extends SavedData {
 
     /** Storage tanks that stand on this city's ground and are therefore allowed to serve it. */
     public LongArrayList storagesFor(ServerLevel level, City city) {
-        final LongArrayList found = new LongArrayList();
-        final Long2ObjectOpenHashMap<LongOpenHashSet> index = links.get(level.dimension());
-        if (index == null) {
-            return found;
-        }
-        final BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
-
-        for (long node : index.keySet()) {
-            int x = BlockPos.getX(node);
-            int z = BlockPos.getZ(node);
-            if (!city.owns(ChunkPos.asLong(x >> 4, z >> 4))) {
-                continue;
-            }
-            cursor.set(x, BlockPos.getY(node), z);
-            BlockState state = level.getBlockState(cursor);
-            if (state.getBlock() instanceof WaterBlock block && block.waterRole() == WaterRole.STORAGE) {
-                found.add(node);
-            }
-        }
-        return found;
+        return nodesOfRole(level, city, WaterRole.STORAGE);
     }
 
     // --------------------------------------------------------------- sewage
