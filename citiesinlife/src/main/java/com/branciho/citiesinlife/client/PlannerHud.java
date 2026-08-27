@@ -56,6 +56,11 @@ public final class PlannerHud {
             return;
         }
 
+        if (player.getMainHandItem().is(ModItems.PATH_TOOL.get())) {
+            drawPathPanel(graphics, minecraft);
+            return;
+        }
+
         if (player.getMainHandItem().is(ModItems.WAR_PLANNER_WAND.get())) {
             drawWarBanner(graphics, minecraft);
             return;
@@ -145,6 +150,43 @@ public final class PlannerHud {
 
         graphics.drawString(font, Component.translatable("hud.citiesinlife.road_open_ui"),
                 PANEL_X + PADDING, y + 2, COLOUR_DIM, false);
+    }
+
+    /**
+     * The path tool's own panel, which it went without entirely until now.
+     *
+     * <p>Every other box tool draws something while it is held, so the path tool drawing nothing
+     * read as the tool being half-finished - and it hid the one thing the player went looking for,
+     * which is that sneak + left click has always cleared pavement. An undocumented gesture is
+     * indistinguishable from a missing feature.
+     */
+    private static void drawPathPanel(GuiGraphics graphics, Minecraft minecraft) {
+        final var font = minecraft.font;
+        final int height = 80;
+        final int top = Math.max(8, (minecraft.getWindow().getGuiScaledHeight() - height) / 2);
+
+        panel(graphics, PANEL_X, top, PANEL_WIDTH, height);
+
+        int y = top + PADDING;
+        graphics.drawString(font, Component.translatable("hud.citiesinlife.path_panel"),
+                PANEL_X + PADDING, y, COLOUR_TEXT, false);
+        y += 12;
+        graphics.fill(PANEL_X + PADDING, y, PANEL_X + PANEL_WIDTH - PADDING, y + 1, COLOUR_TITLE_BAR);
+        y += 6;
+
+        boolean hasA = ClientSelection.pointA() != null;
+        boolean hasB = ClientSelection.phase() == ClientSelection.Phase.COMPLETE;
+        y = statusRow(graphics, y, "hud.citiesinlife.point_a", hasA);
+        y = statusRow(graphics, y, "hud.citiesinlife.point_b", hasB);
+
+        // Lit only once the box is closed, because that is the only moment either click does
+        // anything, and a hint that is always on teaches nothing about when it applies.
+        int hintColour = hasB ? COLOUR_SET : COLOUR_DIM;
+        graphics.drawString(font, Component.translatable("hud.citiesinlife.path_paint"),
+                PANEL_X + PADDING, y, hintColour, false);
+        y += 11;
+        graphics.drawString(font, Component.translatable("hud.citiesinlife.path_erase"),
+                PANEL_X + PADDING, y, hintColour, false);
     }
 
     private static void drawPlannerPanel(GuiGraphics graphics, Minecraft minecraft) {

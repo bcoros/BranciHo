@@ -36,8 +36,32 @@ public final class Commute {
     /** How near the destination the road has to come for a car to be worth taking. */
     private static final int DROPOFF_SEARCH = 48;
 
-    /** Close enough to the bay to get in. */
-    private static final double AT_PARKING_SQR = 4.0D;
+    /**
+     * Close enough to the bay to get in, measured flat and squared.
+     *
+     * <p>Horizontal only, and deliberately loose. This was 4.0 measured in three dimensions, which
+     * meant a citizen had to stop within about two blocks of the bay counting the height difference
+     * as well - and vanilla navigation routinely finishes a block or two short, or finds the bay
+     * already occupied by somebody else and stops beside it. Every one of those cases left the
+     * citizen standing at the car park forever: near enough to have arrived, too far to board, and
+     * with the work goal handing the whole journey to a car that never came.
+     */
+    private static final double AT_PARKING_SQR = 9.0D;
+
+    /** How far above or below the bay still counts as standing on it. */
+    private static final int AT_PARKING_HEIGHT = 3;
+
+    /**
+     * How long a citizen may spend trying to reach a bay before giving up and walking.
+     *
+     * <p>Twenty seconds. The bug this exists to make impossible is a citizen stuck heading for a
+     * car park it can never quite stand on, which no amount of loosening the arrival test can rule
+     * out entirely - a bay behind a locked door still paths and still never arrives.
+     */
+    private static final int MAX_BOARDING_TICKS = 400;
+
+    /** Roughly how many ticks pass between two attempts, since this is not called every tick. */
+    private static final int REPATH_ESTIMATE = 60;
 
     /** How long to leave a citizen alone after a car park turned out to lead nowhere. */
     private static final int FAILED_SEARCH_COOLDOWN = 1200;
@@ -47,6 +71,24 @@ public final class Commute {
 
     public static boolean driving(CitizenEntity citizen) {
         return citizen.activity() == CitizenEntity.ACTIVITY_DRIVING && citizen.carId() != null;
+    }
+
+    /**
+     * Whether the citizen is standing near enough to the bay to get in.
+     *
+     * <p>Flat distance plus a height band, rather than one three-dimensional test. A bay is a piece
+     * of ground: the citizen stands on top of it, approaches it from beside it, and may be a step up
+     * or down from it. Folding all of that into a single squared distance is what made arriving at a
+     * car park and boarding a car two different things.
+     */
+    private static boolean atParking(CitizenEntity citizen, BlockPos parking) {
+        BlockPos here = citizen.blockPosition();
+        if (Math.abs(here.getY() - parking.getY()) > AT_PARKING_HEIGHT) {
+            return false;
+        }
+        double dx = here.getX() - parking.getX();
+        double dz = here.getZ() - parking.getZ();
+        return dx * dx + dz * dz <= AT_PARKING_SQR;
     }
 
     /**
@@ -80,12 +122,23 @@ public final class Commute {
             return false;
         }
 
-        if (citizen.blockPosition().distSqr(parking) > AT_PARKING_SQR) {
-            // Still walking to the car. Whether we have taken this leg on depends entirely on
-            // whether that walk actually got a path - moveTo returns false when it did not.
+        if (!atParking(citizen, parking)) {
+            // Still walking to the car. Two ways this can end badly, and both are handled: the walk
+            // may find no path at all, in which case moveTo says so and the caller walks to work
+            // instead; or the bay may be somewhere the citizen can approach but never quite stand
+            // on, which is what the boarding budget is for.
+            if (citizen.boardingTicks() > MAX_BOARDING_TICKS) {
+                citizen.holdOffDriving(FAILED_SEARCH_COOLDOWN);
+                citizen.resetBoarding();
+                return false;
+            }
+            // Charged per attempt rather than per tick, because this runs on the goal's repath
+            // countdown - once every sixty ticks for work, eighty for home.
+            citizen.tickBoarding(REPATH_ESTIMATE);
             return citizen.getNavigation().moveTo(
                     parking.getX() + 0.5D, parking.getY() + 1, parking.getZ() + 0.5D, 1.0D);
         }
+        citizen.resetBoarding();
 
         BlockPos dropoff = roads.nearestWith(level.dimension(), destination, DROPOFF_SEARCH, 0);
         if (dropoff == null) {

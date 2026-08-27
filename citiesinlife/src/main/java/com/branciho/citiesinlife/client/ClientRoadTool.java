@@ -19,7 +19,16 @@ public final class ClientRoadTool {
         ROAD,
         INTERSECTION,
         PARKING,
-        HIGHWAY;
+        HIGHWAY,
+        /**
+         * Takes road away rather than laying it.
+         *
+         * <p>A brush rather than only a modifier key. Sneak + left click already erased, and still
+         * does, but the gesture was invisible: nothing in the panel or the HUD said it existed, so
+         * the honest report was that roads could not be deleted at all. A brush you can see is a
+         * feature; a keypress nobody mentions is a rumour.
+         */
+        ERASE;
 
         public String id() {
             return name().toLowerCase(java.util.Locale.ROOT);
@@ -64,6 +73,11 @@ public final class ClientRoadTool {
         return brush == Brush.ROAD || brush == Brush.HIGHWAY;
     }
 
+    /** Whether the next confirmed box takes road away instead of laying it. */
+    public static boolean erasing() {
+        return brush == Brush.ERASE;
+    }
+
     /**
      * What the next confirmed box will actually store.
      *
@@ -77,6 +91,9 @@ public final class ClientRoadTool {
             case HIGHWAY -> (directions == 0 ? RoadTile.DIRECTIONS : directions) | RoadTile.HIGHWAY;
             case INTERSECTION -> RoadTile.DIRECTIONS | RoadTile.INTERSECTION;
             case PARKING -> RoadTile.DIRECTIONS | RoadTile.PARKING;
+            // Nothing is being laid, so there is nothing to describe. The server ignores the flags
+            // entirely once the packet says remove.
+            case ERASE -> 0;
         };
     }
 

@@ -111,6 +111,15 @@ public class CitizenEntity extends PathfinderMob implements CityMember {
      */
     private int driveCooldown;
 
+    /**
+     * How long this citizen has been trying to reach a car park.
+     *
+     * <p>Not saved, for the same reason the cooldown is not: it describes an attempt in progress,
+     * not the person. Its whole job is to make "walked to the car park and stood there forever"
+     * impossible, whatever the reason the bay could not be stood on.
+     */
+    private int boardingTicks;
+
     /** The bed it sleeps in, and the desk or till it works at. Either may be gone by morning. */
     private @Nullable BlockPos home;
     private @Nullable BlockPos workstation;
@@ -267,6 +276,7 @@ public class CitizenEntity extends PathfinderMob implements CityMember {
             driveCooldown--;
         }
 
+
         // A car lost to a chunk unload or a crash would otherwise leave its passenger invisible and
         // held still forever. This runs from aiStep, which is called before the AI gate, so it is
         // the one check that still fires whatever state the citizen is in.
@@ -342,6 +352,19 @@ public class CitizenEntity extends PathfinderMob implements CityMember {
 
     public boolean mayLookForCar() {
         return driveCooldown <= 0;
+    }
+
+    public int boardingTicks() {
+        return boardingTicks;
+    }
+
+    public void resetBoarding() {
+        boardingTicks = 0;
+    }
+
+    /** Counted up only by Commute, and only while actually walking towards a bay. */
+    public void tickBoarding(int ticks) {
+        boardingTicks += ticks;
     }
 
     public void holdOffDriving(int ticks) {

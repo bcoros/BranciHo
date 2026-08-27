@@ -412,7 +412,10 @@ public final class ClientEvents {
     /**
      * Turn the box into road of whatever kind the brush is set to, or take road away.
      *
-     * <p>Sneaking flips it, exactly as it does for pavement and for the two line tools.
+     * <p>Two ways to erase, and both work: the Remove brush in the panel, or sneaking while
+     * confirming. Sneaking has always worked and stays, because it is the same gesture the path tool
+     * and the two line tools use; the brush exists because a gesture nothing on screen mentions may
+     * as well not exist, which is exactly how this ended up being reported as missing.
      */
     private static void confirmRoad(LocalPlayer player) {
         BlockPos a = ClientSelection.pointA();
@@ -420,8 +423,9 @@ public final class ClientEvents {
         if (a == null || b == null) {
             return;
         }
+        boolean remove = ClientRoadTool.erasing() || player.isShiftKeyDown();
         CitiesInLifeNetwork.sendToServer(
-                new MarkRoadPayload(a, b, ClientRoadTool.flags(), player.isShiftKeyDown()));
+                new MarkRoadPayload(a, b, ClientRoadTool.flags(), remove));
         ClientSelection.cancel();
     }
 

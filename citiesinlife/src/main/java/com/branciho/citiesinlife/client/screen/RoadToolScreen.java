@@ -42,7 +42,7 @@ public class RoadToolScreen extends Screen {
 
         // Row one: what kind of tile.
         ClientRoadTool.Brush[] brushes = ClientRoadTool.Brush.values();
-        int brushWidth = (PANEL_WIDTH - 24 - 3 * 6) / brushes.length;
+        int brushWidth = (PANEL_WIDTH - 24 - (brushes.length - 1) * 6) / brushes.length;
         for (int i = 0; i < brushes.length; i++) {
             ClientRoadTool.Brush option = brushes[i];
             Button button = Button.builder(option.displayName(), b -> {
@@ -131,6 +131,10 @@ public class RoadToolScreen extends Screen {
 
     /** "N S", or the word for every way, so the summary line is readable at a glance. */
     private Component directionSummary() {
+        if (ClientRoadTool.erasing()) {
+            // "running any way" is nonsense for a brush that lays nothing.
+            return Component.translatable("screen.citiesinlife.dirs_none");
+        }
         if (!ClientRoadTool.directionsMatter()) {
             return Component.translatable("screen.citiesinlife.dirs_any");
         }

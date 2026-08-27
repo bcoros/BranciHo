@@ -790,6 +790,14 @@ public final class ServerActions {
             return;
         }
 
+        if (payload.remove()) {
+            // See PathNetwork.ERASE_HEIGHT_SLACK: you paint where you mean, you erase where you
+            // remember, and being a few blocks out in height is the ordinary case.
+            BlockPos[] widened = widenForErase(min, max, PathNetwork.ERASE_HEIGHT_SLACK);
+            min = widened[0];
+            max = widened[1];
+        }
+
         int changed = PathNetwork.get(server).mark(
                 player.serverLevel().dimension(), min, max, payload.remove());
         if (changed == 0) {
@@ -891,6 +899,12 @@ public final class ServerActions {
             return;
         }
 
+        if (payload.remove()) {
+            BlockPos[] widened = widenForErase(min, max, RoadNetwork.ERASE_HEIGHT_SLACK);
+            min = widened[0];
+            max = widened[1];
+        }
+
         int changed = RoadNetwork.get(server).mark(
                 player.serverLevel().dimension(), min, max, flags, payload.remove());
         if (changed == 0) {
@@ -899,8 +913,61 @@ public final class ServerActions {
             player.sendSystemMessage(Component.translatable(payload.remove()
                     ? "message.citiesinlife.road_cleared"
                     : "message.citiesinlife.road_marked", changed));
+            if (!payload.remove()) {
+                warnAboutDirection(player, min, max, flags);
+            }
         }
         syncRoads(player, true);
+    }
+
+    /**
+     * A box for erasing: the one the player drew, given room in height if it was flat.
+     *
+     * <p>Returned as a two-element array rather than a small record, because it is used twice and
+     * nowhere else.
+     */
+    private static BlockPos[] widenForErase(BlockPos min, BlockPos max, int slack) {
+        if (min.getY() != max.getY()) {
+            return new BlockPos[]{min, max};
+        }
+        return new BlockPos[]{
+                new BlockPos(min.getX(), min.getY() - slack, min.getZ()),
+                new BlockPos(max.getX(), max.getY() + slack, max.getZ())};
+    }
+
+    /**
+     * Say something when a street has been painted running the wrong way.
+     *
+     * <p>The brush defaults to a two-way north-south street, so painting an east-west road without
+     * touching the direction buttons produces a road that is perfectly valid, drawn correctly on the
+     * overlay, and completely unusable by a car. Nothing about that is visible from standing on it,
+     * and the failure surfaces much later as "citizens ignore my roads".
+     *
+     * <p>Only for plain streets. A junction and a car park are passable every way by definition, so
+     * there is nothing to get wrong.
+     */
+    private static void warnAboutDirection(ServerPlayer player, BlockPos min, BlockPos max, int flags) {
+        if (RoadTile.is(flags, RoadTile.INTERSECTION) || RoadTile.is(flags, RoadTile.PARKING)) {
+            return;
+        }
+        int spanX = max.getX() - min.getX();
+        int spanZ = max.getZ() - min.getZ();
+        // Only when the box is clearly a street rather than a square patch.
+        if (Math.abs(spanX - spanZ) < 3) {
+            return;
+        }
+        boolean runsEastWest = spanX > spanZ;
+        boolean allowsEastWest = RoadTile.is(flags, RoadTile.EAST) || RoadTile.is(flags, RoadTile.WEST);
+        boolean allowsNorthSouth = RoadTile.is(flags, RoadTile.NORTH) || RoadTile.is(flags, RoadTile.SOUTH);
+        if (runsEastWest == allowsEastWest && runsEastWest != allowsNorthSouth) {
+            return;
+        }
+        if (runsEastWest ? allowsEastWest : allowsNorthSouth) {
+            return;
+        }
+        player.sendSystemMessage(Component.translatable(runsEastWest
+                ? "message.citiesinlife.road_wrong_way_ew"
+                : "message.citiesinlife.road_wrong_way_ns"));
     }
 
     /** Send the road around the player, on the same terms as pavement. */

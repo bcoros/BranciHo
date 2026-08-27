@@ -45,6 +45,19 @@ public final class RoadNetwork extends SavedData {
     /** Most positions one drag may mark, so a careless box does not paint a whole chunk column. */
     public static final int MAX_PER_SELECTION = 8192;
 
+    /**
+     * How far above and below a flat box also gets cleared when erasing.
+     *
+     * <p>Marking and erasing are not symmetrical, and they should not be. You paint by drawing a box
+     * round the ground you mean; you erase by drawing a box roughly where you remember putting it,
+     * and being three blocks out in height is the normal case rather than the exception. Without
+     * this, erasing looked completely broken: the box missed the layer the tiles were actually on,
+     * nothing was removed, and the only clue was a message saying there was nothing there.
+     *
+     * <p>Only applied to a flat box. Someone who drew a tall one meant that height.
+     */
+    public static final int ERASE_HEIGHT_SLACK = 3;
+
     private final Map<ResourceKey<Level>, Long2ObjectOpenHashMap<Long2IntOpenHashMap>> roads = new HashMap<>();
 
     public static RoadNetwork get(MinecraftServer server) {
