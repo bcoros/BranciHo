@@ -220,7 +220,7 @@ public final class MachineSounds {
      * sound the game uses for something moving very fast through the sky.
      */
     public static void rocket(Level level, double x, double y, double z, RandomSource random) {
-        at(level, x, y, z, SoundEvents.ELYTRA_FLYING, 2.2F, 0.5F + random.nextFloat() * 0.06F);
+        at(level, x, y, z, SoundEvents.ELYTRA_FLYING, 1.2F, 0.5F + random.nextFloat() * 0.06F);
     }
 
     /**

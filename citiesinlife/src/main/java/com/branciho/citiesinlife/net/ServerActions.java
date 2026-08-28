@@ -224,15 +224,20 @@ public final class ServerActions {
             }
         }
 
-        // A plant's box is re-read every twenty ticks to find its machinery, so unlike an
-        // ordinary building it cannot be arbitrarily large. Refused here rather than left to
-        // register and then quietly behave as though it were empty.
-        if (type.isPlant()) {
+        // A plant's box is re-read every twenty ticks to find its machinery, and a silo's is read
+        // the same way, so unlike an ordinary building neither can be arbitrarily large. Refused
+        // here rather than left to register and then quietly behave as though it were empty.
+        //
+        // The silo half of this was missing, and it is a nasty way to lose an afternoon: a roomy
+        // box drawn round a rocket registers, the survey above the limit walks nothing at all, and
+        // the map reports the silo as holding no missiles while one is plainly standing in it.
+        if (type.isPlant() || type == StructureType.MISSILE_SILO) {
             long volume = (long) (max.getX() - min.getX() + 1)
                     * (max.getY() - min.getY() + 1)
                     * (max.getZ() - min.getZ() + 1);
             if (volume > StructureScanner.MAX_SURVEY_VOLUME) {
-                reject(player, "plant_box_too_large");
+                reject(player, type == StructureType.MISSILE_SILO
+                        ? "silo_box_too_large" : "plant_box_too_large");
                 return;
             }
         }
@@ -2437,13 +2442,16 @@ public final class ServerActions {
                 }
                 boolean loaded = level.isLoaded(structure.min());
                 SiloSurvey survey = loaded ? SiloSurvey.of(level, structure) : null;
+                // A box too big to survey is not an empty box, and saying "0" for it is a lie the
+                // player has no way to see through. Minus one is the panel's cue to say so.
+                boolean blind = survey != null && survey.tooLarge();
                 silos.add(new MissileMapPayload.Silo(
                         structure.id(), structure.name(),
                         (structure.min().getX() + structure.max().getX()) / 2,
                         (structure.min().getZ() + structure.max().getZ()) / 2,
-                        survey == null ? 0 : survey.count(MissileKind.BALLISTIC),
-                        survey == null ? 0 : survey.count(MissileKind.NUCLEAR),
-                        survey == null ? 0 : survey.count(MissileKind.INTERCEPTOR),
+                        blind ? -1 : survey == null ? 0 : survey.count(MissileKind.BALLISTIC),
+                        blind ? -1 : survey == null ? 0 : survey.count(MissileKind.NUCLEAR),
+                        blind ? -1 : survey == null ? 0 : survey.count(MissileKind.INTERCEPTOR),
                         !loaded || MissileDirector.busy(structure.id())));
                 if (silos.size() >= MissileMapPayload.MAX_SILOS) {
                     break;

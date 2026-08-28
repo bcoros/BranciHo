@@ -50,10 +50,21 @@ public class MissileEntityRenderer extends EntityRenderer<MissileEntity> {
 
         poseStack.pushPose();
         poseStack.mulPose(Axis.YP.rotationDegrees(-entityYaw));
-        // Nose along the flight path. The entity's pitch is measured from the horizontal and the
-        // rocket is authored standing up, so ninety degrees of it is simply "upright".
-        float pitch = Mth.lerp(partialTick, missile.xRotO, missile.getXRot());
-        poseStack.mulPose(Axis.XP.rotationDegrees(-90.0F - pitch));
+
+        // Nose along the flight path.
+        //
+        // The rocket is authored standing up, so with no pitch at all it points at the sky - which
+        // is exactly right at the instant it leaves the pad, when the entity's own pitch is about
+        // -90. Level flight is pitch 0 and wants the rocket laid over ninety degrees; coming
+        // straight down is +90 and wants a hundred and eighty. So the angle is pitch + 90, and the
+        // sign matters: the negation of it looks correct standing on the pad and then leans the
+        // wrong way for the whole rest of the flight.
+        //
+        // rotLerp rather than lerp because rotations wrap at 180. This one never does in practice,
+        // but a renderer that produces a full backflip on the one frame it might is not worth the
+        // two characters saved.
+        float pitch = Mth.rotLerp(partialTick, missile.xRotO, missile.getXRot());
+        poseStack.mulPose(Axis.XP.rotationDegrees(pitch + 90.0F));
         poseStack.scale(kind.scale(), -kind.scale(), -kind.scale());
 
         root.render(poseStack,

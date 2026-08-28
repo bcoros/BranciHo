@@ -48,8 +48,17 @@ public final class Warhead {
     /** How many ticks a crater takes to open. Two seconds of it visibly expanding. */
     private static final int WAVE_TICKS = 40;
 
-    /** How high above the impact the mushroom is drawn from, in crater radii. */
+    /** How high above the impact the cap sits, in cloud radii. */
     private static final double CLOUD_HEIGHT = 1.9D;
+
+    /**
+     * The largest the cloud is ever drawn, whatever the crater is.
+     *
+     * <p>Roughly the meltdown's own radius, which is the biggest cloud in the mod that anybody has
+     * actually looked at and liked. Past this a mushroom stops looking bigger and starts looking
+     * like fog.
+     */
+    private static final double CLOUD_CAP = 46.0D;
 
     /** One crater in progress: where, how big, and how far through it is. */
     private static final class Crater {
@@ -239,22 +248,28 @@ public final class Warhead {
         double x = at.getX() + 0.5D;
         double y = at.getY() + 0.5D;
         double z = at.getZ() + 0.5D;
+        // The cloud does NOT scale with the crater, and that is the fix rather than an oversight.
+        // Driven off an eighty-block radius the stem climbed nearly three hundred blocks and each
+        // ring was scattered over a hundred-block cube - which is not a big mushroom cloud, it is
+        // no mushroom cloud at all, because every particle is somewhere else. Capped, it reads as
+        // a column with a cap on it, which is the entire job.
+        double shape = Math.min(radius, CLOUD_CAP);
         for (ServerPlayer player : level.players()) {
             far(level, player, ParticleTypes.FLASH, x, y, z, 6, radius * 0.25D, 0.0D);
             far(level, player, ParticleTypes.EXPLOSION_EMITTER, x, y, z, 12, radius * 0.35D, 0.0D);
             if (!nuclear) {
-                far(level, player, ParticleTypes.LARGE_SMOKE, x, y + radius * 0.4D, z,
-                        40, radius * 0.5D, 0.06D);
+                far(level, player, ParticleTypes.LARGE_SMOKE, x, y + shape * 0.4D, z,
+                        40, shape * 0.4D, 0.06D);
                 continue;
             }
-            // The stem, then the cap: a column of smoke that widens sharply near the top.
+            // The stem, then the cap: a tight column of smoke that widens sharply near the top.
             for (int i = 0; i < 26; i++) {
-                double height = y + i * (radius * 0.14D);
-                double spread = radius * (i < 16 ? 0.16D : 0.55D);
+                double height = y + i * (shape * 0.10D);
+                double spread = shape * (i < 17 ? 0.10D : 0.34D);
                 far(level, player, ParticleTypes.LARGE_SMOKE, x, height, z, 24, spread, 0.05D);
             }
-            far(level, player, ParticleTypes.CAMPFIRE_SIGNAL_SMOKE, x, y + radius * CLOUD_HEIGHT, z,
-                    90, radius * 0.7D, 0.02D);
+            far(level, player, ParticleTypes.CAMPFIRE_SIGNAL_SMOKE, x, y + shape * CLOUD_HEIGHT, z,
+                    90, shape * 0.5D, 0.02D);
         }
     }
 

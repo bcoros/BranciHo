@@ -18,6 +18,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.levelgen.Heightmap;
 import org.jetbrains.annotations.Nullable;
+import net.minecraft.util.Mth;
 
 /**
  * The missile map: whose land is whose, where your silos are, and what is currently in the air.
@@ -38,15 +39,35 @@ import org.jetbrains.annotations.Nullable;
  */
 public class MissileMapScreen extends Screen {
 
-    /** Chunks either side of centre, and how big each is drawn. */
-    private static final int RADIUS = 14;
-    private static final int TILE = 9;
-    private static final int GRID = RADIUS * 2 + 1;
+    /**
+     * The panel is measured to the screen rather than declared.
+     *
+     * <p>It used to be fixed at four hundred and ninety-three pixels wide, which is a perfectly
+     * ordinary number until you remember that Minecraft's GUI is drawn at a scaled resolution:
+     * at the default GUI scale on a 1080p monitor the whole screen is six hundred and forty wide,
+     * and at the next scale up it is four hundred and eighty. So the panel was wider than the
+     * screen, and the silo list — which lives in the left margin — was off the edge of it
+     * entirely. That is why a silo appeared to be holding nothing: the numbers were there, just
+     * not on the monitor.
+     *
+     * <p>Everything below is now derived in {@link #init()} from {@code this.width} and
+     * {@code this.height}, so it fits at any scale and simply shows fewer chunks when there is
+     * less room.
+     */
+    private static final int MAX_WIDTH = 420;
+    private static final int MAX_HEIGHT = 262;
 
-    private static final int SIDEBAR = 104;
-    private static final int PADDING = 12;
-    private static final int HEADER = 30;
-    private static final int FOOTER = 58;
+    /** How many tiles across the map aims for, before the space available has its say. */
+    private static final int TARGET_TILES = 25;
+
+    private static final int PADDING = 8;
+    private static final int HEADER = 26;
+    private static final int FOOTER = 50;
+
+    private int radius;
+    private int tile;
+    private int grid;
+    private int sidebar;
 
     /** How far one press of an arrow key or one drag step moves the view. */
     private static final int PAN_STEP = 4;
@@ -95,11 +116,10 @@ public class MissileMapScreen extends Screen {
 
     @Override
     protected void init() {
-        panelWidth = GRID * TILE + PADDING * 2 + SIDEBAR * 2;
-        panelHeight = GRID * TILE + HEADER + FOOTER;
+        measure();
         panelLeft = (this.width - panelWidth) / 2;
         panelTop = (this.height - panelHeight) / 2;
-        gridLeft = panelLeft + PADDING + SIDEBAR;
+        gridLeft = panelLeft + PADDING + sidebar;
         gridTop = panelTop + HEADER;
 
         if (!centred) {
@@ -117,20 +137,46 @@ public class MissileMapScreen extends Screen {
                                     ? MissileKind.NUCLEAR : MissileKind.BALLISTIC;
                             rebuildWidgets();
                         })
-                .bounds(panelLeft + PADDING, y, SIDEBAR, 18)
+                .bounds(panelLeft + PADDING, y, sidebar, 18)
                 .build());
 
         addRenderableWidget(Button.builder(
                         Component.translatable("screen.citiesinlife.back"),
                         button -> this.minecraft.setScreen(new CityScreen()))
-                .bounds(panelLeft + PADDING, panelTop + panelHeight - 26, SIDEBAR, 18)
+                .bounds(panelLeft + PADDING, panelTop + panelHeight - 26, sidebar, 18)
                 .build());
 
         addRenderableWidget(Button.builder(
                         Component.translatable("gui.done"), button -> this.onClose())
-                .bounds(panelLeft + panelWidth - PADDING - SIDEBAR, panelTop + panelHeight - 26,
-                        SIDEBAR, 18)
+                .bounds(panelLeft + panelWidth - PADDING - sidebar, panelTop + panelHeight - 26,
+                        sidebar, 18)
                 .build());
+    }
+
+    /**
+     * Work out how big everything can be on the screen we actually have.
+     *
+     * <p>The two sidebars get a share of the width and are clamped so a name is still readable;
+     * whatever is left over, in the smaller of the two directions, is the map. The tile size then
+     * falls out of how many chunks will fit, floored at four pixels — below that a chunk is not a
+     * thing you can click.
+     */
+    private void measure() {
+        int roomWidth = Math.min(this.width - 16, MAX_WIDTH);
+        int roomHeight = Math.min(this.height - 16, MAX_HEIGHT);
+        sidebar = Mth.clamp((roomWidth - PADDING * 2) / 5, 52, 92);
+
+        int acrossWidth = roomWidth - PADDING * 2 - sidebar * 2;
+        int acrossHeight = roomHeight - HEADER - FOOTER;
+        int across = Math.max(40, Math.min(acrossWidth, acrossHeight));
+
+        tile = Mth.clamp(across / TARGET_TILES, 4, 9);
+        // An odd number of tiles, so there is a middle one for the view to be centred on.
+        radius = Math.max(4, (across / tile - 1) / 2);
+        grid = radius * 2 + 1;
+
+        panelWidth = grid * tile + PADDING * 2 + sidebar * 2;
+        panelHeight = grid * tile + HEADER + FOOTER;
     }
 
     private void follow() {
@@ -197,19 +243,25 @@ public class MissileMapScreen extends Screen {
             MissileMapPayload.Silo silo = map.silos().get(i);
             boolean chosen = i == selectedSilo;
             if (chosen) {
-                graphics.fill(x - 2, y - 2, x + SIDEBAR - 2, y + 20, 0x33FFFFFF);
+                graphics.fill(x - 2, y - 2, x + sidebar - 2, y + 20, 0x33FFFFFF);
             }
-            if (isOver(mouseX, mouseY, x - 2, y - 2, SIDEBAR, 22)) {
-                graphics.fill(x - 2, y - 2, x + SIDEBAR - 2, y + 20, 0x22FFFFFF);
+            if (isOver(mouseX, mouseY, x - 2, y - 2, sidebar, 22)) {
+                graphics.fill(x - 2, y - 2, x + sidebar - 2, y + 20, 0x22FFFFFF);
             }
             graphics.drawString(this.font, Component.literal(silo.name()), x, y,
                     chosen ? CityScreen.COLOUR_ACCENT : CityScreen.COLOUR_TEXT, false);
             // What is standing in it. This is the whole reason the panel exists: a silo you can
-            // see is empty is a silo you do not click launch on and then wonder about.
-            Component stock = Component.literal(
-                    silo.ballistic() + "B  " + silo.nuclear() + "N  " + silo.interceptors() + "I");
+            // see is empty is a silo you do not click launch on and then wonder about. A negative
+            // count means the box is too big to be read at all, which is a different thing from
+            // empty and has to say so - reporting nought there sent people looking for a fault in
+            // a missile that was standing right where they left it.
+            boolean blind = silo.ballistic() < 0;
+            Component stock = blind
+                    ? Component.translatable("screen.citiesinlife.silo_box_too_large")
+                    : Component.literal(silo.ballistic() + "B  " + silo.nuclear() + "N  "
+                            + silo.interceptors() + "I");
             graphics.drawString(this.font, stock, x, y + 10,
-                    silo.busy() ? CityScreen.COLOUR_BAD : CityScreen.COLOUR_DIM, false);
+                    blind || silo.busy() ? CityScreen.COLOUR_BAD : CityScreen.COLOUR_DIM, false);
             y += 24;
         }
     }
@@ -217,27 +269,27 @@ public class MissileMapScreen extends Screen {
     private void drawGrid(GuiGraphics graphics, @Nullable MissileMapPayload map,
                           int mouseX, int mouseY) {
         Level level = this.minecraft == null ? null : this.minecraft.level;
-        for (int row = 0; row < GRID; row++) {
-            for (int column = 0; column < GRID; column++) {
-                int chunkX = centreX - RADIUS + column;
-                int chunkZ = centreZ - RADIUS + row;
-                int x = gridLeft + column * TILE;
-                int y = gridTop + row * TILE;
+        for (int row = 0; row < grid; row++) {
+            for (int column = 0; column < grid; column++) {
+                int chunkX = centreX - radius + column;
+                int chunkZ = centreZ - radius + row;
+                int x = gridLeft + column * tile;
+                int y = gridTop + row * tile;
 
-                graphics.fill(x, y, x + TILE, y + TILE, terrainColour(level, chunkX, chunkZ));
+                graphics.fill(x, y, x + tile, y + tile, terrainColour(level, chunkX, chunkZ));
 
                 byte relation = territory.get(ChunkPos.asLong(chunkX, chunkZ));
                 if (relation >= 0 && relation < RELATION_COLOUR.length) {
                     int colour = RELATION_COLOUR[relation];
-                    graphics.fill(x, y, x + TILE, y + TILE, 0x55000000 | (colour & 0xFFFFFF));
-                    graphics.fill(x, y, x + TILE, y + 1, colour);
-                    graphics.fill(x, y, x + 1, y + TILE, colour);
+                    graphics.fill(x, y, x + tile, y + tile, 0x55000000 | (colour & 0xFFFFFF));
+                    graphics.fill(x, y, x + tile, y + 1, colour);
+                    graphics.fill(x, y, x + 1, y + tile, colour);
                 } else {
-                    graphics.fill(x, y, x + TILE, y + 1, COLOUR_GRID);
-                    graphics.fill(x, y, x + 1, y + TILE, COLOUR_GRID);
+                    graphics.fill(x, y, x + tile, y + 1, COLOUR_GRID);
+                    graphics.fill(x, y, x + 1, y + tile, COLOUR_GRID);
                 }
-                if (isOver(mouseX, mouseY, x, y, TILE, TILE)) {
-                    graphics.fill(x, y, x + TILE, y + TILE, COLOUR_HOVER);
+                if (isOver(mouseX, mouseY, x, y, tile, tile)) {
+                    graphics.fill(x, y, x + tile, y + tile, COLOUR_HOVER);
                 }
             }
         }
@@ -260,19 +312,19 @@ public class MissileMapScreen extends Screen {
 
     /** A dot on the grid, if that chunk is currently on screen. */
     private void mark(GuiGraphics graphics, int chunkX, int chunkZ, int colour) {
-        int column = chunkX - (centreX - RADIUS);
-        int row = chunkZ - (centreZ - RADIUS);
-        if (column < 0 || row < 0 || column >= GRID || row >= GRID) {
+        int column = chunkX - (centreX - radius);
+        int row = chunkZ - (centreZ - radius);
+        if (column < 0 || row < 0 || column >= grid || row >= grid) {
             return;
         }
-        int x = gridLeft + column * TILE;
-        int y = gridTop + row * TILE;
-        graphics.fill(x + 2, y + 2, x + TILE - 2, y + TILE - 2, colour);
+        int x = gridLeft + column * tile;
+        int y = gridTop + row * tile;
+        graphics.fill(x + 2, y + 2, x + tile - 2, y + tile - 2, colour);
     }
 
     private void drawPlaces(GuiGraphics graphics, @Nullable MissileMapPayload map,
                             int mouseX, int mouseY) {
-        int x = panelLeft + panelWidth - PADDING - SIDEBAR;
+        int x = panelLeft + panelWidth - PADDING - sidebar;
         int y = panelTop + HEADER;
         graphics.drawString(this.font, Component.translatable("screen.citiesinlife.known_cities"),
                 x, y, CityScreen.COLOUR_ACCENT, false);
@@ -281,11 +333,11 @@ public class MissileMapScreen extends Screen {
             return;
         }
         for (MissileMapPayload.Place place : map.places()) {
-            if (y > gridTop + GRID * TILE - 10) {
+            if (y > gridTop + grid * tile - 10) {
                 break;
             }
-            if (isOver(mouseX, mouseY, x - 2, y - 2, SIDEBAR, 12)) {
-                graphics.fill(x - 2, y - 2, x + SIDEBAR - 2, y + 10, 0x22FFFFFF);
+            if (isOver(mouseX, mouseY, x - 2, y - 2, sidebar, 12)) {
+                graphics.fill(x - 2, y - 2, x + sidebar - 2, y + 10, 0x22FFFFFF);
             }
             graphics.drawString(this.font, Component.literal(place.name()), x, y,
                     RELATION_COLOUR[Math.min(place.relation(), RELATION_COLOUR.length - 1)], false);
@@ -379,17 +431,17 @@ public class MissileMapScreen extends Screen {
         int listY = panelTop + HEADER + 12;
         for (int i = 0; i < map.silos().size(); i++) {
             if (isOver((int) mouseX, (int) mouseY, panelLeft + PADDING - 2, listY - 2 + i * 24,
-                    SIDEBAR, 22)) {
+                    sidebar, 22)) {
                 selectedSilo = i;
                 return true;
             }
         }
 
         // The city list, which jumps the view rather than doing anything to them.
-        int placeX = panelLeft + panelWidth - PADDING - SIDEBAR;
+        int placeX = panelLeft + panelWidth - PADDING - sidebar;
         int placeY = panelTop + HEADER + 12;
         for (int i = 0; i < map.places().size(); i++) {
-            if (isOver((int) mouseX, (int) mouseY, placeX - 2, placeY - 2 + i * 12, SIDEBAR, 12)) {
+            if (isOver((int) mouseX, (int) mouseY, placeX - 2, placeY - 2 + i * 12, sidebar, 12)) {
                 centreX = map.places().get(i).chunkX();
                 centreZ = map.places().get(i).chunkZ();
                 return true;
@@ -397,18 +449,18 @@ public class MissileMapScreen extends Screen {
         }
 
         // The map itself.
-        int column = (int) ((mouseX - gridLeft) / TILE);
-        int row = (int) ((mouseY - gridTop) / TILE);
+        int column = (int) ((mouseX - gridLeft) / tile);
+        int row = (int) ((mouseY - gridTop) / tile);
         if (mouseX < gridLeft || mouseY < gridTop || column < 0 || row < 0
-                || column >= GRID || row >= GRID) {
+                || column >= grid || row >= grid) {
             return false;
         }
         if (selectedSilo < 0 || selectedSilo >= map.silos().size()) {
             status = Component.translatable("screen.citiesinlife.pick_a_silo");
             return true;
         }
-        int chunkX = centreX - RADIUS + column;
-        int chunkZ = centreZ - RADIUS + row;
+        int chunkX = centreX - radius + column;
+        int chunkZ = centreZ - radius + row;
         // Every rule is the server's. This only stops the two mistakes it can see, so the common
         // case is a rocket rather than a line of red chat.
         byte relation = territory.get(ChunkPos.asLong(chunkX, chunkZ));
@@ -444,8 +496,8 @@ public class MissileMapScreen extends Screen {
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX,
                                 double dragY) {
         if (button == 1) {
-            centreX -= (int) (dragX / TILE);
-            centreZ -= (int) (dragY / TILE);
+            centreX -= (int) (dragX / tile);
+            centreZ -= (int) (dragY / tile);
             return true;
         }
         return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);

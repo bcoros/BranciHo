@@ -44,10 +44,6 @@ public class MissileEntity extends Entity {
     private static final EntityDataAccessor<Byte> DATA_KIND =
             SynchedEntityData.defineId(MissileEntity.class, EntityDataSerializers.BYTE);
 
-    /** How far it has flown, 0 to 1, so the client can draw the arc without re-deriving it. */
-    private static final EntityDataAccessor<Float> DATA_PROGRESS =
-            SynchedEntityData.defineId(MissileEntity.class, EntityDataSerializers.FLOAT);
-
     /** Ticks in the air per block of ground covered, and the floor and ceiling on the whole trip. */
     private static final double TICKS_PER_BLOCK = 0.055D;
     private static final int MIN_FLIGHT = 20 * 25;
@@ -85,7 +81,6 @@ public class MissileEntity extends Entity {
     @Override
     protected void defineSynchedData(SynchedEntityData.Builder builder) {
         builder.define(DATA_KIND, (byte) MissileKind.BALLISTIC.ordinal());
-        builder.define(DATA_PROGRESS, 0.0F);
     }
 
     // ------------------------------------------------------------- launching
@@ -121,12 +116,30 @@ public class MissileEntity extends Entity {
 
     // ---------------------------------------------------------------- flying
 
+    /**
+     * Fly.
+     *
+     * <p>The path is worked out on the <b>server only</b>, and the client is simply told where the
+     * rocket is. It has to be that way: where it came from, where it is going and how long it takes
+     * live in NBT, which the client never sees — so a client that tried to derive the arc itself
+     * would compute it between the origin and the origin, put the missile at world zero, and be
+     * yanked back by the next position packet. Every tick. That is a rocket vibrating between the
+     * sky and the middle of the map, pointing nowhere, and it is exactly what happened.
+     *
+     * <p>So the client does the two things it genuinely owns — the smoke and the noise — and takes
+     * the position and the angle off the wire like any other entity. This is the same division the
+     * car already uses.
+     */
     @Override
     public void tick() {
         super.tick();
+        if (level().isClientSide) {
+            trail();
+            return;
+        }
+
         age++;
         float progress = Mth.clamp((float) age / flightTicks, 0.0F, 1.0F);
-
         Vec3 next = pointAt(progress);
         // Where it was a moment ago, so it can be pointed along its own path rather than at its
         // target - the difference is the whole reason it looks like it is flying and not sliding.
@@ -134,14 +147,8 @@ public class MissileEntity extends Entity {
         setPos(next.x, next.y, next.z);
         aimAlong(next.subtract(previous));
 
-        if (!level().isClientSide) {
-            entityData.set(DATA_PROGRESS, progress);
-            if (age >= flightTicks) {
-                arrive();
-                return;
-            }
-        } else {
-            trail();
+        if (age >= flightTicks) {
+            arrive();
         }
     }
 
@@ -167,17 +174,26 @@ public class MissileEntity extends Entity {
         setXRot((float) (-(Mth.atan2(heading.y, flat) * (180.0D / Math.PI))));
     }
 
-    /** The contrail. Client side, because it is scenery and there is a great deal of it. */
+    /**
+     * The contrail and the roar. Client side, because both are scenery.
+     *
+     * <p>The engine note is played once a second and not once every four ticks. The sound it is
+     * built from runs for well over a second, so five overlapping copies a second was five copies
+     * of the same roar playing at once — which is not a louder rocket, it is a wall of noise, and
+     * it was genuinely painful.
+     */
     private void trail() {
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < 2; i++) {
             level().addParticle(ParticleTypes.CAMPFIRE_SIGNAL_SMOKE,
                     getX() + (random.nextDouble() - 0.5D) * 0.6D,
                     getY() + (random.nextDouble() - 0.5D) * 0.6D,
                     getZ() + (random.nextDouble() - 0.5D) * 0.6D,
                     0.0D, -0.02D, 0.0D);
         }
-        level().addParticle(ParticleTypes.FLAME, getX(), getY(), getZ(), 0.0D, 0.0D, 0.0D);
-        if (tickCount % 4 == 0) {
+        if (tickCount % 2 == 0) {
+            level().addParticle(ParticleTypes.FLAME, getX(), getY(), getZ(), 0.0D, 0.0D, 0.0D);
+        }
+        if (tickCount % 20 == 0) {
             MachineSounds.rocket(level(), getX(), getY(), getZ(), random);
         }
     }
@@ -226,11 +242,6 @@ public class MissileEntity extends Entity {
 
     public void setKind(MissileKind kind) {
         entityData.set(DATA_KIND, (byte) kind.ordinal());
-    }
-
-    /** How far along it is, 0 to 1. Synced, so the renderer can lean it into the arc. */
-    public float progress() {
-        return entityData.get(DATA_PROGRESS);
     }
 
     public @Nullable UUID cityId() {
