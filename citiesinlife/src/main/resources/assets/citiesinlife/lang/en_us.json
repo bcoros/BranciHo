@@ -631,5 +631,6 @@
   "message.citiesinlife.missile_launched": "%s has launched a %s.",
   "message.citiesinlife.missile_incoming": "INCOMING %s - impact at %s, %s in %s seconds.",
   "message.citiesinlife.missile_landed": "A %s fired by %s has struck %s.",
-  "message.citiesinlife.missile_landed_wild": "A %s fired by %s has struck open ground."
+  "message.citiesinlife.missile_landed_wild": "A %s fired by %s has struck open ground.",
+  "message.citiesinlife.registered_silo": "Registered %s. Stand a missile in it - a roof of sealing blocks, an alarm and a siren are all optional."
 }

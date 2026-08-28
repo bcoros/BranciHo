@@ -286,6 +286,7 @@ public final class ServerActions {
                 case NUCLEAR_PLANT -> "message.citiesinlife.registered_reactor";
                 case PARK -> "message.citiesinlife.registered_park";
                 case MILITARY_BASE -> "message.citiesinlife.registered_base";
+                case MISSILE_SILO -> "message.citiesinlife.registered_silo";
                 default -> "message.citiesinlife.registered_marker";
             }, name));
             // The box is the thing you build against, so say what it is waiting for rather than
@@ -395,6 +396,7 @@ public final class ServerActions {
             case PARK -> "Park " + index;
             case GARBAGE_DEPOT -> "Depot " + index;
             case MILITARY_BASE -> "Barracks " + index;
+            case MISSILE_SILO -> "Silo " + index;
         };
     }
 
