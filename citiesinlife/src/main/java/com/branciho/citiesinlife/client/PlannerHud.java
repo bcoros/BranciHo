@@ -13,7 +13,7 @@ import net.minecraft.network.chat.Component;
 /**
  * The planner panel, drawn down the left of the screen while the wand is held.
  *
- * <p>Left rather than above the hotbar because the panel is tall — five building types plus the
+ * <p>Left rather than above the hotbar because the panel is tall — a row per building type plus the
  * measurements — and a tall block of text sitting on the hotbar covers the middle of the screen,
  * which is exactly where the player is trying to look while sizing a box.
  */

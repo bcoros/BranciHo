@@ -1,6 +1,8 @@
 package com.branciho.citiesinlife.nuclear;
 
+import com.mojang.serialization.Codec;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.StringRepresentable;
 
 /**
  * Which of the four ports on the cooling loop a block is.
@@ -17,7 +19,7 @@ import net.minecraft.network.chat.Component;
  *        -&gt; OUTPUT_HEATED (beside the uranium store) -&gt; pipes -&gt; INPUT_WATER
  * </pre>
  */
-public enum CoolingPort {
+public enum CoolingPort implements StringRepresentable {
 
     /** Where water enters, both fresh from the mains and hot round the loop. */
     INPUT_WATER("input_water", 0x4F86C6),
@@ -30,6 +32,9 @@ public enum CoolingPort {
 
     /** Heat leaves the core here. Must also stand beside the uranium store. */
     OUTPUT_HEATED("output_heated", 0xD9603A);
+
+    /** So the four blocks can share one class and still each round-trip through their own codec. */
+    public static final Codec<CoolingPort> CODEC = StringRepresentable.fromEnum(CoolingPort::values);
 
     private final String id;
     private final int colour;
@@ -55,5 +60,10 @@ public enum CoolingPort {
 
     public Component displayName() {
         return Component.translatable("block.citiesinlife." + id + "_port");
+    }
+
+    @Override
+    public String getSerializedName() {
+        return id;
     }
 }

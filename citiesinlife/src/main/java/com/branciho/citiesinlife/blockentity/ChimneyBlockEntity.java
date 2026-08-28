@@ -65,7 +65,7 @@ public class ChimneyBlockEntity extends BlockEntity {
         }
         Structure house = CityData.get(server).structureAt(level.dimension(), pos);
         // A power plant's chimney is driven by its boiler, not by somebody's furnace.
-        if (house == null || house.type() == StructureType.POWER_PLANT) {
+        if (house == null || house.type().isPlant()) {
             return false;
         }
 

@@ -77,7 +77,22 @@ public enum StructureType implements StringRepresentable {
      * <p>Solar panels need no equivalent because a panel is one block that is either wired up or not.
      * Windmills and reactors will be buildings, so they will use this too.
      */
-    POWER_PLANT("power_plant", 0xE0662F, 0, null, false);
+    POWER_PLANT("power_plant", 0xE0662F, 0, null, false),
+
+    /**
+     * A nuclear power plant, and the most demanding thing the mod asks anyone to build.
+     *
+     * <p>Its own type rather than another kind of POWER_PLANT, because the two answer completely
+     * different questions when you look inside them. A coal plant asks "which turbine is mine and
+     * is there a chimney". A reactor asks whether ten hand-placed columns are all exactly the same
+     * height, all flooded, all capped, plumbed into a closed loop with a pressurised pipe in the
+     * right place — and refuses, by name, when any one of those is wrong.
+     *
+     * <p>Added at the END of the enum on purpose. Nothing is persisted by ordinal, but the planner's
+     * scroll order and the war wand's cycle both come from ordinal position, so inserting anywhere
+     * else would silently reshuffle a list the player has already learned.
+     */
+    NUCLEAR_PLANT("nuclear_plant", 0x7ED63E, 0, null, false);
 
     /** Floor cells consumed by one dwelling. */
     public static final double CELLS_PER_DWELLING = 16.0D;
@@ -136,6 +151,18 @@ public enum StructureType implements StringRepresentable {
 
     public boolean housesPeople() {
         return this == RESIDENTIAL;
+    }
+
+    /**
+     * Whether this is a generating station of some kind.
+     *
+     * <p>Exists so the half-dozen places that used to test {@code == POWER_PLANT} ask one question
+     * instead of each growing their own {@code ||}. Every one of those sites was a silent failure
+     * waiting to happen: a reactor that could not be built on unclaimed ground, a chimney smoking
+     * off a furnace inside a reactor hall, a fire brigade that would not attend.
+     */
+    public boolean isPlant() {
+        return this == POWER_PLANT || this == NUCLEAR_PLANT;
     }
 
     public boolean employsPeople() {

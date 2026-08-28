@@ -129,7 +129,7 @@ public class FireDutyGoal extends Goal {
         double bestDistance = Double.MAX_VALUE;
 
         for (Structure structure : CityData.get(level.getServer()).structuresOf(city)) {
-            if (structure.type() != StructureType.POWER_PLANT
+            if (!structure.type().isPlant()
                     || !structure.dimension().equals(level.dimension())
                     || !level.isLoaded(structure.min())) {
                 continue;

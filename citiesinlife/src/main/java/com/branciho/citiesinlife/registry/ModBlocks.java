@@ -19,7 +19,19 @@ import com.branciho.citiesinlife.block.ValveBlock;
 import com.branciho.citiesinlife.block.WaterPipeBlock;
 import com.branciho.citiesinlife.block.WaterStorageBlock;
 import com.branciho.citiesinlife.block.FactoryOutputBlock;
+import com.branciho.citiesinlife.block.ControlRodBlock;
+import com.branciho.citiesinlife.block.CoolingPortBlock;
+import com.branciho.citiesinlife.block.FuelRodBlock;
 import com.branciho.citiesinlife.block.GridPylonBlock;
+import com.branciho.citiesinlife.block.MainMonitorBlock;
+import com.branciho.citiesinlife.block.NuclearTurbineBlock;
+import com.branciho.citiesinlife.block.PressurizedPipeBlock;
+import com.branciho.citiesinlife.block.ReactorLeverBlock;
+import com.branciho.citiesinlife.block.SealingBlock;
+import com.branciho.citiesinlife.block.SteamEmitterBlock;
+import com.branciho.citiesinlife.block.UraniumStorageBlock;
+import com.branciho.citiesinlife.nuclear.CoolingPort;
+import com.branciho.citiesinlife.nuclear.ReactorLever;
 import com.branciho.citiesinlife.block.SewageBlock;
 import com.branciho.citiesinlife.block.SewageCollectorBlock;
 import com.branciho.citiesinlife.block.PowerMastBlock;
@@ -91,6 +103,133 @@ public final class ModBlocks {
                     .sound(SoundType.METAL)
                     .forceSolidOn()
                     .noOcclusion()));
+
+    // ------------------------------------------------------------- the reactor
+
+    /**
+     * The core.
+     *
+     * <p>Rods and their lid are metal, mined with a pickaxe, and every one of them holds water in
+     * its own space — that waterlogging IS how "submerged" is implemented, so it is not optional
+     * decoration on these three.
+     */
+    public static final DeferredBlock<FuelRodBlock> FUEL_ROD = BLOCKS.register("fuel_rod",
+            () -> new FuelRodBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.METAL)
+                    .strength(3.0F, 6.0F)
+                    .requiresCorrectToolForDrops()
+                    .sound(SoundType.METAL)
+                    .lightLevel(state -> state.getValue(FuelRodBlock.FILL) > 0 ? 4 : 0)
+                    .forceSolidOn()
+                    .noOcclusion()));
+
+    public static final DeferredBlock<ControlRodBlock> CONTROL_ROD = BLOCKS.register("control_rod",
+            () -> new ControlRodBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_GRAY)
+                    .strength(3.0F, 6.0F)
+                    .requiresCorrectToolForDrops()
+                    .sound(SoundType.METAL)
+                    .forceSolidOn()
+                    .noOcclusion()));
+
+    public static final DeferredBlock<SealingBlock> SEALING_BLOCK = BLOCKS.register("sealing_block",
+            () -> new SealingBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.METAL)
+                    .strength(4.0F, 8.0F)
+                    .requiresCorrectToolForDrops()
+                    .sound(SoundType.METAL)
+                    .forceSolidOn()
+                    .noOcclusion()));
+
+    public static final DeferredBlock<UraniumStorageBlock> URANIUM_STORAGE =
+            BLOCKS.register("uranium_storage",
+                    () -> new UraniumStorageBlock(BlockBehaviour.Properties.of()
+                            .mapColor(MapColor.COLOR_GREEN)
+                            .strength(3.5F, 8.0F)
+                            .requiresCorrectToolForDrops()
+                            .sound(SoundType.METAL)));
+
+    public static final DeferredBlock<NuclearTurbineBlock> NUCLEAR_TURBINE =
+            BLOCKS.register("nuclear_turbine",
+                    () -> new NuclearTurbineBlock(BlockBehaviour.Properties.of()
+                            .mapColor(MapColor.METAL)
+                            .strength(5.0F, 12.0F)
+                            .requiresCorrectToolForDrops()
+                            .sound(SoundType.METAL)
+                            .forceSolidOn()
+                            .noOcclusion()));
+
+    /** The four cooling ports. One class, four registrations, four entries in the menu. */
+    public static final DeferredBlock<CoolingPortBlock> INPUT_WATER_PORT =
+            coolingPort(CoolingPort.INPUT_WATER);
+
+    public static final DeferredBlock<CoolingPortBlock> OUTPUT_COOLED_PORT =
+            coolingPort(CoolingPort.OUTPUT_COOLED);
+
+    public static final DeferredBlock<CoolingPortBlock> INPUT_COOLED_PORT =
+            coolingPort(CoolingPort.INPUT_COOLED);
+
+    public static final DeferredBlock<CoolingPortBlock> OUTPUT_HEATED_PORT =
+            coolingPort(CoolingPort.OUTPUT_HEATED);
+
+    private static DeferredBlock<CoolingPortBlock> coolingPort(CoolingPort port) {
+        return BLOCKS.register(port.id() + "_port",
+                () -> new CoolingPortBlock(BlockBehaviour.Properties.of()
+                        .mapColor(MapColor.COLOR_LIGHT_BLUE)
+                        .strength(3.0F, 6.0F)
+                        .requiresCorrectToolForDrops()
+                        .sound(SoundType.METAL), port));
+    }
+
+    public static final DeferredBlock<SteamEmitterBlock> STEAM_EMITTER =
+            BLOCKS.register("steam_emitter",
+                    () -> new SteamEmitterBlock(BlockBehaviour.Properties.of()
+                            .mapColor(MapColor.COLOR_BLACK)
+                            .strength(3.0F, 6.0F)
+                            .requiresCorrectToolForDrops()
+                            .sound(SoundType.METAL)));
+
+    /** A water pipe with a rating plate. Inherits every connection rule its parent has. */
+    public static final DeferredBlock<PressurizedPipeBlock> PRESSURIZED_PIPE =
+            BLOCKS.register("pressurized_pipe",
+                    () -> new PressurizedPipeBlock(BlockBehaviour.Properties.of()
+                            .mapColor(MapColor.COLOR_LIGHT_GRAY)
+                            .strength(2.0F, 6.0F)
+                            .requiresCorrectToolForDrops()
+                            .sound(SoundType.METAL)
+                            .forceSolidOn()
+                            .noOcclusion()));
+
+    /** The four controls. Same class, same model, same animation; different jobs. */
+    public static final DeferredBlock<ReactorLeverBlock> COOLER_LEVER = lever(ReactorLever.COOLER);
+
+    public static final DeferredBlock<ReactorLeverBlock> HEAT_LEVER = lever(ReactorLever.HEAT);
+
+    public static final DeferredBlock<ReactorLeverBlock> PRESSURE_LEVER =
+            lever(ReactorLever.PRESSURE);
+
+    public static final DeferredBlock<ReactorLeverBlock> TURBINE_POWER = lever(ReactorLever.TURBINE);
+
+    private static DeferredBlock<ReactorLeverBlock> lever(ReactorLever lever) {
+        return BLOCKS.register(lever.id(),
+                () -> new ReactorLeverBlock(BlockBehaviour.Properties.of()
+                        .mapColor(MapColor.COLOR_BROWN)
+                        .strength(2.0F, 4.0F)
+                        .sound(SoundType.COPPER)
+                        .noCollission()
+                        .forceSolidOn()
+                        .noOcclusion(), lever));
+    }
+
+    public static final DeferredBlock<MainMonitorBlock> MAIN_MONITOR =
+            BLOCKS.register("main_monitor",
+                    () -> new MainMonitorBlock(BlockBehaviour.Properties.of()
+                            .mapColor(MapColor.COLOR_BLACK)
+                            .strength(2.5F, 5.0F)
+                            .sound(SoundType.METAL)
+                            .lightLevel(state -> 6)
+                            .forceSolidOn()
+                            .noOcclusion()));
 
     /**
      * The tourist airport. Full cube, so no forceSolidOn/noOcclusion pair - this codebase only uses

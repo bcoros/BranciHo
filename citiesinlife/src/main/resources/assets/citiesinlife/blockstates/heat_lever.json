@@ -1,0 +1,79 @@
+{
+  "variants": {
+    "facing=north,position=0": {
+      "model": "citiesinlife:block/reactor_lever"
+    },
+    "facing=north,position=1": {
+      "model": "citiesinlife:block/reactor_lever"
+    },
+    "facing=north,position=2": {
+      "model": "citiesinlife:block/reactor_lever"
+    },
+    "facing=north,position=3": {
+      "model": "citiesinlife:block/reactor_lever"
+    },
+    "facing=north,position=4": {
+      "model": "citiesinlife:block/reactor_lever"
+    },
+    "facing=east,position=0": {
+      "model": "citiesinlife:block/reactor_lever",
+      "y": 90
+    },
+    "facing=east,position=1": {
+      "model": "citiesinlife:block/reactor_lever",
+      "y": 90
+    },
+    "facing=east,position=2": {
+      "model": "citiesinlife:block/reactor_lever",
+      "y": 90
+    },
+    "facing=east,position=3": {
+      "model": "citiesinlife:block/reactor_lever",
+      "y": 90
+    },
+    "facing=east,position=4": {
+      "model": "citiesinlife:block/reactor_lever",
+      "y": 90
+    },
+    "facing=south,position=0": {
+      "model": "citiesinlife:block/reactor_lever",
+      "y": 180
+    },
+    "facing=south,position=1": {
+      "model": "citiesinlife:block/reactor_lever",
+      "y": 180
+    },
+    "facing=south,position=2": {
+      "model": "citiesinlife:block/reactor_lever",
+      "y": 180
+    },
+    "facing=south,position=3": {
+      "model": "citiesinlife:block/reactor_lever",
+      "y": 180
+    },
+    "facing=south,position=4": {
+      "model": "citiesinlife:block/reactor_lever",
+      "y": 180
+    },
+    "facing=west,position=0": {
+      "model": "citiesinlife:block/reactor_lever",
+      "y": 270
+    },
+    "facing=west,position=1": {
+      "model": "citiesinlife:block/reactor_lever",
+      "y": 270
+    },
+    "facing=west,position=2": {
+      "model": "citiesinlife:block/reactor_lever",
+      "y": 270
+    },
+    "facing=west,position=3": {
+      "model": "citiesinlife:block/reactor_lever",
+      "y": 270
+    },
+    "facing=west,position=4": {
+      "model": "citiesinlife:block/reactor_lever",
+      "y": 270
+    }
+  }
+}

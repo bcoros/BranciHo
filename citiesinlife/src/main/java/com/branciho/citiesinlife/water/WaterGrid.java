@@ -425,6 +425,19 @@ public final class WaterGrid extends SavedData {
         return new Reading(Math.max(0, supply[0]), sewage[0]);
     }
 
+    /**
+     * Whether water can actually get from one place to another through this plumbing.
+     *
+     * <p>The same walk everything else uses, asked as a yes-or-no. The reactor needs it twice — once
+     * for the cooled run and once for the return — and "follow the pipes and see" is exactly the
+     * instruction it gives the player when the answer is no.
+     */
+    public boolean connected(ServerLevel level, BlockPos from, BlockPos to) {
+        LongArrayList seed = new LongArrayList();
+        seed.add(from.asLong());
+        return walk(level, seed, (pos, state, block) -> { }).contains(to.asLong());
+    }
+
     // ------------------------------------------------------------ persistence
 
     @Override

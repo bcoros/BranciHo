@@ -35,6 +35,8 @@ import com.branciho.citiesinlife.blockentity.TransportAirplaneBlockEntity;
 import com.branciho.citiesinlife.block.TransportAirplaneBlock;
 import com.branciho.citiesinlife.road.RoadNetwork;
 import com.branciho.citiesinlife.road.RoadTile;
+import com.branciho.citiesinlife.nuclear.ReactorFault;
+import com.branciho.citiesinlife.nuclear.ReactorSurvey;
 import com.branciho.citiesinlife.plant.PlantSurvey;
 import com.branciho.citiesinlife.power.PowerBlock;
 import com.branciho.citiesinlife.power.PowerGrid;
@@ -183,7 +185,7 @@ public final class ServerActions {
             // from it outright would let one player plant an undeletable building in the middle of
             // another player's city - undeletable because deleteArea only ever removes structures
             // belonging to the caller's own city.
-            if (type == StructureType.POWER_PLANT) {
+            if (type.isPlant()) {
                 if (standsOnAnotherCity(data, city, level, min, max)) {
                     reject(player, "another_city_land");
                     return;
@@ -200,6 +202,18 @@ public final class ServerActions {
                 && PlantSurvey.of(level, min, max).kind() == PlantSurvey.Kind.MIXED) {
             reject(player, "mixed_generators");
             return;
+        }
+
+        // A reactor is refused at the moment the box is drawn if it is not a reactor. Every other
+        // structure type can be registered around thin air and filled in later; this one cannot,
+        // because a half-built core that registers happily and then sits inert is indistinguishable
+        // from the feature being broken.
+        if (type == StructureType.NUCLEAR_PLANT) {
+            ReactorFault problem = ReactorSurvey.of(level, min, max).buildFault();
+            if (problem != null) {
+                player.sendSystemMessage(problem.describe());
+                return;
+            }
         }
 
         Structure overlap = data.overlapping(level.dimension(), min, max);
@@ -227,6 +241,7 @@ public final class ServerActions {
             // now, and a power plant's message is no use for a park.
             player.sendSystemMessage(Component.translatable(switch (type) {
                 case POWER_PLANT -> "message.citiesinlife.registered_plant";
+                case NUCLEAR_PLANT -> "message.citiesinlife.registered_reactor";
                 case PARK -> "message.citiesinlife.registered_park";
                 case MILITARY_BASE -> "message.citiesinlife.registered_base";
                 default -> "message.citiesinlife.registered_marker";
@@ -326,6 +341,7 @@ public final class ServerActions {
             case BUSINESS -> "Office " + index;
             case FACTORY -> "Factory " + index;
             case POWER_PLANT -> "Power Plant " + index;
+            case NUCLEAR_PLANT -> "Nuclear Plant " + index;
             case POLICE_STATION -> "Police Station " + index;
             case FIRE_STATION -> "Fire Station " + index;
             case HOSPITAL -> "Hospital " + index;
@@ -614,6 +630,19 @@ public final class ServerActions {
         if ((from == WaterRole.SEWAGE && to == WaterRole.STORAGE)
                 || (from == WaterRole.STORAGE && to == WaterRole.SEWAGE)) {
             return "sewage_into_tank";
+        }
+        // Reactor ports get their rules written out rather than left to fall through, because this
+        // method FAILS OPEN: any pair it does not name is permitted. A role added without rules is
+        // silently linkable to everything, which is how you end up drinking reactor coolant.
+        if (from == WaterRole.PORT || to == WaterRole.PORT) {
+            WaterRole other = from == WaterRole.PORT ? to : from;
+            if (other == WaterRole.STORAGE || other == WaterRole.SEWAGE) {
+                return "port_into_supply";
+            }
+            // PORT to PORT is the one link the cooling loop actually needs. Which two ports is not
+            // decided here - the survey checks that the water input reached a cooled output, and
+            // says so by name if it did not. Roles alone cannot tell those apart.
+            return null;
         }
         if (from.isPump() && to.isPump()) {
             return null;
@@ -1169,6 +1198,15 @@ public final class ServerActions {
                 : StructureType.byId(payload.typeId(), null);
         if (type == null || type == StructureType.CITY_CORE) {
             reject(player, "unknown_type");
+            return;
+        }
+        // Seizing rewrites a building's type without running ANY of the checks registerStructure
+        // does - not the land test, not the mixed-generator test, and not the reactor's build
+        // validation. Rewriting a captured shed into a nuclear plant would therefore conjure one
+        // that never had to be a reactor at all. The city hall is already refused here for the
+        // same shape of reason.
+        if (type == StructureType.NUCLEAR_PLANT && target.type() != StructureType.NUCLEAR_PLANT) {
+            reject(player, "cannot_seize_into_reactor");
             return;
         }
 

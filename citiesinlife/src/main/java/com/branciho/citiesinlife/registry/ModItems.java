@@ -143,6 +143,56 @@ public final class ModItems {
     public static final DeferredItem<Item> URANIUM = ITEMS.register("uranium",
             () -> new Item(new Item.Properties()));
 
+    // ------------------------------------------------------------- the reactor
+
+    public static final DeferredItem<BlockItem> FUEL_ROD =
+            ITEMS.registerSimpleBlockItem("fuel_rod", ModBlocks.FUEL_ROD);
+
+    public static final DeferredItem<BlockItem> CONTROL_ROD =
+            ITEMS.registerSimpleBlockItem("control_rod", ModBlocks.CONTROL_ROD);
+
+    public static final DeferredItem<BlockItem> SEALING_BLOCK =
+            ITEMS.registerSimpleBlockItem("sealing_block", ModBlocks.SEALING_BLOCK);
+
+    public static final DeferredItem<BlockItem> URANIUM_STORAGE =
+            ITEMS.registerSimpleBlockItem("uranium_storage", ModBlocks.URANIUM_STORAGE);
+
+    public static final DeferredItem<BlockItem> NUCLEAR_TURBINE =
+            ITEMS.registerSimpleBlockItem("nuclear_turbine", ModBlocks.NUCLEAR_TURBINE);
+
+    public static final DeferredItem<BlockItem> INPUT_WATER_PORT =
+            ITEMS.registerSimpleBlockItem("input_water_port", ModBlocks.INPUT_WATER_PORT);
+
+    public static final DeferredItem<BlockItem> OUTPUT_COOLED_PORT =
+            ITEMS.registerSimpleBlockItem("output_cooled_port", ModBlocks.OUTPUT_COOLED_PORT);
+
+    public static final DeferredItem<BlockItem> INPUT_COOLED_PORT =
+            ITEMS.registerSimpleBlockItem("input_cooled_port", ModBlocks.INPUT_COOLED_PORT);
+
+    public static final DeferredItem<BlockItem> OUTPUT_HEATED_PORT =
+            ITEMS.registerSimpleBlockItem("output_heated_port", ModBlocks.OUTPUT_HEATED_PORT);
+
+    public static final DeferredItem<BlockItem> STEAM_EMITTER =
+            ITEMS.registerSimpleBlockItem("steam_emitter", ModBlocks.STEAM_EMITTER);
+
+    public static final DeferredItem<BlockItem> PRESSURIZED_PIPE =
+            ITEMS.registerSimpleBlockItem("pressurized_pipe", ModBlocks.PRESSURIZED_PIPE);
+
+    public static final DeferredItem<BlockItem> COOLER_LEVER =
+            ITEMS.registerSimpleBlockItem("cooler_lever", ModBlocks.COOLER_LEVER);
+
+    public static final DeferredItem<BlockItem> HEAT_LEVER =
+            ITEMS.registerSimpleBlockItem("heat_lever", ModBlocks.HEAT_LEVER);
+
+    public static final DeferredItem<BlockItem> PRESSURE_LEVER =
+            ITEMS.registerSimpleBlockItem("pressure_lever", ModBlocks.PRESSURE_LEVER);
+
+    public static final DeferredItem<BlockItem> TURBINE_POWER =
+            ITEMS.registerSimpleBlockItem("turbine_power", ModBlocks.TURBINE_POWER);
+
+    public static final DeferredItem<BlockItem> MAIN_MONITOR =
+            ITEMS.registerSimpleBlockItem("main_monitor", ModBlocks.MAIN_MONITOR);
+
     public static final DeferredItem<BlockItem> SEWAGE_COLLECTOR =
             ITEMS.registerSimpleBlockItem("sewage_collector", ModBlocks.SEWAGE_COLLECTOR);
 

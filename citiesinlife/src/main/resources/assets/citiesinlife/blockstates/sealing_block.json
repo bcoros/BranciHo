@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "waterlogged=true": {
+      "model": "citiesinlife:block/sealing_block"
+    },
+    "waterlogged=false": {
+      "model": "citiesinlife:block/sealing_block"
+    }
+  }
+}

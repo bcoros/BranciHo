@@ -45,7 +45,18 @@ public enum WaterRole {
      * <p>Which means a run carrying sewage is a run you should not also be drinking from. Nothing
      * stops you plumbing both into one loop; it simply comes out of the tap brown.
      */
-    SEWAGE;
+    SEWAGE,
+
+    /**
+     * A reactor cooling port.
+     *
+     * <p>Its own role for one specific reason: the Pipe Connect Tool refuses to link a conduit to a
+     * conduit ("pipes_self_join"), and the cooling loop needs exactly one hand-drawn link in the
+     * middle of it — the water input to the cooled output. A port therefore has to be a thing that
+     * behaves like pipework when a pipe is laid against it and like a machine when the tool is
+     * pointed at it, and no existing role does both.
+     */
+    PORT;
 
     /** Whether this is one of the three pumps, which link to each other and to nothing else. */
     public boolean isPump() {

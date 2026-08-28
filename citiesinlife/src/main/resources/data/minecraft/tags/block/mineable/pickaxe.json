@@ -26,6 +26,22 @@
     "citiesinlife:grid_pylon",
     "citiesinlife:sewage_collector",
     "citiesinlife:uranium_ore",
-    "citiesinlife:deepslate_uranium_ore"
+    "citiesinlife:deepslate_uranium_ore",
+    "citiesinlife:fuel_rod",
+    "citiesinlife:control_rod",
+    "citiesinlife:sealing_block",
+    "citiesinlife:uranium_storage",
+    "citiesinlife:nuclear_turbine",
+    "citiesinlife:input_water_port",
+    "citiesinlife:output_cooled_port",
+    "citiesinlife:input_cooled_port",
+    "citiesinlife:output_heated_port",
+    "citiesinlife:steam_emitter",
+    "citiesinlife:pressurized_pipe",
+    "citiesinlife:cooler_lever",
+    "citiesinlife:heat_lever",
+    "citiesinlife:pressure_lever",
+    "citiesinlife:turbine_power",
+    "citiesinlife:main_monitor"
   ]
 }

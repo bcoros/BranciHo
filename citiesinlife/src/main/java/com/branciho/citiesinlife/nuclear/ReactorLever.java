@@ -1,9 +1,11 @@
 package com.branciho.citiesinlife.nuclear;
 
+import com.mojang.serialization.Codec;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.StringRepresentable;
 
 /** Which of the four controls a lever block is. One class, four registrations. */
-public enum ReactorLever {
+public enum ReactorLever implements StringRepresentable {
 
     /** Pulls heat out of the core while it is thrown. */
     COOLER("cooler_lever"),
@@ -30,6 +32,8 @@ public enum ReactorLever {
      */
     TURBINE("turbine_power");
 
+    public static final Codec<ReactorLever> CODEC = StringRepresentable.fromEnum(ReactorLever::values);
+
     private final String id;
 
     ReactorLever(String id) {
@@ -47,5 +51,10 @@ public enum ReactorLever {
 
     public Component displayName() {
         return Component.translatable("block.citiesinlife." + id);
+    }
+
+    @Override
+    public String getSerializedName() {
+        return id;
     }
 }

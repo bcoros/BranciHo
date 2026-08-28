@@ -178,7 +178,7 @@ public class ServiceSpawnerBlockEntity extends BlockEntity {
     private int countTroubledTurbines(ServerLevel serverLevel, City city) {
         int found = 0;
         for (Structure structure : CityData.get(serverLevel.getServer()).structuresOf(city)) {
-            if (structure.type() != StructureType.POWER_PLANT
+            if (!structure.type().isPlant()
                     || !structure.dimension().equals(serverLevel.dimension())
                     || !serverLevel.isLoaded(structure.min())) {
                 continue;

@@ -12,7 +12,11 @@ import com.branciho.citiesinlife.blockentity.ChimneyBlockEntity;
 import com.branciho.citiesinlife.blockentity.OfficeSpaceBlockEntity;
 import com.branciho.citiesinlife.blockentity.RegisterCounterBlockEntity;
 import com.branciho.citiesinlife.blockentity.ServiceSpawnerBlockEntity;
+import com.branciho.citiesinlife.blockentity.CoolingPortBlockEntity;
+import com.branciho.citiesinlife.blockentity.ReactorLeverBlockEntity;
 import com.branciho.citiesinlife.blockentity.SewageCollectorBlockEntity;
+import com.branciho.citiesinlife.blockentity.SteamEmitterBlockEntity;
+import com.branciho.citiesinlife.blockentity.UraniumStorageBlockEntity;
 import com.branciho.citiesinlife.blockentity.WaterStorageBlockEntity;
 import com.branciho.citiesinlife.blockentity.WindmillBlockEntity;
 import net.minecraft.core.registries.Registries;
@@ -41,7 +45,8 @@ public final class ModBlockEntities {
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TurbineBlockEntity>>
             TURBINE = BLOCK_ENTITIES.register("turbine",
                     () -> BlockEntityType.Builder
-                            .of(TurbineBlockEntity::new, ModBlocks.TURBINE.get())
+                            .of(TurbineBlockEntity::new, ModBlocks.TURBINE.get(),
+                                    ModBlocks.NUCLEAR_TURBINE.get())
                             .build(null));
 
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<WaterStorageBlockEntity>>
@@ -54,6 +59,36 @@ public final class ModBlockEntities {
             SEWAGE_COLLECTOR = BLOCK_ENTITIES.register("sewage_collector",
                     () -> BlockEntityType.Builder
                             .of(SewageCollectorBlockEntity::new, ModBlocks.SEWAGE_COLLECTOR.get())
+                            .build(null));
+
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<UraniumStorageBlockEntity>>
+            URANIUM_STORAGE = BLOCK_ENTITIES.register("uranium_storage",
+                    () -> BlockEntityType.Builder
+                            .of(UraniumStorageBlockEntity::new, ModBlocks.URANIUM_STORAGE.get())
+                            .build(null));
+
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<CoolingPortBlockEntity>>
+            COOLING_PORT = BLOCK_ENTITIES.register("cooling_port",
+                    () -> BlockEntityType.Builder
+                            .of(CoolingPortBlockEntity::new,
+                                    ModBlocks.INPUT_WATER_PORT.get(),
+                                    ModBlocks.OUTPUT_COOLED_PORT.get(),
+                                    ModBlocks.INPUT_COOLED_PORT.get(),
+                                    ModBlocks.OUTPUT_HEATED_PORT.get())
+                            .build(null));
+
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<SteamEmitterBlockEntity>>
+            STEAM_EMITTER = BLOCK_ENTITIES.register("steam_emitter",
+                    () -> BlockEntityType.Builder
+                            .of(SteamEmitterBlockEntity::new, ModBlocks.STEAM_EMITTER.get())
+                            .build(null));
+
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ReactorLeverBlockEntity>>
+            REACTOR_LEVER = BLOCK_ENTITIES.register("reactor_lever",
+                    () -> BlockEntityType.Builder
+                            .of(ReactorLeverBlockEntity::new,
+                                    ModBlocks.COOLER_LEVER.get(), ModBlocks.HEAT_LEVER.get(),
+                                    ModBlocks.PRESSURE_LEVER.get(), ModBlocks.TURBINE_POWER.get())
                             .build(null));
 
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<WindmillBlockEntity>>
