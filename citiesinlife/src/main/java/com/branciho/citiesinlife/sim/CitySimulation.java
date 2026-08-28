@@ -144,6 +144,11 @@ public final class CitySimulation {
         CityData data = CityData.get(server);
         PowerGrid grid = PowerGrid.get(server);
         WaterGrid water = WaterGrid.get(server);
+        // Reactors first, so the generation a plant produces this step is standing on the grid
+        // before updatePower asks a city how much power it has. Running them after the loop - as
+        // this did, under a comment claiming the opposite - meant a plant that had just come up
+        // read as producing nothing for one whole ten-second step.
+        NuclearSimulation.tick(server);
         for (City city : data.cities()) {
             recalculate(data, city);
             updatePower(server, grid, city);
@@ -153,9 +158,6 @@ public final class CitySimulation {
             grow(city);
             collectTaxes(city);
         }
-        // Reactors after the cities, so the generation a plant produced this step is on the grid
-        // before anything asks a city how much power it has.
-        NuclearSimulation.tick(server);
         data.setDirty();
     }
 

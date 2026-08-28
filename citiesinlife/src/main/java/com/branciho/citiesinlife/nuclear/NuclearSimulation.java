@@ -89,12 +89,29 @@ public final class NuclearSimulation {
 
     // ---- pressure ---------------------------------------------------------
     public static final double PRESS_FLOOR_BASE = 20.0D;
-    private static final double PRESS_FLOOR_GAIN = 0.16D;
+    /**
+     * How hard the vessel's own pressure floor follows temperature.
+     *
+     * <p>Was 0.16, which made pressure a second thermometer and nothing else: at a 490-degree
+     * cruise the floor alone stood at 66 bar, the relief valve's 22 could not get under it, and
+     * the output gate is already wide open at 60 - so the whole system was a number that moved on
+     * its own, could not be changed, and changed nothing. At 0.10 the same cruise floors at 49,
+     * which is low enough for the valve to bite and high enough that a vented plant keeps most of
+     * its output instead of falling off a cliff.
+     */
+    private static final double PRESS_FLOOR_GAIN = 0.10D;
     private static final double PRESS_FLOOR_KNEE = 200.0D;
-    private static final double PRESS_CREEP = 2.5D;
+    /**
+     * What the vessel gains per step just for being driven.
+     *
+     * <p>Raised from 2.5 with the floor drop. The two numbers have to move together: a low floor
+     * with a slow creep is a plant that spends a quarter of an hour climbing to the 60 bar its own
+     * turbines need, which reads exactly like a reactor that does not produce electricity.
+     */
+    private static final double PRESS_CREEP = 6.0D;
     private static final double PRESS_GAIN = 1.5D;
     private static final double PRESS_RISE_CAP = 12.0D;
-    private static final double PRESS_BLEED = 4.0D;
+    private static final double PRESS_BLEED = 5.0D;
     private static final double PRESS_VENT = 22.0D;
     private static final double PRESS_COLD_FALL = 12.0D;
     private static final double PRESS_CEILING = 320.0D;
@@ -270,11 +287,16 @@ public final class NuclearSimulation {
         double floor = PRESS_FLOOR_BASE
                 + PRESS_FLOOR_GAIN * Math.max(0.0D, state.temperature - PRESS_FLOOR_KNEE);
         state.previousPressure = state.pressure;
-        if (drive < 0.05D && state.temperature < 200.0D) {
+        // Turn the core down and the pressure comes down with it. The old test also demanded the
+        // core be under 200 degrees, which a reactor that has been running almost never is, so a
+        // scrammed plant kept building pressure for minutes with no way to get it back.
+        if (drive < 0.05D) {
             state.pressure -= PRESS_COLD_FALL;
         } else {
+            // From 300 rather than 500, so pressure builds across the whole working range instead
+            // of only in the excursion nobody is supposed to be sitting in.
             double rise = Math.min(PRESS_RISE_CAP, PRESS_CREEP
-                    + PRESS_GAIN * Math.max(0.0D, state.temperature - 500.0D) / 100.0D);
+                    + PRESS_GAIN * Math.max(0.0D, state.temperature - 300.0D) / 100.0D);
             state.pressure += rise;
             if (emitter && loopHealth > 0.0D) {
                 state.pressure -= PRESS_BLEED * loopHealth;
@@ -377,9 +399,16 @@ public final class NuclearSimulation {
      */
     private static void paintRods(ServerLevel level, ReactorSurvey survey, ReactorState state,
                                   int rodBlocks) {
-        int fill = rodBlocks <= 0 ? 0 : (int) Math.round(FuelRodBlock.MAX_FILL * state.fuel
-                / (UraniumStorageBlockEntity.UNITS_PER_ITEM * (double) rodBlocks));
-        fill = Mth.clamp(fill, 0, FuelRodBlock.MAX_FILL);
+        // Rounded UP, and never to zero while there is fuel in the rods. Rounding to nearest
+        // meant the meter only lit at an eighth of capacity - four uranium in the smallest legal
+        // plant - so the ordinary case of dropping a couple of uranium into the store and watching
+        // the rods was a player putting fuel in and seeing absolutely nothing happen.
+        double share = rodBlocks <= 0 ? 0.0D : state.fuel
+                / (UraniumStorageBlockEntity.UNITS_PER_ITEM * (double) rodBlocks);
+        int fill = share <= 0.0D
+                ? 0
+                : Mth.clamp((int) Math.ceil(FuelRodBlock.MAX_FILL * share), 1,
+                        FuelRodBlock.MAX_FILL);
 
         for (ReactorSurvey.Column column : survey.fuelColumns()) {
             for (int i = 0; i < column.height(); i++) {

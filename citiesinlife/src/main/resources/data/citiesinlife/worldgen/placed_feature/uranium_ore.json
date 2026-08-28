@@ -2,8 +2,12 @@
   "feature": "citiesinlife:uranium_ore",
   "placement": [
     {
+      "type": "minecraft:rarity_filter",
+      "chance": 2
+    },
+    {
       "type": "minecraft:count",
-      "count": 7
+      "count": 2
     },
     {
       "type": "minecraft:in_square"
@@ -16,7 +20,7 @@
           "absolute": -64
         },
         "max_inclusive": {
-          "absolute": 24
+          "absolute": 32
         }
       }
     },
