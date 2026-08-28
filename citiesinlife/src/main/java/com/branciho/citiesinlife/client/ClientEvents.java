@@ -3,6 +3,7 @@ package com.branciho.citiesinlife.client;
 import com.branciho.citiesinlife.CitiesInLife;
 import com.branciho.citiesinlife.client.ClientRadiation;
 import com.branciho.citiesinlife.client.screen.CallToArmsScreen;
+import com.branciho.citiesinlife.client.screen.GuideScreen;
 import com.branciho.citiesinlife.client.screen.CityScreen;
 import com.branciho.citiesinlife.client.screen.ConfirmDeleteCityScreen;
 import com.branciho.citiesinlife.client.screen.MilitaryScreen;
@@ -55,6 +56,30 @@ import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 public final class ClientEvents {
 
     private ClientEvents() {
+    }
+
+    private static boolean holdingGuide(LocalPlayer player) {
+        return player.getMainHandItem().is(ModItems.TUTORIAL_BOOK.get())
+                || player.getOffhandItem().is(ModItems.TUTORIAL_BOOK.get());
+    }
+
+    /**
+     * The book opens wherever you are looking.
+     *
+     * <p>Handled here rather than in the shared use-input path, which only fires when the player is
+     * looking at nothing - a reasonable rule for a tool that places things and a silly one for a
+     * book, which people will inevitably open while standing in front of the thing they are stuck
+     * on.
+     */
+    @SubscribeEvent
+    public static void onRightClickItem(PlayerInteractEvent.RightClickItem event) {
+        if (!event.getLevel().isClientSide()
+                || !(event.getEntity() instanceof LocalPlayer player)
+                || !holdingGuide(player)) {
+            return;
+        }
+        Minecraft.getInstance().setScreen(new GuideScreen());
+        event.setCanceled(true);
     }
 
     private static boolean holdingWand(LocalPlayer player) {

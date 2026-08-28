@@ -19,6 +19,7 @@ public final class ModCreativeTabs {
                     .title(Component.translatable("itemGroup." + CitiesInLife.MOD_ID))
                     .icon(() -> new ItemStack(ModItems.PLANNER_WAND.get()))
                     .displayItems((parameters, output) -> {
+                        output.accept(ModItems.TUTORIAL_BOOK.get());
                         output.accept(ModItems.PLANNER_WAND.get());
                         output.accept(ModItems.PATH_TOOL.get());
                         output.accept(ModItems.ROAD_TOOL.get());

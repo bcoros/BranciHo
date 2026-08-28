@@ -1,6 +1,7 @@
 package com.branciho.citiesinlife.registry;
 
 import com.branciho.citiesinlife.CitiesInLife;
+import com.branciho.citiesinlife.item.GuideItem;
 import com.branciho.citiesinlife.item.ExtinguisherItem;
 import com.branciho.citiesinlife.item.MilitaryToolItem;
 import com.branciho.citiesinlife.item.PathToolItem;
@@ -24,6 +25,15 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 public final class ModItems {
 
     public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(CitiesInLife.MOD_ID);
+
+    /**
+     * The manual.
+     *
+     * <p>First in the list because it is the first thing a new player should be handed, and the
+     * only item in the mod that does nothing to the world at all.
+     */
+    public static final DeferredItem<GuideItem> TUTORIAL_BOOK = ITEMS.register("tutorial_book",
+            () -> new GuideItem(new Item.Properties().stacksTo(1)));
 
     public static final DeferredItem<PlannerWandItem> PLANNER_WAND = ITEMS.register("planner_wand",
             () -> new PlannerWandItem(new Item.Properties().stacksTo(1)));
