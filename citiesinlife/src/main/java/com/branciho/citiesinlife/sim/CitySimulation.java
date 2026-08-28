@@ -4,6 +4,7 @@ import com.branciho.citiesinlife.city.City;
 import com.branciho.citiesinlife.city.CityData;
 import com.branciho.citiesinlife.blockentity.SewageCollectorBlockEntity;
 import com.branciho.citiesinlife.blockentity.WaterStorageBlockEntity;
+import com.branciho.citiesinlife.nuclear.NuclearSimulation;
 import com.branciho.citiesinlife.power.PowerGrid;
 import com.branciho.citiesinlife.structure.Structure;
 import com.branciho.citiesinlife.structure.StructureType;
@@ -152,6 +153,9 @@ public final class CitySimulation {
             grow(city);
             collectTaxes(city);
         }
+        // Reactors after the cities, so the generation a plant produced this step is on the grid
+        // before anything asks a city how much power it has.
+        NuclearSimulation.tick(server);
         data.setDirty();
     }
 
