@@ -14,6 +14,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -46,6 +48,9 @@ public final class CitizenDirector {
 
     /** How often this runs. Five seconds — spawning is not something to do in a hurry. */
     public static final int INTERVAL_TICKS = 100;
+
+    /** A little longer than one director step, so the sickness never blinks off between ticks. */
+    private static final int POISON_TICKS = INTERVAL_TICKS + 40;
 
     /** A citizen only appears if somebody is close enough to plausibly have seen it walk in. */
     private static final int SPAWN_NEAR_PLAYER = 96;
@@ -89,6 +94,7 @@ public final class CitizenDirector {
                 continue;
             }
 
+            poison(city, citizens);
             assignJobs(server, level, data, city, citizens);
 
             if (citizens.size() < cap) {
@@ -310,5 +316,34 @@ public final class CitizenDirector {
     public static int countFor(ServerLevel level, UUID cityId) {
         return level.getEntities(ModEntities.CITIZEN.get(),
                 citizen -> citizen.isAlive() && cityId.equals(citizen.cityId())).size();
+    }
+
+    /**
+     * What the city's own sewage does to the people drinking it.
+     *
+     * <p>The aggregate simulation buries a percentage of an abstract population every step; this is
+     * the half of it you can stand next to and watch. The wither is what actually kills them -
+     * vanilla poison stops at half a heart and cannot finish anybody - and the poison on top of it
+     * is the tell, because a citizen who is merely dying looks identical to one who is fine until
+     * the moment they fall over.
+     *
+     * <p>Deliberately applied to the citizens of the city whose water is bad, not to everyone
+     * standing near a dirty pipe. The pipe is not what is poisoning them; the mains are.
+     */
+    private static void poison(City city, List<CitizenEntity> citizens) {
+        int tainted = city.waterTainted();
+        if (tainted <= 0) {
+            return;
+        }
+        // Refreshed every director step and lasting a little longer than one, so the effect never
+        // blinks off between ticks - and scaled, so one crossed connection out of four is a sick
+        // city rather than a dead one.
+        int amplifier = tainted >= 75 ? 1 : 0;
+        for (CitizenEntity citizen : citizens) {
+            citizen.addEffect(new MobEffectInstance(MobEffects.POISON, POISON_TICKS, amplifier,
+                    true, true));
+            citizen.addEffect(new MobEffectInstance(MobEffects.WITHER, POISON_TICKS, amplifier,
+                    true, true));
+        }
     }
 }

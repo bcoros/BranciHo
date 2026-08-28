@@ -220,7 +220,12 @@ public final class WaterGrid extends SavedData {
      * borders, is worth nothing - the same rule that ties power to territory.
      */
     /** One connected run of plumbing: the city tanks on it, and what reaches them. */
-    public record Delivery(LongArrayList tanks, int supply) {
+    /**
+     * @param tanks  the tanks that share this run
+     * @param supply what the pumps are winning by, after leaks
+     * @param sewage whether a sewage collector is on the same plumbing as these tanks
+     */
+    public record Delivery(LongArrayList tanks, int supply, boolean sewage) {
     }
 
     /**
@@ -249,10 +254,17 @@ public final class WaterGrid extends SavedData {
             // Leaks come off the top rather than cutting the run: the city gets less water and the
             // pipe drips where you can find it, which is a problem you can chase.
             final int[] supply = {0};
+            // Answered by the same walk. A collector anywhere on this plumbing means these tanks
+            // are filling with the city's own sewage, and the walk was going past it anyway.
+            final boolean[] sewage = {false};
             LongArrayList seed = new LongArrayList();
             seed.add(tank);
-            LongOpenHashSet reached = walk(level, seed, (pos, state, block) ->
-                    supply[0] += block.waterOutput(level, pos, state) - block.waterLoss(level, pos, state));
+            LongOpenHashSet reached = walk(level, seed, (pos, state, block) -> {
+                supply[0] += block.waterOutput(level, pos, state) - block.waterLoss(level, pos, state);
+                if (block.waterRole() == WaterRole.SEWAGE) {
+                    sewage[0] = true;
+                }
+            });
 
             LongArrayList sharing = new LongArrayList();
             sharing.add(tank);
@@ -261,7 +273,7 @@ public final class WaterGrid extends SavedData {
                     sharing.add(other);
                 }
             }
-            deliveries.add(new Delivery(sharing, Math.max(0, supply[0])));
+            deliveries.add(new Delivery(sharing, Math.max(0, supply[0]), sewage[0]));
         }
         return deliveries;
     }

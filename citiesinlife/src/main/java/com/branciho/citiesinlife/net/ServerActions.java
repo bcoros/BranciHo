@@ -1781,6 +1781,7 @@ public final class ServerActions {
                         city.powerNeeded(),
                         city.waterSupplied(),
                         city.waterNeeded(),
+                        city.waterTainted(),
                         city.sewageHandled(),
                         city.sewageProduced(),
                         city.nextClaimCost(),

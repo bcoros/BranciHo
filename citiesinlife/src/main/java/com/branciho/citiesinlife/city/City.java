@@ -8,6 +8,7 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.Mth;
 import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.Nullable;
 
@@ -106,6 +107,14 @@ public final class City {
     private int sewageProduced;
     private int sewageHandled;
     private int waterSupplied;
+
+    /**
+     * How much of the city's drinking water is coming out of its own sewers, as a percentage.
+     *
+     * <p>Not a boolean, because a city with four pumping stations and one crossed connection is a
+     * different problem from one drinking nothing but sewage, and the death rate should say so.
+     */
+    private int waterTainted;
 
     /**
      * How much rubbish is piled up, and how much ground the city has given over to parks.
@@ -296,6 +305,14 @@ public final class City {
 
     public int waterSupplied() {
         return waterSupplied;
+    }
+
+    public int waterTainted() {
+        return waterTainted;
+    }
+
+    public void setWaterTainted(int percent) {
+        this.waterTainted = Mth.clamp(percent, 0, 100);
     }
 
     public void setWater(int supplied, int needed) {
@@ -513,6 +530,7 @@ public final class City {
         tag.putInt("sewageProduced", sewageProduced);
         tag.putInt("sewageHandled", sewageHandled);
         tag.putInt("waterSupplied", waterSupplied);
+        tag.putInt("waterTainted", waterTainted);
         tag.putInt("refuse", refuse);
         tag.putInt("parkArea", parkArea);
         ListTag armyList = new ListTag();
@@ -575,6 +593,7 @@ public final class City {
         city.sewageProduced = tag.getInt("sewageProduced");
         city.sewageHandled = tag.getInt("sewageHandled");
         city.waterSupplied = tag.getInt("waterSupplied");
+        city.waterTainted = tag.getInt("waterTainted");
         city.refuse = tag.getInt("refuse");
         city.parkArea = tag.getInt("parkArea");
         ListTag armyList = tag.getList("army", Tag.TAG_COMPOUND);

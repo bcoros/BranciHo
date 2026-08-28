@@ -23,6 +23,7 @@ public record CitySyncPayload(
         int powerNeeded,
         int waterSupplied,
         int waterNeeded,
+        int waterTainted,
         int sewageHandled,
         int sewageProduced,
         long nextClaimCost,
@@ -36,8 +37,8 @@ public record CitySyncPayload(
 
     /** What a player with no city yet receives, so the screens have something well-formed to draw. */
     public static CitySyncPayload none() {
-        return new CitySyncPayload(false, "", 0L, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0L, 0, 0, false,
-                new long[0]);
+        return new CitySyncPayload(false, "", 0L, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0L, 0, 0,
+                false, new long[0]);
     }
 
     public static final CustomPacketPayload.Type<CitySyncPayload> TYPE =
@@ -58,6 +59,7 @@ public record CitySyncPayload(
         buf.writeVarInt(powerNeeded);
         buf.writeVarInt(waterSupplied);
         buf.writeVarInt(waterNeeded);
+        buf.writeVarInt(waterTainted);
         buf.writeVarInt(sewageHandled);
         buf.writeVarInt(sewageProduced);
         buf.writeLong(nextClaimCost);
@@ -84,6 +86,7 @@ public record CitySyncPayload(
         int powerNeeded = buf.readVarInt();
         int waterSupplied = buf.readVarInt();
         int waterNeeded = buf.readVarInt();
+        int waterTainted = buf.readVarInt();
         int sewageHandled = buf.readVarInt();
         int sewageProduced = buf.readVarInt();
         long claimCost = buf.readLong();
@@ -100,8 +103,9 @@ public record CitySyncPayload(
             chunks[i] = buf.readLong();
         }
         return new CitySyncPayload(hasCity, name, treasury, housing, population, jobs, employed,
-                powerProduced, powerNeeded, waterSupplied, waterNeeded, sewageHandled,
-                sewageProduced, claimCost, refuse, refuseTolerance, creativeFunded, chunks);
+                powerProduced, powerNeeded, waterSupplied, waterNeeded, waterTainted,
+                sewageHandled, sewageProduced, claimCost, refuse, refuseTolerance, creativeFunded,
+                chunks);
     }
 
     @Override

@@ -119,10 +119,17 @@ public class CityScreen extends Screen {
         y += 14;
 
         boolean watered = city.waterNeeded() == 0 || city.waterSupplied() >= city.waterNeeded();
+        boolean tainted = city.waterTainted() > 0;
         y = row(graphics, y, "screen.citiesinlife.water",
                 Component.literal(format(city.waterSupplied()) + " / " + format(city.waterNeeded())),
-                watered ? COLOUR_GOOD : COLOUR_BAD);
-        if (!watered) {
+                watered && !tainted ? COLOUR_GOOD : COLOUR_BAD);
+        // Ahead of "not enough water", because a city being poisoned by its own mains has a bigger
+        // problem than a city that is merely thirsty, and the two can be true at once.
+        if (tainted) {
+            graphics.drawString(this.font,
+                    Component.translatable("screen.citiesinlife.water_tainted", city.waterTainted()),
+                    left + 12, y, COLOUR_BAD, false);
+        } else if (!watered) {
             graphics.drawString(this.font,
                     Component.translatable("screen.citiesinlife.water_short"),
                     left + 12, y, COLOUR_BAD, false);

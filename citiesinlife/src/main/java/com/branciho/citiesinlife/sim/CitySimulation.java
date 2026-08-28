@@ -12,7 +12,9 @@ import com.branciho.citiesinlife.water.WaterGrid;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 
 /**
  * The aggregate city simulation.
@@ -134,6 +136,18 @@ public final class CitySimulation {
      */
     private static final double SEWAGE_TO_REFUSE = 0.15D;
 
+    /**
+     * How much of a city dies per step when every tap in it is running sewage.
+     *
+     * <p>The only thing in this simulation that drives population down on its own. Everything else
+     * is a brake on growth, deliberately - punishing an unfinished grid by deleting people would be
+     * miserable. This one is different because it is not something you fail to build, it is
+     * something you have to actively plumb wrong, the end pipe has been running brown since the
+     * moment you did it, and there is no way to do it by accident. Six per cent a step empties a
+     * city in about seven minutes: fast enough to be a disaster, slow enough to notice and fix.
+     */
+    private static final double POISONED_DEATH_RATE = 0.06D;
+
     private CitySimulation() {
     }
 
@@ -207,6 +221,7 @@ public final class CitySimulation {
         LongArrayList tanks = grid.storagesFor(level, city);
         if (tanks.isEmpty()) {
             city.setWater(0, demand);
+            city.setWaterTainted(0);
             return;
         }
 
@@ -215,7 +230,14 @@ public final class CitySimulation {
         // Fill each run of plumbing from its own supply. Pooling the city's water and pouring it
         // into whichever tank happened to come first meant a tank behind a shut valve filled from a
         // pump it was not connected to, while the tank the valve had opened stayed empty.
+        int tainted = 0;
         for (WaterGrid.Delivery delivery : grid.deliveriesFor(level, city)) {
+            // A run with a sewage collector on it fills its tanks with the city's own sewage. The
+            // water system has always allowed this to be plumbed - a pipe is a pipe, and there is
+            // no such thing as a sewage pipe in this mod - and this is what it costs.
+            if (delivery.sewage()) {
+                tainted += delivery.tanks().size();
+            }
             int share = delivery.supply() / delivery.tanks().size();
             int remainder = delivery.supply() % delivery.tanks().size();
             for (long node : delivery.tanks()) {
@@ -243,6 +265,20 @@ public final class CitySimulation {
             }
         }
         city.setWater(drawn, demand);
+        // By share of the tanks, not as a yes or no: a city with four pumping stations and one
+        // crossed connection is a different problem from one drinking nothing but sewage.
+        int was = city.waterTainted();
+        city.setWaterTainted(Math.round(100.0F * tainted / tanks.size()));
+        // Only on the way in, and only once. The city panel and the end pipe both say so from then
+        // on; repeating it every ten seconds would be the game shouting at somebody who already
+        // knows, right while they are trying to find the pipe.
+        if (was == 0 && city.waterTainted() > 0) {
+            ServerPlayer owner = server.getPlayerList().getPlayer(city.owner());
+            if (owner != null) {
+                owner.sendSystemMessage(Component.translatable(
+                        "message.citiesinlife.water_tainted", city.name()));
+            }
+        }
     }
 
     /**
@@ -376,6 +412,17 @@ public final class CitySimulation {
         if (delta == 0 && population != target) {
             delta = target > population ? 1 : -1;
         }
+
+        // Sewage in the mains kills people, and it overrides everything above it: a city drinking
+        // its own sewage does not grow slowly, it buries somebody every ten seconds until the
+        // plumbing is fixed. Nothing else in this simulation can drive the population down on its
+        // own, which is exactly why this one is allowed to.
+        if (city.waterTainted() > 0) {
+            double dose = city.waterTainted() / 100.0D;
+            int deaths = (int) Math.ceil(population * POISONED_DEATH_RATE * dose);
+            delta = -Math.max(1, deaths);
+        }
+
         city.setPopulation(Math.max(0, population + delta));
         city.setEmployed(Math.min(city.population(), city.jobs()));
     }
