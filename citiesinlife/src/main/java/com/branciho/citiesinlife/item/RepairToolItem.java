@@ -1,6 +1,7 @@
 package com.branciho.citiesinlife.item;
 
 import com.branciho.citiesinlife.block.WaterPipeBlock;
+import com.branciho.citiesinlife.blockentity.CoolingPortBlockEntity;
 import com.branciho.citiesinlife.blockentity.TurbineBlockEntity;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
@@ -56,6 +57,17 @@ public class RepairToolItem extends Item {
                 say(level, pos, player, "message.citiesinlife.wrench_turbine", true);
             } else {
                 say(level, pos, player, "message.citiesinlife.wrench_turbine_clean", false);
+            }
+            return InteractionResult.SUCCESS;
+        }
+
+        // A latched cooling port is the reactor's version of a fouled turbine, so the wrench keeps
+        // meaning exactly one thing: this machine has gummed up and can be cleaned out.
+        if (level.getBlockEntity(pos) instanceof CoolingPortBlockEntity port) {
+            if (port.repair()) {
+                say(level, pos, player, "message.citiesinlife.wrench_port", true);
+            } else {
+                say(level, pos, player, "message.citiesinlife.wrench_port_clean", false);
             }
             return InteractionResult.SUCCESS;
         }

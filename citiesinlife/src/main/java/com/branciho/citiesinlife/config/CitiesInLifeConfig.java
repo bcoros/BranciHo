@@ -67,6 +67,15 @@ public final class CitiesInLifeConfig {
                     "commutes only.")
             .defineInRange("carTravelDistance", DEFAULT_CAR_DISTANCE, 32, 512);
 
+    public static final ModConfigSpec.DoubleValue NUCLEAR_BLAST_SCALE = BUILDER
+            .comment(
+                    "How large a reactor meltdown's explosions are, as a multiplier. Not here to",
+                    "soften the mechanic - a meltdown is meant to take the neighbourhood with it,",
+                    "and that is the risk of building one. It is here because the final blast is",
+                    "genuinely expensive to compute next to a dense city, and a server owner needs",
+                    "a dial for that.")
+            .defineInRange("nuclearBlastScale", 1.0D, 0.25D, 2.0D);
+
     public static final ModConfigSpec SPEC = BUILDER.build();
 
     private CitiesInLifeConfig() {
@@ -94,6 +103,11 @@ public final class CitiesInLifeConfig {
     }
 
     /** Safe at any time, for the same reason as above. Defaults to enforcing borders on everybody. */
+    /** The meltdown blast multiplier, or 1.0 before the config has loaded. */
+    public static double nuclearBlastScale() {
+        return NUCLEAR_BLAST_SCALE.get();
+    }
+
     public static boolean opsIgnoreBorders() {
         return SPEC.isLoaded() && OPS_IGNORE_BORDERS.get();
     }

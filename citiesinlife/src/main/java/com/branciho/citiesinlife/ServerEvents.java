@@ -12,6 +12,8 @@ import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import com.branciho.citiesinlife.nuclear.Meltdown;
+import com.branciho.citiesinlife.nuclear.ReactorSurvey;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 
@@ -35,6 +37,9 @@ public final class ServerEvents {
     public static void onServerTick(ServerTickEvent.Post event) {
         MinecraftServer server = event.getServer();
         CreativeFunding.tick(server);
+        // Before the city tick: a melting reactor has left the ten-second cadence and is stepped
+        // every tick until it is finished.
+        Meltdown.tick(server);
         CitySimulation.tick(server);
         CitizenDirector.tick(server);
         ServiceDirector.tick(server);
@@ -51,6 +56,7 @@ public final class ServerEvents {
     @SubscribeEvent
     public static void onServerStopped(ServerStoppedEvent event) {
         PlantSurvey.forgetAll();
+        ReactorSurvey.forgetAll();
     }
 
     @SubscribeEvent

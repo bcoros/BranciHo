@@ -1,7 +1,15 @@
 package com.branciho.citiesinlife.blockentity;
 
 import com.branciho.citiesinlife.block.AlarmBlock;
+import com.branciho.citiesinlife.city.CityData;
+import com.branciho.citiesinlife.nuclear.NuclearSimulation;
+import com.branciho.citiesinlife.nuclear.ReactorData;
+import com.branciho.citiesinlife.nuclear.ReactorState;
+import com.branciho.citiesinlife.nuclear.ReactorSurvey;
 import com.branciho.citiesinlife.plant.PlantSurvey;
+import com.branciho.citiesinlife.structure.Structure;
+import com.branciho.citiesinlife.structure.StructureType;
+import net.minecraft.server.level.ServerLevel;
 import com.branciho.citiesinlife.registry.ModBlockEntities;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -39,6 +47,17 @@ public class AlarmBlockEntity extends BlockEntity {
     private int howManyClogged;
     private boolean insidePlant;
     private boolean highNote;
+
+    /**
+     * What the reactor in this box is doing, if it is a reactor rather than a coal plant.
+     *
+     * <p>An alarm hung in a reactor hall used to be a decoration: {@code PlantSurvey.at} answers
+     * only for a Power Plant, so the siren simply reported that it could not see a plant. It now
+     * reads the reactor's own gauges — orange when the core is overheating, red when it is
+     * critical or committed — which is the same contract it already has for coal.
+     */
+    private AlarmBlock.Trouble reactorLevel = AlarmBlock.Trouble.NONE;
+    private boolean insideReactor;
 
     public AlarmBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.ALARM.get(), pos, state);
@@ -85,6 +104,19 @@ public class AlarmBlockEntity extends BlockEntity {
     private void survey(Level level, BlockPos pos) {
         howManyBurning = 0;
         howManyClogged = 0;
+        reactorLevel = AlarmBlock.Trouble.NONE;
+        insideReactor = false;
+
+        if (level instanceof ServerLevel serverLevel) {
+            Structure plant = CityData.get(serverLevel.getServer())
+                    .structureAt(level.dimension(), pos);
+            if (plant != null && plant.type() == StructureType.NUCLEAR_PLANT) {
+                insideReactor = true;
+                insidePlant = true;
+                reactorLevel = reactorTrouble(serverLevel, plant);
+                return;
+            }
+        }
 
         PlantSurvey plant = PlantSurvey.at(level, pos);
         insidePlant = plant.registered();
@@ -106,10 +138,47 @@ public class AlarmBlockEntity extends BlockEntity {
     }
 
     private AlarmBlock.Trouble trouble() {
+        if (insideReactor) {
+            return reactorLevel;
+        }
         if (howManyBurning > 0) {
             return AlarmBlock.Trouble.FIRE;
         }
         return howManyClogged > 0 ? AlarmBlock.Trouble.FOULED : AlarmBlock.Trouble.NONE;
+    }
+
+    /**
+     * How worried to be about a reactor.
+     *
+     * <p>Reuses the two existing states rather than inventing new ones, so the alarm needs no new
+     * blockstates, models or sounds — and so the colours already mean what a player has learned
+     * they mean. Amber: go and look. Red: it is nearly too late.
+     */
+    private static AlarmBlock.Trouble reactorTrouble(ServerLevel level, Structure plant) {
+        ReactorData data = ReactorData.get(level.getServer());
+        if (!data.known(plant.id())) {
+            return AlarmBlock.Trouble.NONE;
+        }
+        ReactorState state = data.of(plant.id());
+        if (state.melting()
+                || state.temperature >= NuclearSimulation.TEMP_CRITICAL
+                || state.pressure >= NuclearSimulation.PRESSURE_CRITICAL) {
+            return AlarmBlock.Trouble.FIRE;
+        }
+        if (state.temperature >= NuclearSimulation.TEMP_OVERHEAT
+                || state.pressure >= NuclearSimulation.PRESSURE_WARN) {
+            return AlarmBlock.Trouble.FOULED;
+        }
+        // A jammed cooling port is worth an amber on its own: the core is still making heat and
+        // the loop that carries it away has lost a quarter of itself.
+        ReactorSurvey survey = ReactorSurvey.of(level, plant.min(), plant.max());
+        for (BlockPos port : survey.ports().values()) {
+            if (level.getBlockEntity(port) instanceof CoolingPortBlockEntity cell
+                    && cell.latched()) {
+                return AlarmBlock.Trouble.FOULED;
+            }
+        }
+        return AlarmBlock.Trouble.NONE;
     }
 
     /** One line saying what it can see, so a silent alarm can be told from an unwired one. */

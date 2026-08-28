@@ -113,6 +113,8 @@
   "message.citiesinlife.port_into_supply": "Reactor coolant does not belong in the drinking water.",
   "message.citiesinlife.uranium_store": "Uranium Storage: %s / %s",
   "message.citiesinlife.upgraded_nuclear_turbine": "Nuclear Turbine level %s: %s%% of what the steam is worth.",
+  "message.citiesinlife.wrench_port": "Cleared the cooling port.",
+  "message.citiesinlife.wrench_port_clean": "That port is clear already.",
   "reactor.citiesinlife.built": "Reactor: %s turbine(s), columns %s tall, %s fuel rod blocks. Built and ready.",
   "reactor.citiesinlife.not_registered": "Not a registered nuclear plant - draw a box round it with the Planner Wand and pick Nuclear Plant.",
   "reactor.citiesinlife.box_too_large": "That box is too big for the reactor to read. Draw it tighter round the plant.",
