@@ -124,7 +124,7 @@
   "reactor.citiesinlife.built": "Reactor: %s turbine(s), columns %s tall, %s fuel rod blocks. Built and ready.",
   "reactor.citiesinlife.too_many_turbines": "Too many nuclear turbines - one core can drive four.",
   "reactor.citiesinlife.fuel_column_count": "Wrong number of fuel rod columns - four per nuclear turbine.",
-  "reactor.citiesinlife.control_column_count": "Wrong number of control rod columns - exactly two, whatever the turbine count.",
+  "reactor.citiesinlife.control_column_count": "Wrong number of control rod columns - exactly four, whatever the turbine count.",
   "reactor.citiesinlife.column_too_short": "A rod column is too short - every column needs at least 8 blocks.",
   "reactor.citiesinlife.columns_uneven": "The rod columns are not all the same height.",
   "reactor.citiesinlife.height_capped": "Built taller than the core rewards - the extra blocks are ignored.",

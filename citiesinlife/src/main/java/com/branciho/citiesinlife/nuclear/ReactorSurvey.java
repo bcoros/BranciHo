@@ -59,8 +59,8 @@ public final class ReactorSurvey {
     /** Four fuel columns per turbine. Fixed by the owner and not negotiable. */
     public static final int FUEL_COLUMNS_PER_TURBINE = 4;
 
-    /** Two control columns for the whole core, whatever the turbine count. Also fixed. */
-    public static final int CONTROL_COLUMNS = 2;
+    /** Four control columns for the whole core, whatever the turbine count. Also fixed. */
+    public static final int CONTROL_COLUMNS = 4;
 
     /** More than this and the box walk stops being worth doing. */
     public static final int MAX_TURBINES = 4;
