@@ -1,7 +1,6 @@
 package com.branciho.citiesinlife.client;
 
 import com.branciho.citiesinlife.scan.StructureScanner;
-import com.branciho.citiesinlife.structure.MeasureMode;
 import com.branciho.citiesinlife.structure.StructureType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
@@ -43,9 +42,7 @@ public final class ClientSelection {
     private static @Nullable BlockPos pointA;
     private static @Nullable BlockPos pointB;
     private static StructureType type = StructureType.RESIDENTIAL;
-    private static MeasureMode measureMode = MeasureMode.FLOORS;
 
-    private static int previewFloors = -1;
     private static int previewCells = -1;
     private static @Nullable BlockPos lastPreviewedB;
 
@@ -74,21 +71,6 @@ public final class ClientSelection {
 
     public static void cycleType(int direction) {
         type = type.next(direction);
-    }
-
-    public static MeasureMode measureMode() {
-        return measureMode;
-    }
-
-    /** Swap measurement mode and re-measure, so the panel updates the moment it is pressed. */
-    public static void toggleMeasureMode() {
-        measureMode = measureMode.other();
-        lastPreviewedB = null;
-        refreshPreview();
-    }
-
-    public static int previewFloors() {
-        return previewFloors;
     }
 
     public static int previewCells() {
@@ -199,13 +181,11 @@ public final class ClientSelection {
             return;
         }
 
-        StructureScanner.Measurement measured = StructureScanner.measure(level, min, max, measureMode);
-        previewFloors = measured.floors().size();
+        StructureScanner.Measurement measured = StructureScanner.measure(level, min, max);
         previewCells = measured.usableCells();
     }
 
     private static void clearPreview() {
-        previewFloors = -1;
         previewCells = -1;
         lastPreviewedB = null;
     }
@@ -229,6 +209,5 @@ public final class ClientSelection {
     public static void reset() {
         cancel();
         type = StructureType.RESIDENTIAL;
-        measureMode = MeasureMode.FLOORS;
     }
 }

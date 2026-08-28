@@ -63,7 +63,6 @@ import com.branciho.citiesinlife.power.PowerGrid;
 import com.branciho.citiesinlife.scan.StructureScanner;
 import com.branciho.citiesinlife.sim.CitySimulation;
 import com.branciho.citiesinlife.sim.CreativeFunding;
-import com.branciho.citiesinlife.structure.MeasureMode;
 import com.branciho.citiesinlife.structure.Structure;
 import com.branciho.citiesinlife.structure.StructureType;
 import com.branciho.citiesinlife.upgrade.Upgradeable;
@@ -267,12 +266,11 @@ public final class ServerActions {
             return;
         }
 
-        MeasureMode mode = MeasureMode.byId(payload.measureModeId(), MeasureMode.FLOORS);
-        StructureScanner.Measurement measured = StructureScanner.measure(level, min, max, mode);
+        StructureScanner.Measurement measured = StructureScanner.measure(level, min, max);
 
         String name = defaultName(type, data.structuresOf(city).size() + 1);
         Structure structure = Structure.create(city.id(), name, type, level.dimension(), min, max);
-        structure.setMeasurement(mode, measured.floors(), measured.usableCells());
+        structure.setMeasurement(measured.usableCells());
         data.addStructure(city, structure);
 
         // Bring the totals up to date now rather than at the next growth tick, so opening the city
@@ -304,12 +302,11 @@ public final class ServerActions {
                 "message.citiesinlife.registered",
                 name, structure.residents(), structure.jobs()));
 
-        // Point at the other mode rather than just reporting nothing: an empty measurement is
-        // almost always a shape the storey detector cannot read, not a mistake by the player.
+        // Say what is wrong rather than reporting nothing. An empty measurement means the box has
+        // no enclosed space in it, which is nearly always a roof or a wall that is not there yet.
         if (structure.usableCells() == 0) {
-            player.sendSystemMessage(Component.translatable(mode == MeasureMode.FLOORS
-                    ? "message.citiesinlife.no_floors"
-                    : "message.citiesinlife.no_interior"));
+            player.sendSystemMessage(
+                    Component.translatable("message.citiesinlife.no_interior"));
         }
         sync(player);
     }
@@ -1280,13 +1277,12 @@ public final class ServerActions {
         City loser = data.city(target.cityId());
         data.removeStructure(target.id());
 
-        MeasureMode mode = target.measureMode();
         StructureScanner.Measurement measured =
-                StructureScanner.measure(level, target.min(), target.max(), mode);
+                StructureScanner.measure(level, target.min(), target.max());
         String name = defaultName(type, data.structuresOf(city).size() + 1);
         Structure taken = Structure.create(
                 city.id(), name, type, level.dimension(), target.min(), target.max());
-        taken.setMeasurement(mode, measured.floors(), measured.usableCells());
+        taken.setMeasurement(measured.usableCells());
         data.addStructure(city, taken);
 
         CitySimulation.refresh(data, city);
@@ -2140,10 +2136,8 @@ public final class ServerActions {
                             structure.id(),
                             structure.name(),
                             structure.type().id(),
-                            structure.measureMode().id(),
                             structure.min().getX(), structure.min().getY(), structure.min().getZ(),
                             structure.max().getX(), structure.max().getY(), structure.max().getZ(),
-                            structure.floorCount(),
                             structure.usableCells(),
                             structure.residents(),
                             structure.jobs()));

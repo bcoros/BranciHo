@@ -70,7 +70,6 @@ public class NameCityScreen extends Screen {
                 ClientSelection.pointA(),
                 ClientSelection.pointB(),
                 StructureType.CITY_CORE.id(),
-                ClientSelection.measureMode().id(),
                 nameBox.getValue().trim()));
         ClientSelection.cancel();
         this.minecraft.setScreen(null);

@@ -22,7 +22,14 @@ import java.util.List;
 public class GuideScreen extends Screen {
 
     private static final int WIDTH = 400;
-    private static final int HEIGHT = 262;
+    /**
+     * Tall enough for the chapter list.
+     *
+     * <p>Grown with it, and it has to be: the chapters are laid out down the sidebar at a fixed
+     * nineteen pixels each from a fixed top, so an eleventh chapter on the old height put its
+     * button underneath the page arrows.
+     */
+    private static final int HEIGHT = 286;
     private static final int SIDEBAR = 116;
 
     /** Where the text may end. Anything past this would be drawn over the page buttons. */
@@ -31,8 +38,8 @@ public class GuideScreen extends Screen {
     /** Chapter ids, and how many pages each has. Both halves live in the language file. */
     private static final String[] CHAPTERS = {
             "start", "money", "power", "water", "sewage", "roads", "services",
-            "war", "neighbours", "nuclear"};
-    private static final int[] PAGES = {3, 2, 3, 3, 2, 3, 2, 2, 3, 5};
+            "war", "neighbours", "nuclear", "settings"};
+    private static final int[] PAGES = {3, 2, 3, 3, 2, 3, 3, 3, 3, 5, 2};
 
     private int chapter;
     private int page;

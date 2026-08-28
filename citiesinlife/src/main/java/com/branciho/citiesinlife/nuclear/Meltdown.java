@@ -34,6 +34,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import com.branciho.citiesinlife.city.Demolition;
 
 /**
  * The end of a reactor, staged over thirteen seconds.
@@ -372,6 +373,16 @@ public final class Meltdown {
      */
     private static void carve(ServerLevel level, BlockPos centre, double inner, double outer,
                               double full) {
+        // The first shell of a new crater, and only the first: everything drawn on this ground
+        // rather than built out of it - roads, pavements, the boxes round buildings - goes with
+        // it, once, measured against the crater's finished size rather than this shell's. None of
+        // those are blocks, so nothing about an explosion ever reached them and a levelled
+        // district went on housing people.
+        if (inner <= 0.0D) {
+            int reach = Mth.ceil(full);
+            Demolition.flatten(level,
+                    centre.offset(-reach, -reach, -reach), centre.offset(reach, reach, reach));
+        }
         double outerSq = outer * outer;
         double innerSq = inner * inner;
         // Measured against the crater's FINAL radius, not this shell's. Feathering every shell

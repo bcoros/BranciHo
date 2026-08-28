@@ -226,17 +226,12 @@ public final class PlannerHud {
             y = valueRow(graphics, y, "hud.citiesinlife.bounds", Component.literal(
                     ClientSelection.spanX() + " x " + ClientSelection.spanY()
                             + " x " + ClientSelection.spanZ()));
-            y = valueRow(graphics, y, "hud.citiesinlife.floors", measured(ClientSelection.previewFloors()));
             y = valueRow(graphics, y, "hud.citiesinlife.usable", measured(ClientSelection.previewCells()));
         } else {
             graphics.drawString(font, Component.translatable("hud.citiesinlife.right_click_start"),
                     PANEL_X + PADDING, y, COLOUR_DIM, false);
             y += 11;
         }
-
-        // Which measuring method is in play, because it changes the two numbers above it.
-        y = valueRow(graphics, y, "hud.citiesinlife.measure",
-                ClientSelection.measureMode().displayName());
 
         y += 4;
         graphics.drawString(font, Component.translatable("hud.citiesinlife.building_type"),
@@ -251,9 +246,6 @@ public final class PlannerHud {
 
         y += 3;
         graphics.drawString(font, Component.translatable("hud.citiesinlife.arrows_hint"),
-                PANEL_X + PADDING, y, COLOUR_DIM, false);
-        y += 10;
-        graphics.drawString(font, Component.translatable("hud.citiesinlife.measure_hint"),
                 PANEL_X + PADDING, y, COLOUR_DIM, false);
         y += 10;
         if (ClientSelection.phase() == ClientSelection.Phase.COMPLETE) {

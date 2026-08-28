@@ -31,16 +31,14 @@ public final class Structure {
     private final ResourceKey<Level> dimension;
     private final BlockPos min;
     private final BlockPos max;
-    private final List<Floor> floors = new ArrayList<>();
 
     /**
-     * How this structure was measured, and what that measurement produced.
+     * What measuring the inside of it produced, in floor-equivalent cells.
      *
-     * <p>The cell count is stored rather than re-derived from {@link #floors} because block-volume
-     * mode produces no floors at all — it measures enclosed space instead. Both modes end up in the
-     * same unit so the capacity formulas do not care which was used.
+     * <p>Stored rather than re-derived, because it is the answer to a question about blocks that
+     * were there when the player registered the building, and re-measuring on demand would quietly
+     * change a city's population every time somebody opened a door.
      */
-    private MeasureMode measureMode = MeasureMode.FLOORS;
     private int usableCells;
 
     public Structure(UUID id, UUID cityId, String name, StructureType type,
@@ -91,23 +89,8 @@ public final class Structure {
         return max;
     }
 
-    public List<Floor> floors() {
-        return floors;
-    }
-
-    public void setMeasurement(MeasureMode mode, List<Floor> detected, int cells) {
-        this.measureMode = mode;
+    public void setMeasurement(int cells) {
         this.usableCells = Math.max(0, cells);
-        floors.clear();
-        floors.addAll(detected);
-    }
-
-    public MeasureMode measureMode() {
-        return measureMode;
-    }
-
-    public int floorCount() {
-        return floors.size();
     }
 
     public int usableCells() {
@@ -125,8 +108,9 @@ public final class Structure {
     /**
      * How much ground this structure covers, in square metres.
      *
-     * <p>Only a park uses this, and it is why a park is not measured by floors: there are none to
-     * count. How much of the city has been given over to grass is the whole of what a park is worth.
+     * <p>A park is the reason this exists — there is no inside to measure, and how much of the city
+     * has been given over to grass is the whole of what one is worth. It is also what decides how
+     * much of a building has to be blown up before it stops being one.
      */
     public int footprint() {
         return (max.getX() - min.getX() + 1) * (max.getZ() - min.getZ() + 1);
@@ -166,7 +150,6 @@ public final class Structure {
         tag.putString("name", name);
         tag.putString("type", type.id());
         tag.putString("dimension", dimension.location().toString());
-        tag.putString("measure", measureMode.id());
         tag.putInt("cells", usableCells);
         tag.putInt("minX", min.getX());
         tag.putInt("minY", min.getY());
@@ -174,11 +157,6 @@ public final class Structure {
         tag.putInt("maxX", max.getX());
         tag.putInt("maxY", max.getY());
         tag.putInt("maxZ", max.getZ());
-        ListTag floorList = new ListTag();
-        for (Floor floor : floors) {
-            floorList.add(floor.save());
-        }
-        tag.put("floors", floorList);
         return tag;
     }
 
@@ -191,24 +169,19 @@ public final class Structure {
                 ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(tag.getString("dimension"))),
                 new BlockPos(tag.getInt("minX"), tag.getInt("minY"), tag.getInt("minZ")),
                 new BlockPos(tag.getInt("maxX"), tag.getInt("maxY"), tag.getInt("maxZ")));
-        structure.measureMode = MeasureMode.byId(tag.getString("measure"), MeasureMode.FLOORS);
-
-        ListTag floorList = tag.getList("floors", Tag.TAG_COMPOUND);
-        for (int i = 0; i < floorList.size(); i++) {
-            structure.floors.add(Floor.load(floorList.getCompound(i)));
-        }
-
-        // Saves written before the measurement mode existed have no "cells" tag: capacity was
-        // derived by summing the floors. Reading it as a plain getInt gives 0, which then propagates
-        // through the simulation and permanently zeroes the population of an existing city. Falling
-        // back to the floor sum is exact for that data, because block-volume measuring did not exist
-        // yet, so every old structure was floor-measured.
+        // Saves written before the measurement mode existed have no "cells" tag at all: capacity
+        // was derived by summing a list of detected storeys. Reading it as a plain getInt gives 0,
+        // which propagates through the simulation and permanently zeroes an existing city's
+        // population, so the old list is still read here purely to total it up. Nothing else in the
+        // mod knows what a storey is any more - this is the last place, and only for saves that
+        // predate it.
         if (tag.contains("cells")) {
             structure.usableCells = tag.getInt("cells");
         } else {
             int total = 0;
-            for (Floor floor : structure.floors) {
-                total += floor.usableCells();
+            ListTag storeys = tag.getList("floors", Tag.TAG_COMPOUND);
+            for (int i = 0; i < storeys.size(); i++) {
+                total += storeys.getCompound(i).getInt("cells");
             }
             structure.usableCells = total;
         }

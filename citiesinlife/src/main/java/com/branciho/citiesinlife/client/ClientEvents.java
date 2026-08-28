@@ -238,14 +238,6 @@ public final class ClientEvents {
             }
         }
 
-        while (KeyBindings.TOGGLE_MEASURE_MODE.consumeClick()) {
-            if (holdingWand) {
-                ClientSelection.toggleMeasureMode();
-                player.displayClientMessage(Component.translatable(
-                        "hud.citiesinlife.measure_switched",
-                        ClientSelection.measureMode().displayName()), true);
-            }
-        }
     }
 
     // ------------------------------------------------------------ right click
@@ -549,7 +541,7 @@ public final class ClientEvents {
         }
 
         CitiesInLifeNetwork.sendToServer(new RegisterStructurePayload(
-                a, b, type.id(), ClientSelection.measureMode().id(), ""));
+                a, b, type.id(), ""));
         ClientSelection.cancel();
     }
 

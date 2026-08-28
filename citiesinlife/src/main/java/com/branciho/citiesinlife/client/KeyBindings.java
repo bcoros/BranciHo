@@ -73,14 +73,6 @@ public final class KeyBindings {
             GLFW.GLFW_KEY_I,
             CATEGORY);
 
-    /** Switch between measuring floors and measuring enclosed space. */
-    public static final KeyMapping TOGGLE_MEASURE_MODE = new KeyMapping(
-            "key.citiesinlife.measure_mode",
-            KeyConflictContext.IN_GAME,
-            InputConstants.Type.KEYSYM,
-            GLFW.GLFW_KEY_RIGHT,
-            CATEGORY);
-
     /**
      * Opens the road tool's panel.
      *

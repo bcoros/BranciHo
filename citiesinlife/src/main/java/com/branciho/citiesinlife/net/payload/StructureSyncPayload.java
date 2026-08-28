@@ -24,10 +24,8 @@ public record StructureSyncPayload(List<Entry> structures) implements CustomPack
             UUID id,
             String name,
             String typeId,
-            String measureModeId,
             int minX, int minY, int minZ,
             int maxX, int maxY, int maxZ,
-            int floors,
             int usableCells,
             int residents,
             int jobs
@@ -48,14 +46,12 @@ public record StructureSyncPayload(List<Entry> structures) implements CustomPack
             buf.writeUUID(entry.id());
             buf.writeUtf(entry.name(), 48);
             buf.writeUtf(entry.typeId(), 32);
-            buf.writeUtf(entry.measureModeId(), 32);
             buf.writeVarInt(entry.minX());
             buf.writeVarInt(entry.minY());
             buf.writeVarInt(entry.minZ());
             buf.writeVarInt(entry.maxX());
             buf.writeVarInt(entry.maxY());
             buf.writeVarInt(entry.maxZ());
-            buf.writeVarInt(entry.floors());
             buf.writeVarInt(entry.usableCells());
             buf.writeVarInt(entry.residents());
             buf.writeVarInt(entry.jobs());
@@ -70,10 +66,10 @@ public record StructureSyncPayload(List<Entry> structures) implements CustomPack
         List<Entry> entries = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
             entries.add(new Entry(
-                    buf.readUUID(), buf.readUtf(48), buf.readUtf(32), buf.readUtf(32),
+                    buf.readUUID(), buf.readUtf(48), buf.readUtf(32),
                     buf.readVarInt(), buf.readVarInt(), buf.readVarInt(),
                     buf.readVarInt(), buf.readVarInt(), buf.readVarInt(),
-                    buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt()));
+                    buf.readVarInt(), buf.readVarInt(), buf.readVarInt()));
         }
         return new StructureSyncPayload(entries);
     }

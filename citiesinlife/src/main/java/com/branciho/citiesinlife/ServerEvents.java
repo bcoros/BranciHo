@@ -17,6 +17,7 @@ import com.branciho.citiesinlife.nuclear.Radiation;
 import com.branciho.citiesinlife.nuclear.ReactorSurvey;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
+import com.branciho.citiesinlife.city.Demolition;
 
 /** Server-side lifecycle: run the simulation, and make sure a joining player sees their city. */
 @EventBusSubscriber(modid = CitiesInLife.MOD_ID)
@@ -43,6 +44,9 @@ public final class ServerEvents {
         Meltdown.tick(server);
         // Outlives the meltdown it came from, and is ticked separately for exactly that reason.
         Radiation.tick(server);
+        // After the explosions, and one tick behind them by design: the event that lists an
+        // explosion's victims fires before any of them are gone.
+        Demolition.tick(server);
         CitySimulation.tick(server);
         CitizenDirector.tick(server);
         ServiceDirector.tick(server);
@@ -61,6 +65,7 @@ public final class ServerEvents {
         PlantSurvey.forgetAll();
         ReactorSurvey.forgetAll();
         Radiation.clear();
+        Demolition.clear();
         Meltdown.forgetAll();
     }
 

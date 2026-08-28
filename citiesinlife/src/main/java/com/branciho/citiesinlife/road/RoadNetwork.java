@@ -185,6 +185,50 @@ public final class RoadNetwork extends SavedData {
         return found;
     }
 
+
+    /**
+     * Wipe every tile inside a box, walking what is marked rather than what is enclosed.
+     *
+     * <p>{@link #mark} iterates the box, which is right when a player drew it — the box is small and
+     * they meant every position in it. It is very wrong for a crater: a meltdown's bounding box is a
+     * hundred and twenty blocks on a side, which is nearly two million positions to visit to erase
+     * a few dozen tiles. This visits the tiles instead, so the cost is set by how much was marked
+     * and not by how big the hole is.
+     */
+    public int clearIn(ResourceKey<Level> dimension, BlockPos min, BlockPos max) {
+        Long2ObjectOpenHashMap<Long2IntOpenHashMap> chunks = roads.get(dimension);
+        if (chunks == null) {
+            return 0;
+        }
+        int removed = 0;
+        for (int chunkX = min.getX() >> 4; chunkX <= max.getX() >> 4; chunkX++) {
+            for (int chunkZ = min.getZ() >> 4; chunkZ <= max.getZ() >> 4; chunkZ++) {
+                Long2IntOpenHashMap bucket = chunks.get(ChunkPos.asLong(chunkX, chunkZ));
+                if (bucket == null) {
+                    continue;
+                }
+                int before = bucket.size();
+                bucket.keySet().removeIf((long key) -> inside(key, min, max));
+                removed += before - bucket.size();
+            }
+        }
+        if (removed > 0) {
+            prune(dimension, chunks);
+            setDirty();
+        }
+        return removed;
+    }
+
+    /** Whether one packed position is inside a box. */
+    private static boolean inside(long key, BlockPos min, BlockPos max) {
+        int x = BlockPos.getX(key);
+        int y = BlockPos.getY(key);
+        int z = BlockPos.getZ(key);
+        return x >= min.getX() && x <= max.getX()
+                && y >= min.getY() && y <= max.getY()
+                && z >= min.getZ() && z <= max.getZ();
+    }
+
     /** The flags for a list of tiles, in the same order, for the sync payload. */
     public int[] flagsFor(ResourceKey<Level> dimension, LongArrayList tiles) {
         int[] flags = new int[tiles.size()];

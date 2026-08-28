@@ -34,6 +34,9 @@ import java.util.UUID;
 import com.branciho.citiesinlife.nuclear.Radiation;
 import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.LivingEntity;
+import com.branciho.citiesinlife.city.Demolition;
+import net.neoforged.bus.api.EventPriority;
+import net.minecraft.server.level.ServerLevel;
 
 /**
  * Territory protection.
@@ -142,6 +145,24 @@ public final class MultiplayerEvents {
                 !Diplomacy.mayInterfereWith(minecraftServer, server,
                         Diplomacy.owner(minecraftServer, server.level().dimension(), pos)));
         event.getAffectedEntities().removeIf(entity -> protectedCitizen(server, entity));
+    }
+
+    /**
+     * And what is left of the road afterwards.
+     *
+     * <p>Separate from the handler above and deliberately last, because it has to see the list that
+     * one leaves behind. Roads, pavements and Planner Wand boxes are not blocks — a road tile is a
+     * flag on a coordinate — so nothing about an explosion ever touched them: TNT took the stone the
+     * road was painted on and the road stayed, invisible, still routing cars through the crater.
+     *
+     * <p>Every explosion, not only a player's. A creeper is weather as far as the border rules go,
+     * but weather still leaves a hole, and a hole in a pavement is a hole in a pavement.
+     */
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    public static void onExplosionAftermath(ExplosionEvent.Detonate event) {
+        if (event.getLevel() instanceof ServerLevel level) {
+            Demolition.blast(level, event.getAffectedBlocks());
+        }
     }
 
     /**

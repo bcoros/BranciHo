@@ -1,15 +1,9 @@
 package com.branciho.citiesinlife.scan;
 
-import com.branciho.citiesinlife.structure.Floor;
-import com.branciho.citiesinlife.structure.MeasureMode;
 import com.branciho.citiesinlife.structure.StructureType;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Measures what the player actually built inside a selection.
@@ -52,23 +46,17 @@ public final class StructureScanner {
     /** Biggest vertical span. Taller than any building, and a bound on the per-column arrays. */
     public static final int MAX_HEIGHT = 384;
 
-    /** Headroom a cell needs above it before a person could plausibly occupy it. */
-    private static final int REQUIRED_HEADROOM = 2;
-
-    /** Storeys closer together than this are the same storey seen twice. */
-    private static final int MIN_FLOOR_SPACING = 3;
-
     /**
      * Cubic blocks of enclosed space that count as one cell of floor.
      *
      * <p>Three, because a storey is a floor plus roughly two blocks of headroom. Dividing interior
-     * volume by that converts "how much space is in here" into the same units floor detection
-     * produces, so both modes feed the same capacity formulas.
+     * volume by that is what converts "how much space is in here" into a floor area, which is the
+     * unit every capacity formula in the mod is written in.
      */
     private static final int VOLUME_PER_CELL = 3;
 
-    /** What measuring a selection produced. Floors may be empty in volume mode. */
-    public record Measurement(List<Floor> floors, int usableCells) {
+    /** What measuring a selection produced, in floor-equivalent cells. */
+    public record Measurement(int usableCells) {
     }
 
     private StructureScanner() {
@@ -92,22 +80,27 @@ public final class StructureScanner {
     }
 
     /**
-     * Measure a selection using the mode the player chose.
+     * Measure a selection.
      *
-     * <p>Runs on the server thread and is bounded by {@link #MAX_VOLUME}, which is what keeps it from
-     * being a tick spike. Everything it touches is read through {@link Level}, so it must never be
-     * moved off-thread without snapshotting first.
+     * <p>There used to be a choice here, and storey detection used to be the default: walk the
+     * selection looking for surfaces you could stand on with headroom and a roof, and count those.
+     * It was the more accurate of the two on a building that had recognisable storeys, and that
+     * proviso was the problem — domes, warehouses, hollow towers and anything with slabs at odd
+     * heights came back with no floors at all and housed nobody, which reads as the mod being
+     * broken rather than as a measurement choice. Two modes meant every player met the broken one
+     * first and had to be told there was a second.
+     *
+     * <p>So there is one, and it is the forgiving one. It measures enclosed space instead of
+     * storeys, which gives a sensible number for any shape somebody actually builds — and holds up
+     * far better afterwards, because a building with a hole blown in the side still has an inside
+     * and very often no longer has a detectable floor.
+     *
+     * <p>Runs on the server thread and is bounded by {@link #MAX_VOLUME}, which is what keeps it
+     * from being a tick spike. Everything it touches is read through {@link Level}, so it must
+     * never be moved off-thread without snapshotting first.
      */
-    public static Measurement measure(Level level, BlockPos min, BlockPos max, MeasureMode mode) {
-        if (mode == MeasureMode.BLOCK_VOLUME) {
-            return new Measurement(List.of(), enclosedCells(level, min, max));
-        }
-        List<Floor> floors = scanFloors(level, min, max);
-        int cells = 0;
-        for (Floor floor : floors) {
-            cells += floor.usableCells();
-        }
-        return new Measurement(floors, cells);
+    public static Measurement measure(Level level, BlockPos min, BlockPos max) {
+        return new Measurement(enclosedCells(level, min, max));
     }
 
     /**
@@ -157,106 +150,5 @@ public final class StructureScanner {
             }
         }
         return enclosed / VOLUME_PER_CELL;
-    }
-
-    private static List<Floor> scanFloors(Level level, BlockPos min, BlockPos max) {
-        final int height = max.getY() - min.getY() + 1;
-        final int[] usableAtY = new int[height];
-
-        final BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
-
-        for (int y = min.getY(); y <= max.getY(); y++) {
-            int usable = 0;
-            for (int x = min.getX(); x <= max.getX(); x++) {
-                for (int z = min.getZ(); z <= max.getZ(); z++) {
-                    if (isUsableCell(level, cursor, x, y, z, max.getY())) {
-                        usable++;
-                    }
-                }
-            }
-            usableAtY[y - min.getY()] = usable;
-        }
-
-        return groupIntoFloors(usableAtY, min.getY());
-    }
-
-    /**
-     * A cell counts if you could stand in it: something solid underfoot, clear space at head height,
-     * and something overhead.
-     *
-     * <p>The overhead test is what stops a player selecting an open field, calling it residential and
-     * housing a town in it. A roof is the cheapest available proxy for "this is interior space".
-     */
-    private static boolean isUsableCell(Level level, BlockPos.MutableBlockPos cursor,
-                                        int x, int y, int z, int ceilingLimit) {
-        cursor.set(x, y, z);
-        BlockState floor = level.getBlockState(cursor);
-        if (!isStandable(level, cursor, floor)) {
-            return false;
-        }
-
-        for (int offset = 1; offset <= REQUIRED_HEADROOM; offset++) {
-            cursor.set(x, y + offset, z);
-            if (!isPassable(level, cursor)) {
-                return false;
-            }
-        }
-
-        return hasCoverAbove(level, cursor, x, y + REQUIRED_HEADROOM + 1, z, ceilingLimit);
-    }
-
-    private static boolean isStandable(Level level, BlockPos pos, BlockState state) {
-        if (state.isAir()) {
-            return false;
-        }
-        // Sturdy top face covers slabs and stairs; full collision covers everything else solid.
-        return state.isFaceSturdy(level, pos, Direction.UP) || state.isCollisionShapeFullBlock(level, pos);
-    }
-
-    private static boolean isPassable(Level level, BlockPos pos) {
-        BlockState state = level.getBlockState(pos);
-        if (!state.getFluidState().isEmpty()) {
-            return false;
-        }
-        return state.isAir() || !state.blocksMotion();
-    }
-
-    private static boolean hasCoverAbove(Level level, BlockPos.MutableBlockPos cursor,
-                                         int x, int fromY, int z, int ceilingLimit) {
-        for (int y = fromY; y <= ceilingLimit; y++) {
-            cursor.set(x, y, z);
-            if (level.getBlockState(cursor).blocksMotion()) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Turn a per-Y count into storeys.
-     *
-     * <p>Walking upward and skipping ahead after each hit is what stops a staircase landing, a carpet
-     * and the floor beneath it being reported as three separate floors of a building.
-     */
-    private static List<Floor> groupIntoFloors(int[] usableAtY, int baseY) {
-        final List<Floor> floors = new ArrayList<>();
-        int y = 0;
-        while (y < usableAtY.length) {
-            if (usableAtY[y] < StructureType.MIN_USABLE_CELLS) {
-                y++;
-                continue;
-            }
-            // Take the widest level in this cluster: a floor with furniture on it reads slightly
-            // smaller than the bare floor one block down, and the bare floor is the honest number.
-            int best = y;
-            for (int probe = y; probe < Math.min(usableAtY.length, y + MIN_FLOOR_SPACING); probe++) {
-                if (usableAtY[probe] > usableAtY[best]) {
-                    best = probe;
-                }
-            }
-            floors.add(new Floor(baseY + best, usableAtY[best]));
-            y = best + MIN_FLOOR_SPACING;
-        }
-        return floors;
     }
 }

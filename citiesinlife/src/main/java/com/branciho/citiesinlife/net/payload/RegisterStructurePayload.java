@@ -10,11 +10,11 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
  * "I have drawn a box and I want it to be a {@code type}."
  *
  * <p>A request, not an instruction. The server re-derives every consequence — whether the ground is
- * owned, whether anything overlaps, how many floors are really in there — from its own state. The
+ * owned, whether anything overlaps, how much space is really in there — from its own state. The
  * only thing it takes from this packet is what the player wants.
  */
 public record RegisterStructurePayload(BlockPos pointA, BlockPos pointB, String typeId,
-                                       String measureModeId, String cityName)
+                                       String cityName)
         implements CustomPacketPayload {
 
     public static final CustomPacketPayload.Type<RegisterStructurePayload> TYPE =
@@ -27,14 +27,13 @@ public record RegisterStructurePayload(BlockPos pointA, BlockPos pointB, String 
         buf.writeBlockPos(pointA);
         buf.writeBlockPos(pointB);
         buf.writeUtf(typeId, 32);
-        buf.writeUtf(measureModeId, 32);
         buf.writeUtf(cityName, 32);
     }
 
     private static RegisterStructurePayload read(FriendlyByteBuf buf) {
         return new RegisterStructurePayload(
                 buf.readBlockPos(), buf.readBlockPos(),
-                buf.readUtf(32), buf.readUtf(32), buf.readUtf(32));
+                buf.readUtf(32), buf.readUtf(32));
     }
 
     @Override
