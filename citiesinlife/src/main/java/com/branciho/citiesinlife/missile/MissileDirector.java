@@ -17,6 +17,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.Mth;
 import net.minecraft.world.level.entity.EntityTypeTest;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
@@ -50,8 +51,18 @@ import java.util.UUID;
  */
 public final class MissileDirector {
 
-    /** How many ticks each door panel takes to move one step. Four steps to fully open. */
-    private static final int DOOR_STEP_TICKS = 8;
+    /**
+     * How long the whole roof takes to travel, however many panels it is made of.
+     *
+     * <p>A fixed duration rather than a fixed rate. The plate now crosses one panel at a time, so
+     * a rate would make a wide silo take half a minute to open and a narrow one take two seconds;
+     * dividing the duration by the distance gives both of them the same three-second door.
+     */
+    private static final int DOOR_TRAVEL_TICKS = 60;
+
+    /** Floor and ceiling on that division, so neither extreme becomes silly. */
+    private static final int MIN_STEP_TICKS = 1;
+    private static final int MAX_STEP_TICKS = 12;
 
     /** How long the doors stay open after the rocket has gone. */
     private static final int LINGER_TICKS = 40;
@@ -70,9 +81,14 @@ public final class MissileDirector {
         private final Vec3 target;
         private final UUID cityId;
 
-        /** Where the doors are, 0 shut to {@link SealingBlock#FULLY_OPEN}. */
+        /**
+         * How far the roof has slid, in quarter-panels: 0 shut, {@code travel(survey)} clear.
+         *
+         * <p>Not a per-panel step any more. The roof is one plate and this is its position, which
+         * is the whole of why it now opens like a lid instead of like a comb.
+         */
         private int doors;
-        private int untilStep = DOOR_STEP_TICKS;
+        private int untilStep = 1;
 
         /** Set once the rocket is away; from then on this record only closes the doors. */
         private boolean fired;
@@ -190,30 +206,42 @@ public final class MissileDirector {
                 pending.remove();
                 continue;
             }
+            // Counted every tick, not every step. The step gate is however long one quarter of a
+            // panel takes, which now depends on how wide the roof is - so leaving the wait on the
+            // far side of it made the doors stand open for sixteen seconds over a narrow silo and
+            // two over a wide one, for no reason the player could see.
+            if (launch.fired && launch.linger > 0) {
+                launch.linger--;
+                continue;
+            }
             if (--launch.untilStep > 0) {
                 continue;
             }
-            launch.untilStep = DOOR_STEP_TICKS;
 
             SiloSurvey survey = SiloSurvey.of(level, silo);
+            int travel = travel(survey);
+            launch.untilStep = stepTicks(travel);
             if (!launch.fired) {
-                if (launch.doors < SealingBlock.FULLY_OPEN) {
+                if (launch.doors < travel) {
                     launch.doors++;
                     paintDoors(level, survey, launch.doors);
-                    sound(level, silo.min(), SoundEvents.PISTON_EXTEND, 1.6F, 0.55F);
+                    // Once per panel crossed, not once per quarter of one: the grind is the plate
+                    // reaching the next panel, and four of them a panel is a rattle.
+                    if (launch.doors % SealingBlock.FULLY_OPEN == 1) {
+                        sound(level, silo.min(), SoundEvents.PISTON_EXTEND, 1.6F, 0.55F);
+                    }
                     continue;
                 }
                 fire(server, level, silo, survey, launch);
                 launch.fired = true;
                 continue;
             }
-            if (--launch.linger > 0) {
-                continue;
-            }
             if (launch.doors > 0) {
                 launch.doors--;
                 paintDoors(level, survey, launch.doors);
-                sound(level, silo.min(), SoundEvents.PISTON_CONTRACT, 1.6F, 0.55F);
+                if (launch.doors % SealingBlock.FULLY_OPEN == 0) {
+                    sound(level, silo.min(), SoundEvents.PISTON_CONTRACT, 1.6F, 0.55F);
+                }
                 continue;
             }
             sound(level, silo.min(), SoundEvents.IRON_DOOR_CLOSE, 2.0F, 0.5F);
@@ -381,14 +409,65 @@ public final class MissileDirector {
 
     // ------------------------------------------------------------- the blocks
 
-    /** Move every panel in the silo to the same step, so a roof opens as one thing. */
-    private static void paintDoors(ServerLevel level, SiloSurvey survey, int step) {
+    /**
+     * Slide the roof back.
+     *
+     * <p>The panels are not a row of separate shutters that each shrink where they stand. They are
+     * <b>one plate</b>, and {@code travel} is how far it has slid, measured in quarter-panels. A
+     * panel is whole until the plate's trailing edge reaches it, spends four steps being crossed,
+     * and is gone once the edge is past — so what you see is a solid roof with one straight edge
+     * sweeping across it and open sky behind.
+     *
+     * <p>Setting every panel to the same step is what it used to do, and it is why the roof came
+     * apart into a comb of bars with daylight between them: each panel was opening its own little
+     * door in the middle of the ceiling instead of all of them being the same door.
+     *
+     * <p>The plate travels towards -Z, because that is the direction the models shorten in. Which
+     * way a silo faces is not asked, and does not need to be: a lid has to go somewhere, and every
+     * lid in the mod going the same way is one fewer blockstate on thirty blocks.
+     */
+    private static void paintDoors(ServerLevel level, SiloSurvey survey, int travel) {
+        int back = back(survey);
         for (BlockPos at : survey.seals()) {
             BlockState was = level.getBlockState(at);
-            if (was.hasProperty(SealingBlock.OPEN) && was.getValue(SealingBlock.OPEN) != step) {
+            if (!was.hasProperty(SealingBlock.OPEN)) {
+                continue;
+            }
+            int step = Mth.clamp(travel - (back - at.getZ()) * SealingBlock.FULLY_OPEN,
+                    0, SealingBlock.FULLY_OPEN);
+            if (was.getValue(SealingBlock.OPEN) != step) {
                 level.setBlock(at, was.setValue(SealingBlock.OPEN, step), Block.UPDATE_CLIENTS);
             }
         }
+    }
+
+    /** The trailing edge of the roof: the panel row the plate starts from. */
+    private static int back(SiloSurvey survey) {
+        int back = Integer.MIN_VALUE;
+        for (BlockPos at : survey.seals()) {
+            back = Math.max(back, at.getZ());
+        }
+        return back;
+    }
+
+    /** How far the plate has to go to clear the shaft, in quarter-panels. */
+    private static int travel(SiloSurvey survey) {
+        if (survey.seals().isEmpty()) {
+            // An open pad. There is nothing to move and nothing to wait for.
+            return 0;
+        }
+        int back = Integer.MIN_VALUE;
+        int front = Integer.MAX_VALUE;
+        for (BlockPos at : survey.seals()) {
+            back = Math.max(back, at.getZ());
+            front = Math.min(front, at.getZ());
+        }
+        return (back - front + 1) * SealingBlock.FULLY_OPEN;
+    }
+
+    /** Spread the door's travel over a fixed few seconds, whatever distance it has to cover. */
+    private static int stepTicks(int travel) {
+        return Mth.clamp(DOOR_TRAVEL_TICKS / Math.max(1, travel), MIN_STEP_TICKS, MAX_STEP_TICKS);
     }
 
 

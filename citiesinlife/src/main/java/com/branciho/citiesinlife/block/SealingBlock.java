@@ -14,6 +14,7 @@ import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.Nullable;
 import com.branciho.citiesinlife.sound.MachineSounds;
@@ -67,16 +68,20 @@ public class SealingBlock extends Block implements SimpleWaterloggedBlock {
     /**
      * One shape per step, so an opening door stops being something you stand on.
      *
-     * <p>The panel retracts along +Z, matching the models exactly. A shape that disagreed with the
+     * <p>The panel shortens along -Z, matching the models exactly. A shape that disagreed with the
      * model is the kind of bug where a rocket launches through a door that is visibly open and
      * hits something that is not there.
+     *
+     * <p>The last step is <b>nothing at all</b>, not a sliver. A panel the plate has finished
+     * passing over is not a thinner panel, it is a panel that has gone somewhere else, and leaving
+     * a one-pixel lip behind put a faint grid over the open half of every roof.
      */
     private static final VoxelShape[] SHAPES = {
             Block.box(0.0D, 0.0D, 0.0D, 16.0D, 8.0D, 16.0D),
             Block.box(0.0D, 0.0D, 0.0D, 16.0D, 8.0D, 12.0D),
             Block.box(0.0D, 0.0D, 0.0D, 16.0D, 8.0D, 8.0D),
             Block.box(0.0D, 0.0D, 0.0D, 16.0D, 8.0D, 4.0D),
-            Block.box(0.0D, 0.0D, 0.0D, 16.0D, 8.0D, 1.0D)};
+            Shapes.empty()};
 
     public SealingBlock(Properties properties) {
         super(properties);
