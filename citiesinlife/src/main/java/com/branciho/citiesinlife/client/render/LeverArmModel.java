@@ -27,6 +27,14 @@ public final class LeverArmModel {
 
     public static final String PIVOT = "pivot";
 
+    /**
+     * The lit indicator, drawn over the recess.
+     *
+     * <p>A root child rather than a child of the pivot, because the lamp does not move when the
+     * arm swings — only which of the two is glowing changes, and that is a texture swap.
+     */
+    public static final String LAMP = "lamp";
+
     private static final int TEXTURE_WIDTH = 32;
     private static final int TEXTURE_HEIGHT = 32;
 
@@ -72,6 +80,13 @@ public final class LeverArmModel {
         pivot.addOrReplaceChild("cap_right", CubeListBuilder.create()
                         .texOffs(0, 17)
                         .addBox(5.0F, -9.8F, -1.3F, 2, 3, 3),
+                PartPose.ZERO);
+
+        // One quad's worth of box, standing just proud of the housing's lamp recess so it reads
+        // as lit glass rather than as a painted square.
+        root.addOrReplaceChild(LAMP, CubeListBuilder.create()
+                        .texOffs(16, 0)
+                        .addBox(-2.0F, -6.0F, -5.4F, 4, 4, 1),
                 PartPose.ZERO);
 
         return LayerDefinition.create(mesh, TEXTURE_WIDTH, TEXTURE_HEIGHT);

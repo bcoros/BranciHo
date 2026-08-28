@@ -32,17 +32,23 @@ import net.minecraft.world.level.block.state.BlockState;
 public class LeverRenderer implements BlockEntityRenderer<ReactorLeverBlockEntity> {
 
     private static final ResourceLocation ARM = CitiesInLife.id("textures/block/lever_arm.png");
-    private static final ResourceLocation LAMP_ON =
-            CitiesInLife.id("textures/block/lever_lamp_on.png");
+    /** Which lamp is glowing. Two textures rather than one tinted quad: no raw vertex work. */
+    private static final ResourceLocation LAMP_GREEN =
+            CitiesInLife.id("textures/block/lever_lamp_green.png");
+    private static final ResourceLocation LAMP_RED =
+            CitiesInLife.id("textures/block/lever_lamp_red.png");
 
     /** Straight up at position 0, straight down at 4: the full sweep across the face of the plate. */
     private static final float ANGLE_OFF = -52.0F;
     private static final float ANGLE_ON = 52.0F;
 
     private final ModelPart pivot;
+    private final ModelPart lamp;
 
     public LeverRenderer(BlockEntityRendererProvider.Context context) {
-        this.pivot = context.bakeLayer(LeverArmModel.LAYER).getChild(LeverArmModel.PIVOT);
+        ModelPart root = context.bakeLayer(LeverArmModel.LAYER);
+        this.pivot = root.getChild(LeverArmModel.PIVOT);
+        this.lamp = root.getChild(LeverArmModel.LAMP);
     }
 
     @Override
@@ -91,37 +97,16 @@ public class LeverRenderer implements BlockEntityRenderer<ReactorLeverBlockEntit
                           boolean on) {
         poseStack.pushPose();
         poseStack.translate(0.5D, 0.5D, 0.5D);
-        poseStack.mulPose(Axis.YP.rotationDegrees(-state.getValue(ReactorLeverBlock.FACING).toYRot()));
+        poseStack.mulPose(Axis.YP.rotationDegrees(
+                -state.getValue(ReactorLeverBlock.FACING).toYRot()));
         poseStack.scale(1.0F, -1.0F, -1.0F);
         // Green sits above red on the plate, so the lit one is a small vertical offset apart.
-        poseStack.translate(0.0D, on ? -0.115D : 0.075D, -0.283D);
+        poseStack.translate(0.0D, on ? -0.10D : 0.10D, 0.0D);
 
-        VertexConsumer consumer = buffer.getBuffer(RenderType.entityCutoutNoCull(LAMP_ON));
-        var pose = poseStack.last();
-        float half = 0.09F;
-        // A single quad. The texture carries both colours side by side; u picks which.
-        float u0 = on ? 0.0F : 0.5F;
-        float u1 = on ? 0.5F : 1.0F;
-        quad(consumer, pose, -half, -half, half, half, u0, u1);
+        VertexConsumer consumer = buffer.getBuffer(
+                RenderType.entityCutoutNoCull(on ? LAMP_GREEN : LAMP_RED));
+        lamp.render(poseStack, consumer, LightTexture.FULL_BRIGHT, OverlayTexture.NO_OVERLAY);
         poseStack.popPose();
-    }
-
-    private static void quad(VertexConsumer consumer, PoseStack.Pose pose,
-                             float x0, float y0, float x1, float y1, float u0, float u1) {
-        addVertex(consumer, pose, x0, y1, u0, 1.0F);
-        addVertex(consumer, pose, x1, y1, u1, 1.0F);
-        addVertex(consumer, pose, x1, y0, u1, 0.0F);
-        addVertex(consumer, pose, x0, y0, u0, 0.0F);
-    }
-
-    private static void addVertex(VertexConsumer consumer, PoseStack.Pose pose,
-                                  float x, float y, float u, float v) {
-        consumer.addVertex(pose, x, y, 0.0F)
-                .setColor(255, 255, 255, 255)
-                .setUv(u, v)
-                .setOverlay(OverlayTexture.NO_OVERLAY)
-                .setLight(LightTexture.FULL_BRIGHT)
-                .setNormal(pose, 0.0F, 0.0F, -1.0F);
     }
 
     private static float angleFor(int position) {

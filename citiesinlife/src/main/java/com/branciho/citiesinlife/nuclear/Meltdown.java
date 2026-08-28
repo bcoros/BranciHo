@@ -114,7 +114,9 @@ public final class Meltdown {
     private static boolean advance(ServerLevel level, Structure plant, ReactorState state) {
         ReactorSurvey survey = ReactorSurvey.of(level, plant.min(), plant.max());
         int t = state.meltdownTick++;
-        double scale = CitiesInLifeConfig.nuclearBlastScale();
+        // Narrowed here rather than at each call site: every blast power is a float, and
+        // float * double is a double that javac will not silently narrow back.
+        float scale = (float) CitiesInLifeConfig.nuclearBlastScale();
 
         if (t == 0) {
             state.output = 0;
