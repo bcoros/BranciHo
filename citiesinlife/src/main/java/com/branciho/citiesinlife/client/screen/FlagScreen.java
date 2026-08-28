@@ -23,10 +23,14 @@ import net.minecraft.world.item.DyeColor;
 public class FlagScreen extends Screen {
 
     private static final int WIDTH = 300;
-    private static final int HEIGHT = 234;
+    private static final int HEIGHT = 300;
 
     /** How big one square of the flag is drawn, in pixels. */
     private static final int CELL = 22;
+
+    /** One swatch of the palette. Same width as a flag square, so the two grids line up. */
+    private static final int SWATCH = 22;
+    private static final int SWATCH_HEIGHT = 20;
 
     private final Screen parent;
     private byte[] cells;
@@ -34,6 +38,7 @@ public class FlagScreen extends Screen {
 
     private int gridLeft;
     private int gridTop;
+    private int paletteTop;
 
     public FlagScreen(byte[] starting, Screen parent) {
         super(Component.translatable("screen.citiesinlife.flag"));
@@ -46,25 +51,20 @@ public class FlagScreen extends Screen {
         int left = (this.width - WIDTH) / 2;
         int top = (this.height - HEIGHT) / 2;
         gridLeft = left + (WIDTH - CityFlag.WIDTH * CELL) / 2;
-        gridTop = top + 34;
+        gridTop = top + 48;
+        paletteTop = gridTop + CityFlag.HEIGHT * CELL + 10;
 
-        // The palette: sixteen swatches under the flag, two rows of eight.
-        int paletteTop = gridTop + CityFlag.HEIGHT * CELL + 10;
-        for (DyeColor colour : DyeColor.values()) {
-            int index = colour.getId();
-            int x = gridLeft + (index % 8) * CELL;
-            int y = paletteTop + (index / 8) * 20;
-            addRenderableWidget(Button.builder(Component.literal(" "), button -> brush = colour)
-                    .bounds(x, y, CELL - 2, 18)
-                    .build());
-        }
+        // The palette is NOT made of buttons. It was, and every swatch came out grey: a Screen
+        // draws its background first and its widgets afterwards, so sixteen grey buttons were
+        // painted straight over the sixteen colours underneath them. Drawn and hit-tested by hand
+        // here, the same way the flag grid already is.
 
-        int presetsY = paletteTop + 46;
+        int presetsY = paletteTop + 2 * SWATCH_HEIGHT + 24;
         preset(left + 12, presetsY, "screen.citiesinlife.flag_bands",
                 () -> CityFlag.horizontal(brush, DyeColor.WHITE, brush));
-        preset(left + 100, presetsY, "screen.citiesinlife.flag_stripes",
+        preset(left + 108, presetsY, "screen.citiesinlife.flag_stripes",
                 () -> CityFlag.vertical(brush, DyeColor.WHITE, brush));
-        preset(left + 188, presetsY, "screen.citiesinlife.flag_cross",
+        preset(left + 204, presetsY, "screen.citiesinlife.flag_cross",
                 () -> CityFlag.cross(brush, DyeColor.WHITE));
 
         addRenderableWidget(Button.builder(
@@ -87,7 +87,7 @@ public class FlagScreen extends Screen {
     private void preset(int x, int y, String key, java.util.function.Supplier<byte[]> pattern) {
         addRenderableWidget(Button.builder(Component.translatable(key),
                         button -> cells = pattern.get())
-                .bounds(x, y, 84, 18)
+                .bounds(x, y, 84, 20)
                 .build());
     }
 
@@ -99,7 +99,7 @@ public class FlagScreen extends Screen {
      */
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (paint(mouseX, mouseY)) {
+        if (paint(mouseX, mouseY) || pick(mouseX, mouseY)) {
             return true;
         }
         return super.mouseClicked(mouseX, mouseY, button);
@@ -122,6 +122,17 @@ public class FlagScreen extends Screen {
             return false;
         }
         cells[y * CityFlag.WIDTH + x] = (byte) brush.getId();
+        return true;
+    }
+
+    /** Picking a colour. Only on a press, so dragging over the palette does not change the brush. */
+    private boolean pick(double mouseX, double mouseY) {
+        int x = (int) ((mouseX - gridLeft) / SWATCH);
+        int y = (int) ((mouseY - paletteTop) / SWATCH_HEIGHT);
+        if (mouseX < gridLeft || mouseY < paletteTop || x < 0 || x >= 8 || y < 0 || y >= 2) {
+            return false;
+        }
+        brush = DyeColor.byId(y * 8 + x);
         return true;
     }
 
@@ -149,21 +160,43 @@ public class FlagScreen extends Screen {
         graphics.renderOutline(gridLeft - 1, gridTop - 1,
                 CityFlag.WIDTH * CELL + 2, CityFlag.HEIGHT * CELL + 2, CityScreen.COLOUR_ACCENT);
 
-        // The palette swatches are drawn over their own buttons, which are there for the click.
-        int paletteTop = gridTop + CityFlag.HEIGHT * CELL + 10;
+        // The palette, drawn and clicked entirely here. The selected colour gets a white ring and
+        // a step up in size, because a thin accent outline on a dark swatch is the one thing that
+        // would leave this exactly as unreadable as the grey buttons were.
         for (DyeColor colour : DyeColor.values()) {
             int index = colour.getId();
-            int px = gridLeft + (index % 8) * CELL;
-            int py = paletteTop + (index / 8) * 20;
-            graphics.fill(px + 2, py + 2, px + CELL - 4, py + 16,
+            int px = gridLeft + (index % 8) * SWATCH;
+            int py = paletteTop + (index / 8) * SWATCH_HEIGHT;
+            boolean chosen = colour == brush;
+            int inset = chosen ? 0 : 2;
+            graphics.fill(px + inset, py + inset,
+                    px + SWATCH - 2 - inset, py + SWATCH_HEIGHT - 2 - inset,
                     0xFF000000 | (colour.getTextureDiffuseColor() & 0xFFFFFF));
-            if (colour == brush) {
-                graphics.renderOutline(px, py, CELL - 2, 18, CityScreen.COLOUR_ACCENT);
+            if (chosen) {
+                graphics.renderOutline(px - 1, py - 1, SWATCH, SWATCH_HEIGHT, 0xFFFFFFFF);
             }
         }
 
+        graphics.drawString(this.font,
+                Component.translatable("screen.citiesinlife.flag_chosen", dyeName(brush)),
+                left + 12, paletteTop + 2 * SWATCH_HEIGHT + 8, CityScreen.COLOUR_TEXT, false);
         graphics.drawString(this.font, Component.translatable("screen.citiesinlife.flag_hint"),
-                left + 12, top + HEIGHT - 46, CityScreen.COLOUR_DIM, false);
+                left + 12, top + 30, CityScreen.COLOUR_DIM, false);
+    }
+
+    /** "Light Blue" rather than "light_blue", without a language key per dye. */
+    private static Component dyeName(DyeColor colour) {
+        StringBuilder pretty = new StringBuilder();
+        for (String word : colour.getName().split("_")) {
+            if (word.isEmpty()) {
+                continue;
+            }
+            if (pretty.length() > 0) {
+                pretty.append(' ');
+            }
+            pretty.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1));
+        }
+        return Component.literal(pretty.toString());
     }
 
     @Override
