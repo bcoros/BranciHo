@@ -1,14 +1,19 @@
 package com.branciho.citiesinlife.road;
 
+import com.branciho.citiesinlife.city.City;
 import com.branciho.citiesinlife.city.CityData;
 import com.branciho.citiesinlife.config.CitiesInLifeConfig;
 import com.branciho.citiesinlife.entity.CarEntity;
 import com.branciho.citiesinlife.entity.CitizenEntity;
 import com.branciho.citiesinlife.registry.ModEntities;
+import com.branciho.citiesinlife.structure.Structure;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import net.minecraft.core.BlockPos;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.Level;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Whether this journey is worth driving, and the whole of getting into a car if it is.
@@ -165,6 +170,84 @@ public final class Commute {
         level.addFreshEntity(car);
         car.board(citizen);
         return true;
+    }
+
+    /** How far apart two airfields must be before flying between them is worth the trouble. */
+    private static final int FLIGHT_MIN_DISTANCE = 120;
+
+    /** How close is close enough to have arrived at the airport. */
+    private static final double AT_AIRFIELD_SQR = 9.0D;
+
+    /** Roughly a tick per twelve blocks, floored, so a short hop is still a visible flight. */
+    private static final int FLIGHT_TICKS_MIN = 60;
+    private static final int FLIGHT_BLOCKS_PER_TICK = 12;
+
+    /**
+     * Take this leg by air, if there is an airport at each end.
+     *
+     * <p>The second half of what an International Travel pact is for. A car can only get somewhere
+     * a highway reaches; this gets a commuter to a city on the other side of an ocean, which is the
+     * case the aeroplane blocks existed for and never actually served.
+     *
+     * <p>Same contract as {@link #tryDrive}: true only when it has genuinely taken the journey on,
+     * so a caller that must not fall back to walking can tell the difference.
+     */
+    public static boolean tryFly(CitizenEntity citizen, BlockPos destination) {
+        if (citizen.flying()) {
+            return true;
+        }
+        if (!(citizen.level() instanceof ServerLevel level)) {
+            return false;
+        }
+        MinecraftServer server = level.getServer();
+        CityData data = CityData.get(server);
+        City home = citizen.cityId() == null ? null : data.city(citizen.cityId());
+        if (home == null) {
+            return false;
+        }
+        Structure workplace = data.structureAt(level.dimension(), destination);
+        City there = workplace == null ? null : data.city(workplace.cityId());
+        if (there == null) {
+            return false;
+        }
+
+        // Either party's airport at either end. The outbound leg leaves from the traveller's own
+        // city and the return leg leaves from the host's, and hard-coding "yours to theirs" would
+        // have sent a citizen standing in a foreign airport walking home to catch their own plane.
+        BlockPos from = nearer(data, level.dimension(), home, there, citizen.blockPosition());
+        BlockPos to = nearer(data, level.dimension(), home, there, destination);
+        if (from == null || to == null || from.equals(to)) {
+            return false;
+        }
+        if (from.distSqr(to) < (double) FLIGHT_MIN_DISTANCE * FLIGHT_MIN_DISTANCE) {
+            return false;
+        }
+
+        if (citizen.blockPosition().distSqr(from) > AT_AIRFIELD_SQR) {
+            // Walking to their own airport, which is inside their own city and therefore a walk
+            // they are allowed to make. Only the border crossing is forbidden on foot.
+            return citizen.getNavigation().moveTo(
+                    from.getX() + 0.5D, from.getY() + 1, from.getZ() + 0.5D, 1.0D);
+        }
+
+        int ticks = Math.max(FLIGHT_TICKS_MIN,
+                (int) (Math.sqrt(from.distSqr(to)) / FLIGHT_BLOCKS_PER_TICK));
+        citizen.beginFlight(to, ticks);
+        return true;
+    }
+
+    /** Whichever of the two cities' airports is closest to a point. */
+    private static @Nullable BlockPos nearer(CityData data, ResourceKey<Level> dimension,
+                                             City one, City two, BlockPos near) {
+        BlockPos a = data.nearestAirfieldOf(dimension, one.owner(), near);
+        BlockPos b = data.nearestAirfieldOf(dimension, two.owner(), near);
+        if (a == null) {
+            return b;
+        }
+        if (b == null) {
+            return a;
+        }
+        return a.distSqr(near) <= b.distSqr(near) ? a : b;
     }
 
     /**

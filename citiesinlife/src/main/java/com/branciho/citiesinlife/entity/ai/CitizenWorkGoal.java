@@ -77,10 +77,22 @@ public class CitizenWorkGoal extends Goal {
                 repathIn = REPATH_INTERVAL;
                 // A long commute is exactly what vanilla pathfinding cannot deliver, so try a car
                 // first. It only takes the journey on when it really can.
-                if (!Commute.tryDrive(citizen, spot)) {
-                    citizen.getNavigation().moveTo(
-                            spot.getX() + 0.5D, spot.getY(), spot.getZ() + 0.5D, 1.0D);
+                if (Commute.tryDrive(citizen, spot)) {
+                    return;
                 }
+                if (Commute.tryFly(citizen, spot)) {
+                    return;
+                }
+                // Nobody crosses a border on foot. A job in another player's city is a job you get
+                // to by car on a highway or by aeroplane, and a citizen who can do neither today
+                // stays where they are rather than setting off across the map - which at that
+                // range is not a commute, it is a citizen walking into the sea.
+                if (citizen.workAbroad()) {
+                    citizen.getNavigation().stop();
+                    return;
+                }
+                citizen.getNavigation().moveTo(
+                        spot.getX() + 0.5D, spot.getY(), spot.getZ() + 0.5D, 1.0D);
             }
             return;
         }

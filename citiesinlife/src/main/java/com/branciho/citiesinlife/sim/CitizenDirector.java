@@ -2,6 +2,8 @@ package com.branciho.citiesinlife.sim;
 
 import com.branciho.citiesinlife.city.City;
 import com.branciho.citiesinlife.city.CityData;
+import com.branciho.citiesinlife.city.Diplomacy;
+import com.branciho.citiesinlife.city.Pact;
 import com.branciho.citiesinlife.config.CitiesInLifeConfig;
 import com.branciho.citiesinlife.entity.CitizenEntity;
 import com.branciho.citiesinlife.registry.ModEntities;
@@ -255,12 +257,47 @@ public final class CitizenDirector {
                 registry.registers(level.dimension()), StructureType.COMMERCIAL);
 
         for (CitizenEntity citizen : jobless) {
-            if (!assign(level, citizen, tills, true) && !assign(level, citizen, desks, false)) {
-                // Nothing going. They will be asked again in five seconds; in the meantime they
+            if (assign(level, citizen, tills, true) || assign(level, citizen, desks, false)) {
+                citizen.setWorkAbroad(false);
+                continue;
+            }
+            // Home has nothing going. Somewhere with an International Travel pact might.
+            if (!assignAbroad(server, level, data, city, registry, citizen)) {
+                // Nothing anywhere. They will be asked again in five seconds; in the meantime they
                 // have a perfectly good street to walk down.
                 break;
             }
         }
+    }
+
+    /**
+     * A job in a city that has agreed to take this one's workers.
+     *
+     * <p>Tried only after the home city has been exhausted, which is the right way round for more
+     * than tidiness: a citizen who took a foreign job while a desk stood empty next door would be
+     * making an international commute out of a walk down the street, and the commute is the
+     * expensive part - a car, or a flight, every shift.
+     */
+    private static boolean assignAbroad(MinecraftServer server, ServerLevel level, CityData data,
+                                        City home, WorkplaceRegistry registry,
+                                        CitizenEntity citizen) {
+        for (City other : data.cities()) {
+            if (other.id().equals(home.id()) || !other.dimension().equals(home.dimension())) {
+                continue;
+            }
+            if (!Diplomacy.pactActive(home, other, Pact.TRAVEL)) {
+                continue;
+            }
+            List<BlockPos> tills = vacancies(level, data, other,
+                    registry.registers(level.dimension()), StructureType.COMMERCIAL);
+            List<BlockPos> desks = vacancies(level, data, other,
+                    registry.offices(level.dimension()), StructureType.BUSINESS);
+            if (assign(level, citizen, tills, true) || assign(level, citizen, desks, false)) {
+                citizen.setWorkAbroad(true);
+                return true;
+            }
+        }
+        return false;
     }
 
     private static List<BlockPos> vacancies(ServerLevel level, CityData data, City city,

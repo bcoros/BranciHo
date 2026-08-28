@@ -130,6 +130,16 @@ public final class City {
     private int waterTainted;
 
     /**
+     * How much of this step's power and water arrived from somebody else's city.
+     *
+     * <p>Not persisted, and not part of the totals it is reported alongside: it is recomputed from
+     * scratch every step by {@link com.branciho.citiesinlife.sim.UtilityTrade}, and a figure saved
+     * to disk would come back describing a deal that may no longer exist.
+     */
+    private int powerImported;
+    private int waterImported;
+
+    /**
      * How much rubbish is piled up, and how much ground the city has given over to parks.
      *
      * <p>Refuse is the one utility that works backwards: everything else is a supply that has to
@@ -322,6 +332,25 @@ public final class City {
 
     public int waterTainted() {
         return waterTainted;
+    }
+
+    public int powerImported() {
+        return powerImported;
+    }
+
+    public int waterImported() {
+        return waterImported;
+    }
+
+    public void addImports(int power, int water) {
+        powerImported += Math.max(0, power);
+        waterImported += Math.max(0, water);
+    }
+
+    /** Cleared at the top of every step, before the trade pass runs again. */
+    public void clearImports() {
+        powerImported = 0;
+        waterImported = 0;
     }
 
     public void setWaterTainted(int percent) {

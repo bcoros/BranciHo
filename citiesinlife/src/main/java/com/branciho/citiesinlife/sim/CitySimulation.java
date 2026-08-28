@@ -163,11 +163,19 @@ public final class CitySimulation {
         // this did, under a comment claiming the opposite - meant a plant that had just come up
         // read as producing nothing for one whole ten-second step.
         NuclearSimulation.tick(server);
+        // Two passes with the trade between them, and the split is not cosmetic. A sale needs both
+        // cities' own figures to already exist, and growth needs the imports to already have landed
+        // - so what a city makes is worked out for everybody, then the deals are settled, and only
+        // then does anybody grow on the strength of what they ended up with.
         for (City city : data.cities()) {
+            city.clearImports();
             recalculate(data, city);
             updatePower(server, grid, city);
             updateWater(server, water, city);
             updateSewage(server, water, city);
+        }
+        UtilityTrade.run(server, data);
+        for (City city : data.cities()) {
             makeRubbish(city);
             grow(city);
             collectTaxes(city);

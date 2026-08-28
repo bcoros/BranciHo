@@ -24,6 +24,8 @@ public record CitySyncPayload(
         int waterSupplied,
         int waterNeeded,
         int waterTainted,
+        int powerImported,
+        int waterImported,
         int sewageHandled,
         int sewageProduced,
         long nextClaimCost,
@@ -37,7 +39,7 @@ public record CitySyncPayload(
 
     /** What a player with no city yet receives, so the screens have something well-formed to draw. */
     public static CitySyncPayload none() {
-        return new CitySyncPayload(false, "", 0L, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0L, 0, 0,
+        return new CitySyncPayload(false, "", 0L, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0L, 0, 0,
                 false, new long[0]);
     }
 
@@ -60,6 +62,8 @@ public record CitySyncPayload(
         buf.writeVarInt(waterSupplied);
         buf.writeVarInt(waterNeeded);
         buf.writeVarInt(waterTainted);
+        buf.writeVarInt(powerImported);
+        buf.writeVarInt(waterImported);
         buf.writeVarInt(sewageHandled);
         buf.writeVarInt(sewageProduced);
         buf.writeLong(nextClaimCost);
@@ -87,6 +91,8 @@ public record CitySyncPayload(
         int waterSupplied = buf.readVarInt();
         int waterNeeded = buf.readVarInt();
         int waterTainted = buf.readVarInt();
+        int powerImported = buf.readVarInt();
+        int waterImported = buf.readVarInt();
         int sewageHandled = buf.readVarInt();
         int sewageProduced = buf.readVarInt();
         long claimCost = buf.readLong();
@@ -104,8 +110,8 @@ public record CitySyncPayload(
         }
         return new CitySyncPayload(hasCity, name, treasury, housing, population, jobs, employed,
                 powerProduced, powerNeeded, waterSupplied, waterNeeded, waterTainted,
-                sewageHandled, sewageProduced, claimCost, refuse, refuseTolerance, creativeFunded,
-                chunks);
+                powerImported, waterImported, sewageHandled, sewageProduced, claimCost, refuse,
+                refuseTolerance, creativeFunded, chunks);
     }
 
     @Override

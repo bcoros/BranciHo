@@ -2,6 +2,8 @@ package com.branciho.citiesinlife.road;
 
 import com.branciho.citiesinlife.city.City;
 import com.branciho.citiesinlife.city.CityData;
+import com.branciho.citiesinlife.city.Diplomacy;
+import com.branciho.citiesinlife.city.Pact;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import net.minecraft.core.BlockPos;
@@ -63,6 +65,10 @@ public final class RoadRouter {
             return single;
         }
 
+        // Resolved once rather than per chunk. The blocked test below asks about it on every
+        // chunk boundary the search crosses, which on a long route is a great many times.
+        City home = cityId == null ? null : data.city(cityId);
+
         ArrayDeque<Long> frontier = new ArrayDeque<>();
         LongOpenHashSet seen = new LongOpenHashSet();
         Map<Long, Long> cameFrom = new HashMap<>();
@@ -111,7 +117,11 @@ public final class RoadRouter {
                 if (chunkKey != cachedChunk) {
                     cachedChunk = chunkKey;
                     City owner = data.cityAtChunk(dimension, chunkKey);
-                    cachedBlocked = owner != null && (cityId == null || !owner.id().equals(cityId));
+                    // A city you have an International Travel pact with is not foreign ground
+                    // for this purpose. Without it a commuter could reach the border on a highway
+                    // and then have no legal way to cover the last few streets to the office.
+                    cachedBlocked = owner != null && (cityId == null || !owner.id().equals(cityId))
+                            && !Diplomacy.pactActive(home, owner, Pact.TRAVEL);
                 }
                 if (cachedBlocked && !RoadTile.is(neighbourFlags, RoadTile.HIGHWAY)) {
                     continue;

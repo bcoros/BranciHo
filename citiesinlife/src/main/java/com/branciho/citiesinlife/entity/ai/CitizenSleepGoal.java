@@ -84,10 +84,21 @@ public class CitizenSleepGoal extends Goal {
             }
             if (repathIn-- <= 0) {
                 repathIn = REPATH_INTERVAL;
-                if (!Commute.tryDrive(citizen, home)) {
-                    citizen.getNavigation().moveTo(
-                            home.getX() + 0.5D, home.getY(), home.getZ() + 0.5D, 1.0D);
+                if (Commute.tryDrive(citizen, home)) {
+                    return;
                 }
+                // The way back is the same journey as the way out, and has to be: a citizen who
+                // flew to work and then walked home would be walking the leg the flight existed
+                // to avoid, in the dark.
+                if (citizen.workAbroad() && Commute.tryFly(citizen, home)) {
+                    return;
+                }
+                if (citizen.workAbroad()) {
+                    citizen.getNavigation().stop();
+                    return;
+                }
+                citizen.getNavigation().moveTo(
+                        home.getX() + 0.5D, home.getY(), home.getZ() + 0.5D, 1.0D);
             }
             return;
         }

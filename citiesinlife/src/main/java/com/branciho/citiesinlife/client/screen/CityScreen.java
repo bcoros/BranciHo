@@ -111,7 +111,14 @@ public class CityScreen extends Screen {
         y = row(graphics, y, "screen.citiesinlife.power",
                 Component.literal(format(city.powerProduced()) + " / " + format(city.powerNeeded())),
                 powered ? COLOUR_GOOD : COLOUR_BAD);
-        if (!powered) {
+        // Imported power counts towards the total above, so without this line a city can be fully
+        // powered with no generator anywhere in it and no explanation on the screen.
+        if (city.powerImported() > 0) {
+            graphics.drawString(this.font,
+                    Component.translatable("screen.citiesinlife.imported",
+                            format(city.powerImported())),
+                    left + 12, y, COLOUR_ACCENT, false);
+        } else if (!powered) {
             graphics.drawString(this.font,
                     Component.translatable("screen.citiesinlife.power_short"),
                     left + 12, y, COLOUR_BAD, false);
@@ -129,6 +136,11 @@ public class CityScreen extends Screen {
             graphics.drawString(this.font,
                     Component.translatable("screen.citiesinlife.water_tainted", city.waterTainted()),
                     left + 12, y, COLOUR_BAD, false);
+        } else if (city.waterImported() > 0) {
+            graphics.drawString(this.font,
+                    Component.translatable("screen.citiesinlife.imported",
+                            format(city.waterImported())),
+                    left + 12, y, COLOUR_ACCENT, false);
         } else if (!watered) {
             graphics.drawString(this.font,
                     Component.translatable("screen.citiesinlife.water_short"),

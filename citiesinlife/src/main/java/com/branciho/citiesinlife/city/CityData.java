@@ -500,6 +500,35 @@ public final class CityData extends SavedData {
         return true;
     }
 
+    /**
+     * The airfield nearest a point that belongs to a given city's owner.
+     *
+     * <p>Keyed off who placed it rather than off which city's ground it stands on, because that is
+     * the only thing the airfield register actually records — and an airport built just outside the
+     * city limits is still that player's airport.
+     */
+    public @Nullable BlockPos nearestAirfieldOf(ResourceKey<Level> dimension, UUID playerId,
+                                                BlockPos near) {
+        Map<Long, UUID> perDimension = airfields.get(dimension);
+        if (perDimension == null) {
+            return null;
+        }
+        BlockPos best = null;
+        double bestDistance = Double.MAX_VALUE;
+        for (Map.Entry<Long, UUID> entry : perDimension.entrySet()) {
+            if (!entry.getValue().equals(playerId)) {
+                continue;
+            }
+            BlockPos at = BlockPos.of(entry.getKey());
+            double distance = at.distSqr(near);
+            if (distance < bestDistance) {
+                bestDistance = distance;
+                best = at;
+            }
+        }
+        return best;
+    }
+
     public @Nullable UUID airfieldOwner(ResourceKey<Level> dimension, BlockPos pos) {
         Map<Long, UUID> perDimension = airfields.get(dimension);
         return perDimension == null ? null : perDimension.get(pos.asLong());

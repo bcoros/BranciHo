@@ -240,6 +240,8 @@
   "message.citiesinlife.tank_level": "Tank: %s / %s",
   "screen.citiesinlife.water": "Water",
   "screen.citiesinlife.water_short": "Not enough water - the city has stopped growing",
+  "screen.citiesinlife.imported": "%s of that is bought from a neighbour",
+  "message.citiesinlife.cannot_pay_utilities": "Your treasury cannot cover what %s charges - the supply has stopped until you can pay.",
   "screen.citiesinlife.water_tainted": "SEWAGE IN THE MAINS - %s%% of the tanks. People are dying.",
   "screen.citiesinlife.sewage": "Sewage",
   "screen.citiesinlife.sewage_short": "Sewage going untreated - it is piling up as rubbish",

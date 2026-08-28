@@ -127,6 +127,27 @@ public class CitizenEntity extends PathfinderMob implements CityMember {
     private @Nullable BlockPos home;
     private @Nullable BlockPos workstation;
 
+    /**
+     * Whether the job is in somebody else's city.
+     *
+     * <p>Carried on the citizen rather than looked up from the workplace each time, because the
+     * thing it governs is a refusal - a foreign commuter must never fall back to walking - and a
+     * refusal that depends on a lookup succeeding is a refusal that stops working the moment the
+     * lookup fails. Stored, so a reload does not turn an international commuter into somebody
+     * setting off across the map on foot.
+     */
+    private boolean workAbroad;
+
+    /**
+     * A flight in progress: where it is going, and how much of it is left.
+     *
+     * <p>The citizen keeps its entity and its AI throughout and is simply carried. Discarding and
+     * respawning it at the far end would be simpler and would lose the job, the home, the shift and
+     * the name every time somebody flew to work.
+     */
+    private @Nullable BlockPos flightTo;
+    private int flightTicks;
+
     /** Game time this one comes to their senses, if they have lost them. */
     private long criminalUntil;
 
@@ -264,6 +285,45 @@ public class CitizenEntity extends PathfinderMob implements CityMember {
         return nearest;
     }
 
+    /** How high the arc gets over the halfway point. Above the trees, under the clouds. */
+    private static final double FLIGHT_ALTITUDE = 28.0D;
+
+    /**
+     * One tick of a flight.
+     *
+     * <p>Nothing here is pathfinding. The citizen is off the ground with its navigation stopped and
+     * is simply placed, which is the only way to cross the several hundred blocks an international
+     * commute can be - the vanilla pathfinder gives up long before that, and it is the reason a
+     * foreign job is refused outright unless there is a car or a flight to take it.
+     */
+    private void tickFlight() {
+        BlockPos to = flightTo;
+        if (to == null) {
+            return;
+        }
+        if (--flightTicks <= 0) {
+            flightTo = null;
+            setNoGravity(false);
+            moveTo(to.getX() + 0.5D, to.getY() + 1.0D, to.getZ() + 0.5D, getYRot(), 0.0F);
+            setDeltaMovement(Vec3.ZERO);
+            return;
+        }
+        setNoGravity(true);
+        setDeltaMovement(Vec3.ZERO);
+        getNavigation().stop();
+
+        double remaining = flightTicks;
+        double dx = (to.getX() + 0.5D - getX()) / remaining;
+        double dz = (to.getZ() + 0.5D - getZ()) / remaining;
+        // Climb while there is a long way to go, level off, then come down. Expressed against the
+        // ticks left rather than against the distance covered, so a flight that starts from the
+        // wrong place still lands.
+        double targetY = to.getY() + 1.0D + FLIGHT_ALTITUDE * Math.min(1.0D, flightTicks / 40.0D);
+        double dy = (targetY - getY()) / Math.max(1.0D, remaining * 0.5D);
+        setPos(getX() + dx, getY() + dy, getZ() + dz);
+        setYRot((float) (Math.atan2(dz, dx) * (180.0D / Math.PI)) - 90.0F);
+    }
+
     // ----------------------------------------------------------------- living
 
     @Override
@@ -313,6 +373,13 @@ public class CitizenEntity extends PathfinderMob implements CityMember {
                 getNavigation().stop();
                 setDeltaMovement(Vec3.ZERO);
             }
+        }
+
+        // In the air. Moved by hand along the straight line to the far airfield, climbing for the
+        // first half and descending for the second, because a citizen who simply vanished at one
+        // airport and appeared at another would make the two airports pointless scenery.
+        if (flightTo != null) {
+            tickFlight();
         }
 
         // A razed city leaves its people behind. Nothing counts them against a cap any longer and
@@ -412,6 +479,25 @@ public class CitizenEntity extends PathfinderMob implements CityMember {
         return workstation;
     }
 
+    public boolean workAbroad() {
+        return workAbroad;
+    }
+
+    public void setWorkAbroad(boolean abroad) {
+        this.workAbroad = abroad;
+    }
+
+    public boolean flying() {
+        return flightTo != null;
+    }
+
+    /** Begin a flight. The citizen is carried from where it stands to the far airfield. */
+    public void beginFlight(BlockPos destination, int ticks) {
+        this.flightTo = destination;
+        this.flightTicks = Math.max(1, ticks);
+        getNavigation().stop();
+    }
+
     public void setWorkstation(@Nullable BlockPos workstation) {
         this.workstation = workstation;
     }
@@ -461,6 +547,11 @@ public class CitizenEntity extends PathfinderMob implements CityMember {
             tag.putLong("workstation", workstation.asLong());
         }
         tag.putBoolean("nightShift", nightShift);
+        tag.putBoolean("workAbroad", workAbroad);
+        if (flightTo != null) {
+            tag.putLong("flightTo", flightTo.asLong());
+            tag.putInt("flightTicks", flightTicks);
+        }
         tag.putBoolean("criminal", criminal());
         tag.putLong("criminalUntil", criminalUntil);
         tag.putInt("skin", skin());
@@ -476,6 +567,9 @@ public class CitizenEntity extends PathfinderMob implements CityMember {
         home = tag.contains("home") ? BlockPos.of(tag.getLong("home")) : null;
         workstation = tag.contains("workstation") ? BlockPos.of(tag.getLong("workstation")) : null;
         nightShift = tag.getBoolean("nightShift");
+        workAbroad = tag.getBoolean("workAbroad");
+        flightTo = tag.contains("flightTo") ? BlockPos.of(tag.getLong("flightTo")) : null;
+        flightTicks = tag.getInt("flightTicks");
         setCriminal(tag.getBoolean("criminal"));
         if (tag.contains("criminalUntil")) {
             criminalUntil = tag.getLong("criminalUntil");
