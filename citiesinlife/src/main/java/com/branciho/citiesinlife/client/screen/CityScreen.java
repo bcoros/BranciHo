@@ -44,6 +44,12 @@ public class CityScreen extends Screen {
         // is the other half of the same subject: this is your land, and that is everybody else's.
         int buttonWidth = (PANEL_WIDTH - 24 - 12) / 4;
         addRenderableWidget(Button.builder(
+                        Component.translatable("screen.citiesinlife.settings"),
+                        button -> this.minecraft.setScreen(new SettingsScreen(new CityScreen())))
+                .bounds(left + PANEL_WIDTH - 84, top + 8, 72, 16)
+                .build());
+
+        addRenderableWidget(Button.builder(
                         Component.translatable("screen.citiesinlife.land"),
                         button -> this.minecraft.setScreen(new LandMapScreen()))
                 .bounds(left + 12, top + PANEL_HEIGHT - 30, buttonWidth, 20)

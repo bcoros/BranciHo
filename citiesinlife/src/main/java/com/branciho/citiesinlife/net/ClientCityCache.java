@@ -4,6 +4,8 @@ import net.minecraft.core.BlockPos;
 import com.branciho.citiesinlife.net.payload.CitySyncPayload;
 import com.branciho.citiesinlife.net.payload.ReactorSyncPayload;
 import com.branciho.citiesinlife.net.payload.CallToArmsPayload;
+import com.branciho.citiesinlife.net.payload.ModSettingsPayload;
+import com.branciho.citiesinlife.net.payload.RadiationPayload;
 import com.branciho.citiesinlife.net.payload.ConfirmDeleteCityPayload;
 import com.branciho.citiesinlife.net.payload.ForeignLandPayload;
 import com.branciho.citiesinlife.net.payload.NeighbourCitiesPayload;
@@ -45,6 +47,8 @@ public final class ClientCityCache {
     private static Long2ByteOpenHashMap foreignLand = new Long2ByteOpenHashMap();
     private static @Nullable ConfirmDeleteCityPayload pendingDeleteConfirm;
     private static @Nullable CallToArmsPayload pendingCallToArms;
+    private static @Nullable ModSettingsPayload settings;
+    private static int radiation;
 
     private ClientCityCache() {
     }
@@ -158,6 +162,24 @@ public final class ClientCityCache {
         pendingDeleteConfirm = payload;
     }
 
+    public static void accept(ModSettingsPayload payload) {
+        settings = payload;
+    }
+
+    /** How much fallout the player is standing in. Held here so the tick and the HUD agree. */
+    public static void accept(RadiationPayload payload) {
+        radiation = payload.strength();
+    }
+
+    public static int radiation() {
+        return radiation;
+    }
+
+    /** The mod's settings as the server last described them, or null before they have arrived. */
+    public static @Nullable ModSettingsPayload settings() {
+        return settings;
+    }
+
     /** An ally's war, arriving as a question. Same hand-off as the delete confirmation. */
     public static void accept(CallToArmsPayload payload) {
         pendingCallToArms = payload;
@@ -227,5 +249,8 @@ public final class ClientCityCache {
         neighbours = List.of();
         foreignLand = new Long2ByteOpenHashMap();
         pendingDeleteConfirm = null;
+        pendingCallToArms = null;
+        settings = null;
+        radiation = 0;
     }
 }

@@ -46,6 +46,14 @@ public final class PlannerHud {
             return;
         }
 
+        // Fallout, washed over everything before anything else is drawn. Held well below opaque
+        // even at a full dose: this is the one effect that could make the game unplayable rather
+        // than unpleasant, and being unable to see is what the blindness is already for.
+        int fallout = ClientRadiation.tint();
+        if (fallout != 0) {
+            graphics.fill(0, 0, graphics.guiWidth(), graphics.guiHeight(), fallout);
+        }
+
         if (StructureMode.active()) {
             drawStructureModeBanner(graphics, minecraft);
         }

@@ -30,10 +30,22 @@ import net.minecraft.resources.ResourceLocation;
  */
 public class CityFlagRenderer implements BlockEntityRenderer<CityFlagBlockEntity> {
 
-    private static final float POLE_TOP = 15.0F;
-    private static final float CLOTH_WIDTH = 12.0F;
-    private static final float CLOTH_HEIGHT = 7.5F;
-    private static final float POLE_EDGE = 6.0F;
+    /**
+     * All in block-model units, read off the pole's own model so the two cannot drift apart.
+     *
+     * <p>The first version had the cloth start at x=6 while the pole occupies 7 to 9, so the flag
+     * hung <em>through</em> its own pole, and at twelve by seven and a half it was smaller than the
+     * block it flew from. It now starts clear of the far face and is twenty-four wide: a block and
+     * a half of cloth on a pole two blocks tall, which is the size a flag has to be to read as a
+     * landmark rather than as a sign.
+     */
+    private static final float POLE_FACE = 9.0F;
+    private static final float CLOTH_GAP = 0.2F;
+    private static final float CLOTH_WIDTH = 24.0F;
+    private static final float CLOTH_HEIGHT = 14.0F;
+
+    /** Where the top of the cloth sits on the pole, in the model's own upward-positive space. */
+    private static final float CLOTH_TOP = 29.0F;
 
     public CityFlagRenderer(BlockEntityRendererProvider.Context context) {
     }
@@ -53,10 +65,13 @@ public class CityFlagRenderer implements BlockEntityRenderer<CityFlagBlockEntity
         poseStack.translate(-8.0D, -8.0D, -8.0D);
 
         PoseStack.Pose pose = poseStack.last();
-        float x0 = POLE_EDGE;
-        float x1 = POLE_EDGE + CLOTH_WIDTH;
-        float y0 = 16.0F - POLE_TOP;
-        float y1 = y0 + CLOTH_HEIGHT;
+        float x0 = POLE_FACE + CLOTH_GAP;
+        float x1 = x0 + CLOTH_WIDTH;
+        // The pose stack's y runs downward from the top of the block after the flip above, so a
+        // height in the model's own space becomes 16 minus itself. Getting this the wrong way round
+        // is how a flag ends up under the ground rather than on the pole.
+        float y0 = 16.0F - CLOTH_TOP;
+        float y1 = 16.0F - (CLOTH_TOP - CLOTH_HEIGHT);
         float z = 8.0F;
 
         vertex(consumer, pose, x0, y1, z, 0.0F, 1.0F, light, overlay);

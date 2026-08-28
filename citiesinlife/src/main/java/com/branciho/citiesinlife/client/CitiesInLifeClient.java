@@ -95,5 +95,6 @@ public final class CitiesInLifeClient {
         // Above the hotbar so the panel and the structure-mode banner sit over the world but under
         // any open screen.
         event.registerAbove(VanillaGuiLayers.HOTBAR, CitiesInLife.id("planner"), PlannerHud::render);
+
     }
 }

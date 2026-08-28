@@ -1,11 +1,14 @@
 package com.branciho.citiesinlife.net;
 
+import com.branciho.citiesinlife.config.CitiesInLifeConfig;
 import com.branciho.citiesinlife.city.City;
 import com.branciho.citiesinlife.city.CityData;
 import com.branciho.citiesinlife.city.Diplomacy;
 import com.branciho.citiesinlife.city.Pact;
 import com.branciho.citiesinlife.city.Relation;
 import com.branciho.citiesinlife.net.payload.CallToArmsPayload;
+import com.branciho.citiesinlife.net.payload.ModSettingsPayload;
+import com.branciho.citiesinlife.net.payload.SetSettingsPayload;
 import com.branciho.citiesinlife.net.payload.SetFlagPayload;
 import com.branciho.citiesinlife.net.payload.ClaimChunkPayload;
 import com.branciho.citiesinlife.net.payload.CitySyncPayload;
@@ -76,6 +79,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.players.GameProfileCache;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ChunkPos;
@@ -1552,6 +1556,75 @@ public final class ServerActions {
         }
     }
 
+    // ----------------------------------------------------------------- settings
+
+    /**
+     * Whether this player is the one person allowed to change the mod's settings.
+     *
+     * <p>The owner of the world and nobody else. In single player and in a world opened to LAN -
+     * which is what Essential's hosting is - that is {@code isSingleplayerOwner}; on a dedicated
+     * server there is no such person, so it falls to permission level four, which is the level the
+     * server console and the owner in ops.json have.
+     *
+     * <p>Decided here rather than on the client, because a client that decided for itself whether
+     * it was allowed to change the settings would be a client that could simply say yes.
+     */
+    private static boolean ownsTheWorld(MinecraftServer server, ServerPlayer player) {
+        return server.isSingleplayerOwner(player.getGameProfile()) || player.hasPermissions(4);
+    }
+
+    /** Send a player the current settings, and whether they may touch them. */
+    public static void syncSettings(ServerPlayer player) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        CitiesInLifeNetwork.sendTo(player, new ModSettingsPayload(
+                CitiesInLifeConfig.citizensPerCity(),
+                CitiesInLifeConfig.carsEnabled(),
+                CitiesInLifeConfig.carDistance(),
+                (int) Math.round(CitiesInLifeConfig.nuclearBlastScale() * 100.0D),
+                CitiesInLifeConfig.steamPlumePercent(),
+                CitiesInLifeConfig.opsIgnoreBorders(),
+                ownsTheWorld(server, player)));
+    }
+
+    /**
+     * Apply settings sent by the world's owner.
+     *
+     * <p>The whole reason this exists: the config is a SERVER config, and NeoForge will not open a
+     * SERVER config's screen on a client that is connected to a server - which a player in a world
+     * hosted through Essential is, even though it is their own world. The settings were reachable
+     * in single player and nowhere else. This is the same settings, over a packet, from inside the
+     * game.
+     */
+    public static void applySettings(ServerPlayer player, SetSettingsPayload payload) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        if (!ownsTheWorld(server, player)) {
+            reject(player, "not_world_owner");
+            return;
+        }
+        CitiesInLifeConfig.CITIZENS_PER_CITY.set(Mth.clamp(payload.citizensPerCity(), 0,
+                CitiesInLifeConfig.DEFAULT_CITIZENS));
+        CitiesInLifeConfig.CARS_ENABLED.set(payload.carsEnabled());
+        CitiesInLifeConfig.CAR_DISTANCE.set(Mth.clamp(payload.carDistance(), 32, 512));
+        CitiesInLifeConfig.NUCLEAR_BLAST_SCALE.set(
+                Mth.clamp(payload.nuclearBlastPercent(), 25, 200) / 100.0D);
+        CitiesInLifeConfig.STEAM_PLUME.set(Mth.clamp(payload.steamPlumePercent(), 0, 100));
+        CitiesInLifeConfig.OPS_IGNORE_BORDERS.set(payload.opsIgnoreBorders());
+        CitiesInLifeConfig.SPEC.save();
+
+        player.sendSystemMessage(Component.translatable("message.citiesinlife.settings_saved"));
+        // Everybody's screen is showing the old numbers, and the citizen cap in particular takes
+        // effect on the next director tick whether or not they know it changed.
+        for (ServerPlayer everyone : server.getPlayerList().getPlayers()) {
+            syncSettings(everyone);
+        }
+    }
+
     public static void diplomacy(ServerPlayer player, DiplomacyPayload payload) {
         MinecraftServer server = player.getServer();
         if (server == null) {
@@ -1979,6 +2052,7 @@ public final class ServerActions {
                         city.flag(),
                         city.claimedChunks().toLongArray()));
 
+        syncSettings(player);
         CitiesInLifeNetwork.sendTo(player, new StructureSyncPayload(nearbyStructures(data, player)));
         CitiesInLifeNetwork.sendTo(player, new PowerLinesPayload(nearbyLines(server, player)));
         CitiesInLifeNetwork.sendTo(player, new WaterLinesPayload(nearbyWaterLines(server, player)));

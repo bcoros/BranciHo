@@ -1,11 +1,14 @@
 package com.branciho.citiesinlife.nuclear;
 
+import com.branciho.citiesinlife.net.CitiesInLifeNetwork;
+import com.branciho.citiesinlife.net.payload.RadiationPayload;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Mth;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
@@ -44,8 +47,8 @@ public final class Radiation {
     /** How far from the crater ordinary mobs are checked. */
     private static final double MOB_RADIUS = 96.0D;
 
-    /** Five minutes. Long enough to matter, short enough that the land comes back. */
-    private static final int DURATION = 20 * 60 * 5;
+    /** Ten minutes. Long enough that leaving is a decision, short enough that the land comes back. */
+    private static final int DURATION = 20 * 60 * 10;
 
     /** Checked once a second. The effects last longer than that, so they never flicker. */
     private static final int INTERVAL = 20;
@@ -98,6 +101,7 @@ public final class Radiation {
     private static void expose(ServerLevel level, Source source, double fade) {
         for (ServerPlayer player : level.players()) {
             dose(player, source, fade, RADIUS);
+            tell(player, source, fade);
         }
         AABB near = AABB.ofSize(source.at(), MOB_RADIUS * 2, MOB_RADIUS * 2, MOB_RADIUS * 2);
         for (LivingEntity entity : level.getEntitiesOfClass(LivingEntity.class, near,
@@ -135,6 +139,25 @@ public final class Radiation {
         if (strength > 0.75D) {
             add(entity, MobEffects.WITHER, 1);
         }
+    }
+
+    /**
+     * Tell one player how much of it they are standing in.
+     *
+     * <p>Sent rather than inferred, because the client has no idea any of this exists: the effects
+     * a player picks up here are ordinary vanilla nausea and poison, and "why is my screen
+     * swimming" is not a question the game should leave them to answer. With a number they get a
+     * green cast over everything, green motes in the air and a counter clicking faster the closer
+     * they are, which between them say radiation without a single line of text.
+     */
+    private static void tell(ServerPlayer player, Source source, double fade) {
+        if (player.isCreative() || player.isSpectator()) {
+            return;
+        }
+        double distance = player.position().distanceTo(source.at());
+        double strength = distance > RADIUS ? 0.0D : (1.0D - distance / RADIUS) * fade;
+        CitiesInLifeNetwork.sendTo(player, new RadiationPayload(
+                (int) Math.round(Mth.clamp(strength, 0.0D, 1.0D) * 100.0D)));
     }
 
     private static void add(LivingEntity entity, Holder<MobEffect> effect, int amplifier) {

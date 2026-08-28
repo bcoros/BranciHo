@@ -76,6 +76,18 @@ public final class CitiesInLifeConfig {
                     "a dial for that.")
             .defineInRange("nuclearBlastScale", 1.0D, 0.25D, 2.0D);
 
+    /** The plume at its full height, in blocks. */
+    public static final int DEFAULT_STEAM_PLUME = 100;
+
+    public static final ModConfigSpec.IntValue STEAM_PLUME = BUILDER
+            .comment(
+                    "How tall and how thick a steam emitter's plume is, as a percentage of full.",
+                    "The full plume is thirty-four blocks of cloud sent to every player in range,",
+                    "which is the single heaviest visual effect in the mod and the one to turn",
+                    "down first on a machine that is struggling. 0 switches the plume off; the",
+                    "emitter still works, it simply stops being visible from across the map.")
+            .defineInRange("steamPlumePercent", DEFAULT_STEAM_PLUME, 0, 100);
+
     public static final ModConfigSpec SPEC = BUILDER.build();
 
     private CitiesInLifeConfig() {
@@ -110,5 +122,10 @@ public final class CitiesInLifeConfig {
 
     public static boolean opsIgnoreBorders() {
         return SPEC.isLoaded() && OPS_IGNORE_BORDERS.get();
+    }
+
+    /** Safe at any time, for the same reason as above. */
+    public static int steamPlumePercent() {
+        return SPEC.isLoaded() ? STEAM_PLUME.get() : DEFAULT_STEAM_PLUME;
     }
 }

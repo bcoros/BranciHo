@@ -5,6 +5,9 @@ import com.branciho.citiesinlife.net.payload.ArmySyncPayload;
 import com.branciho.citiesinlife.net.payload.ClaimChunkPayload;
 import com.branciho.citiesinlife.net.payload.CitySyncPayload;
 import com.branciho.citiesinlife.net.payload.CallToArmsPayload;
+import com.branciho.citiesinlife.net.payload.ModSettingsPayload;
+import com.branciho.citiesinlife.net.payload.RadiationPayload;
+import com.branciho.citiesinlife.net.payload.SetSettingsPayload;
 import com.branciho.citiesinlife.net.payload.SetFlagPayload;
 import com.branciho.citiesinlife.net.payload.ConfirmDeleteCityPayload;
 import com.branciho.citiesinlife.net.payload.DeleteAreaPayload;
@@ -166,6 +169,20 @@ public final class CitiesInLifeNetwork {
 
         registrar.playToClient(CallToArmsPayload.TYPE, CallToArmsPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(() -> ClientCityCache.accept(payload)));
+
+        // Two types, because what the server sends carries whether you may edit it and what the
+        // client sends must not - and one payload registered in both directions is a handler that
+        // has to ask which side it is on.
+        registrar.playToClient(ModSettingsPayload.TYPE, ModSettingsPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() -> ClientCityCache.accept(payload)));
+
+        registrar.playToClient(RadiationPayload.TYPE, RadiationPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() -> ClientCityCache.accept(payload)));
+
+        registrar.playToServer(SetSettingsPayload.TYPE, SetSettingsPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(
+                        () -> onServer(context, player ->
+                                ServerActions.applySettings(player, payload))));
     }
 
     /** Run an action only if the sender really is a server player. */
