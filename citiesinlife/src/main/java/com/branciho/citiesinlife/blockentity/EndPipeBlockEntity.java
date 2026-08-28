@@ -97,8 +97,17 @@ public class EndPipeBlockEntity extends BlockEntity {
         BlockPos spout = worldPosition.relative(state.getValue(EndPipeBlock.FACING));
         BlockState there = level.getBlockState(spout);
         BlockState poured = poured();
-        if (there.is(poured.getBlock())) {
+        // Compared as a whole state, not just the block: sewage now flows, so the cell in front
+        // may already hold a thin edge that ran back in from somewhere else. That has to be
+        // promoted to a source or the spill quietly starves itself.
+        if (there == poured || there.equals(poured)) {
             pouring = true;
+            return;
+        }
+        if (there.is(poured.getBlock())) {
+            level.setBlock(spout, poured, Block.UPDATE_ALL);
+            pouring = true;
+            setChanged();
             return;
         }
         if (!there.isAir() && !there.canBeReplaced()) {
