@@ -1,6 +1,7 @@
 package com.branciho.citiesinlife.client;
 
 import com.branciho.citiesinlife.CitiesInLife;
+import com.branciho.citiesinlife.client.render.NuclearTurbineModel;
 import com.branciho.citiesinlife.client.render.CityFlagRenderer;
 import com.branciho.citiesinlife.client.render.CarModel;
 import com.branciho.citiesinlife.client.render.CarRenderer;
@@ -64,6 +65,8 @@ public final class CitiesInLifeClient {
     @SubscribeEvent
     public static void registerLayerDefinitions(EntityRenderersEvent.RegisterLayerDefinitions event) {
         event.registerLayerDefinition(TurbineModel.LAYER, TurbineModel::create);
+        event.registerLayerDefinition(NuclearTurbineModel.LAYER,
+                NuclearTurbineModel::create);
         event.registerLayerDefinition(CarModel.LAYER, CarModel::create);
         event.registerLayerDefinition(WindmillModel.LAYER, WindmillModel::create);
         event.registerLayerDefinition(CitizenModel.LAYER, CitizenModel::createBodyLayer);

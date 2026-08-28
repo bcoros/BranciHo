@@ -78,6 +78,16 @@ public class TurbineBlockEntity extends BlockEntity {
     private int rating;
 
     /**
+     * How hard whatever drives this turbine is asking it to run, 0..100.
+     *
+     * <p>The coal plant has no dial, so its turbines sit at full and always have. A reactor does,
+     * and the rotors have to answer to it: at fifty per cent the machine should visibly be running
+     * at half speed rather than looking identical to one at full power with a smaller number on a
+     * monitor somewhere.
+     */
+    private int throttle = 100;
+
+    /**
      * How well built this particular turbine is. One upgrade, so 0 or 1.
      *
      * <p>Applied as a multiplier on whatever is driving it rather than as a flat bonus, so the
@@ -158,7 +168,8 @@ public class TurbineBlockEntity extends BlockEntity {
 
     public static void clientTick(Level level, BlockPos pos, BlockState state, TurbineBlockEntity turbine) {
         turbine.previousSpin = turbine.spin;
-        float target = turbine.running ? SPIN_PER_TICK : 0.0F;
+        // Scaled by the throttle, so a reactor at half power turns its rotors at half speed.
+        float target = turbine.running ? SPIN_PER_TICK * (turbine.throttle / 100.0F) : 0.0F;
         turbine.speed += (target - turbine.speed) * SPIN_RAMP;
         turbine.spin += turbine.speed;
 
@@ -176,6 +187,30 @@ public class TurbineBlockEntity extends BlockEntity {
      * @param worth  what a turbine driven this way produces, so coal and wind can differ
      * @return how much was actually taken, so the driver knows what it still has to get rid of
      */
+    public int throttle() {
+        return throttle;
+    }
+
+    /**
+     * Set by whatever is driving it, once per simulation step.
+     *
+     * <p>Only sent to the clients when it actually changes, and only in steps of five, because a
+     * value that jittered by one would be a block update every ten seconds on every turbine in the
+     * world to move a rotor imperceptibly.
+     */
+    public void setThrottle(int percent) {
+        int next = Mth.clamp(percent, 0, 100) / 5 * 5;
+        if (next == throttle) {
+            return;
+        }
+        throttle = next;
+        setChanged();
+        if (level != null) {
+            level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(),
+                    Block.UPDATE_CLIENTS);
+        }
+    }
+
     public int accept(int amount, int worth) {
         if (clogged) {
             return 0;
@@ -295,6 +330,7 @@ public class TurbineBlockEntity extends BlockEntity {
         tag.putBoolean("running", running);
         tag.putBoolean("clogged", clogged);
         tag.putBoolean("burning", burning);
+        tag.putInt("throttle", throttle);
         return tag;
     }
 
@@ -313,6 +349,9 @@ public class TurbineBlockEntity extends BlockEntity {
         // a broken turbine and is not the player's fault.
         charge = tag.contains("charge") ? tag.getInt("charge") : tag.getInt("steam");
         rating = tag.contains("rating") ? tag.getInt("rating") : COAL_OUTPUT;
+        // Absent on a turbine saved before the dial existed, and a coal turbine has no dial:
+        // full is both the old behaviour and the right answer for one.
+        throttle = tag.contains("throttle") ? Mth.clamp(tag.getInt("throttle"), 0, 100) : 100;
         tier = Mth.clamp(tag.getInt("tier"), 0, MAX_TIER);
         soot = tag.getInt("soot");
         running = tag.getBoolean("running");
@@ -326,6 +365,7 @@ public class TurbineBlockEntity extends BlockEntity {
         super.saveAdditional(tag, registries);
         tag.putInt("charge", charge);
         tag.putInt("rating", rating);
+        tag.putInt("throttle", throttle);
         tag.putInt("tier", tier);
         tag.putInt("soot", soot);
         tag.putBoolean("running", running);

@@ -361,6 +361,9 @@ public final class NuclearSimulation {
         for (BlockPos at : survey.turbines()) {
             if (level.getBlockEntity(at) instanceof TurbineBlockEntity turbine) {
                 turbine.accept(TURBINE_CHARGE, perTurbine);
+                // The dial, straight through to the rotors. What the player set is what they see
+                // turning, without having to read a monitor to know the plant is throttled.
+                turbine.setThrottle(dial * 100 / ReactorLeverBlock.MAX_POSITION);
             }
         }
 
