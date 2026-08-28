@@ -32,7 +32,7 @@ import com.branciho.citiesinlife.block.SteamEmitterBlock;
 import com.branciho.citiesinlife.block.UraniumStorageBlock;
 import com.branciho.citiesinlife.nuclear.CoolingPort;
 import com.branciho.citiesinlife.nuclear.ReactorLever;
-import com.branciho.citiesinlife.block.SewageBlock;
+import com.branciho.citiesinlife.block.SewageLiquidBlock;
 import com.branciho.citiesinlife.block.SewageCollectorBlock;
 import com.branciho.citiesinlife.block.PowerMastBlock;
 import com.branciho.citiesinlife.block.SolarPanelBlock;
@@ -368,20 +368,24 @@ public final class ModBlocks {
     /**
      * What comes out of an outfall.
      *
-     * <p>No loot table and instantly breakable, because it is scenery the machine puts down and
-     * takes away again. {@code replaceable} so anything placed into it simply displaces it, the way
-     * water behaves, and {@code noOcclusion} so it does not black out the block beneath.
+     * <p>A LiquidBlock over a real fluid rather than a block pretending to be one. It is registered
+     * here because that is where blocks live, but nothing places it directly: the fluid owns it,
+     * and the end pipe places the fluid's source state.
+     *
+     * <p>{@code noLootTable} and a huge explosion resistance, exactly as vanilla water has — a
+     * liquid you can mine, or that a creeper can blow a hole in, is not a liquid.
      */
-    public static final DeferredBlock<SewageBlock> SEWAGE = BLOCKS.register("sewage",
-            () -> new SewageBlock(BlockBehaviour.Properties.of()
-                    .mapColor(MapColor.TERRACOTTA_BROWN)
-                    .replaceable()
-                    .noCollission()
-                    .noLootTable()
-                    .instabreak()
-                    .sound(SoundType.SLIME_BLOCK)
-                    .forceSolidOn()
-                    .noOcclusion()));
+    public static final DeferredBlock<SewageLiquidBlock> SEWAGE = BLOCKS.register("sewage",
+            () -> new SewageLiquidBlock(ModFluids.FLOWING_SEWAGE,
+                    BlockBehaviour.Properties.of()
+                            .mapColor(MapColor.TERRACOTTA_BROWN)
+                            .replaceable()
+                            .noCollission()
+                            .strength(100.0F)
+                            .pushReaction(net.minecraft.world.level.material.PushReaction.DESTROY)
+                            .noLootTable()
+                            .liquid()
+                            .sound(net.minecraft.world.level.block.SoundType.EMPTY)));
 
     /**
      * The four windmill liveries.

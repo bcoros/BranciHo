@@ -5,6 +5,7 @@ import com.branciho.citiesinlife.registry.ModBlockEntities;
 import com.branciho.citiesinlife.registry.ModBlocks;
 import com.branciho.citiesinlife.registry.ModCreativeTabs;
 import com.branciho.citiesinlife.registry.ModEntities;
+import com.branciho.citiesinlife.registry.ModFluids;
 import com.branciho.citiesinlife.registry.ModItems;
 import com.branciho.citiesinlife.registry.ModMenus;
 import com.mojang.logging.LogUtils;
@@ -43,6 +44,7 @@ public final class CitiesInLife {
         ModItems.register(modBus);
         ModBlockEntities.register(modBus);
         ModMenus.register(modBus);
+        ModFluids.register(modBus);
         ModEntities.register(modBus);
         ModCreativeTabs.register(modBus);
 

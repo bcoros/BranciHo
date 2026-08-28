@@ -51,6 +51,7 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.END_PIPE.get());
                         output.accept(ModItems.WATER_STORAGE.get());
                         output.accept(ModItems.SEWAGE_COLLECTOR.get());
+                        output.accept(ModItems.SEWAGE_BUCKET.get());
                         output.accept(ModItems.UPGRADE_TOOL.get());
                         output.accept(ModItems.URANIUM_ORE.get());
                         output.accept(ModItems.DEEPSLATE_URANIUM_ORE.get());

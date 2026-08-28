@@ -13,6 +13,8 @@ import com.branciho.citiesinlife.item.WarPlannerWandItem;
 import com.branciho.citiesinlife.item.RepairToolItem;
 import com.branciho.citiesinlife.item.ServiceRifleItem;
 import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.BucketItem;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.Item;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredItem;
@@ -192,6 +194,17 @@ public final class ModItems {
 
     public static final DeferredItem<BlockItem> MAIN_MONITOR =
             ITEMS.registerSimpleBlockItem("main_monitor", ModBlocks.MAIN_MONITOR);
+
+    /**
+     * A bucket of sewage.
+     *
+     * <p>Registered because a fluid without one is a fluid you can neither pick up nor place, and
+     * {@code LiquidBlock.pickupBlock} hands out whatever the fluid names as its bucket regardless.
+     * Stacks to one, like every other bucket.
+     */
+    public static final DeferredItem<BucketItem> SEWAGE_BUCKET = ITEMS.register("sewage_bucket",
+            () -> new BucketItem(ModFluids.SEWAGE.get(),
+                    new Item.Properties().craftRemainder(Items.BUCKET).stacksTo(1)));
 
     public static final DeferredItem<BlockItem> SEWAGE_COLLECTOR =
             ITEMS.registerSimpleBlockItem("sewage_collector", ModBlocks.SEWAGE_COLLECTOR);

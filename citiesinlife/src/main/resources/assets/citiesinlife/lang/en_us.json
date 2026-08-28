@@ -259,6 +259,8 @@
   "item.citiesinlife.path_tool": "Path Tool",
   "block.citiesinlife.sewage_collector": "Sewage Collector",
   "block.citiesinlife.sewage": "Sewage",
+  "item.citiesinlife.sewage_bucket": "Sewage Bucket",
+  "fluid_type.citiesinlife.sewage": "Sewage",
   "item.citiesinlife.upgrade_tool": "Upgrade Tool",
   "tooltip.citiesinlife.upgrade_1": "Sneak + left click a machine to buy it one level up",
   "tooltip.citiesinlife.upgrade_2": "Sewage Collector x3  |  Starter Pump x2  |  Turbine x1",

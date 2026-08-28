@@ -121,6 +121,8 @@ public class EndPipeBlockEntity extends BlockEntity {
 
     /** What this tap puts in the world: water, or the brown stuff. */
     private BlockState poured() {
+        // The fluid's own source state, so it spreads, pools and drains through vanilla's
+        // flowing-fluid code rather than through anything this mod wrote.
         return sewage
                 ? ModBlocks.SEWAGE.get().defaultBlockState()
                 : Blocks.WATER.defaultBlockState();
