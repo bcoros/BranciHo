@@ -38,7 +38,7 @@ public record NeighbourCitiesPayload(List<Entry> cities) implements CustomPacket
                         int theirStance, int yourStance, int chunks, int distance,
                         int yourPacts, int theirPacts,
                         int yourPowerPrice, int yourWaterPrice,
-                        int theirPowerPrice, int theirWaterPrice) {
+                        int theirPowerPrice, int theirWaterPrice, byte[] flag) {
     }
 
     public static final CustomPacketPayload.Type<NeighbourCitiesPayload> TYPE =
@@ -65,6 +65,9 @@ public record NeighbourCitiesPayload(List<Entry> cities) implements CustomPacket
             buf.writeVarInt(entry.yourWaterPrice());
             buf.writeVarInt(entry.theirPowerPrice());
             buf.writeVarInt(entry.theirWaterPrice());
+            for (byte cell : com.branciho.citiesinlife.city.CityFlag.sanitise(entry.flag())) {
+                buf.writeByte(cell);
+            }
         }
     }
 
@@ -75,7 +78,7 @@ public record NeighbourCitiesPayload(List<Entry> cities) implements CustomPacket
         }
         List<Entry> cities = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
-            cities.add(new Entry(
+            Entry entry = new Entry(
                     buf.readUUID(),
                     buf.readUtf(MAX_NAME),
                     buf.readUtf(MAX_NAME),
@@ -88,9 +91,19 @@ public record NeighbourCitiesPayload(List<Entry> cities) implements CustomPacket
                     buf.readVarInt(),
                     buf.readVarInt(),
                     buf.readVarInt(),
-                    buf.readVarInt()));
+                    buf.readVarInt(),
+                    readFlag(buf));
+            cities.add(entry);
         }
         return new NeighbourCitiesPayload(cities);
+    }
+
+    private static byte[] readFlag(FriendlyByteBuf buf) {
+        byte[] flag = new byte[com.branciho.citiesinlife.city.CityFlag.CELLS];
+        for (int i = 0; i < flag.length; i++) {
+            flag[i] = buf.readByte();
+        }
+        return flag;
     }
 
     @Override

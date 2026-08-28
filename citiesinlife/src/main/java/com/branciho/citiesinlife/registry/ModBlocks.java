@@ -1,6 +1,7 @@
 package com.branciho.citiesinlife.registry;
 
 import com.branciho.citiesinlife.CitiesInLife;
+import com.branciho.citiesinlife.block.CityFlagBlock;
 import com.branciho.citiesinlife.block.AlarmBlock;
 import com.branciho.citiesinlife.block.BoilerBlock;
 import com.branciho.citiesinlife.block.ChimneyBlock;
@@ -102,6 +103,19 @@ public final class ModBlocks {
                     .requiresCorrectToolForDrops()
                     .sound(SoundType.METAL)
                     .forceSolidOn()
+                    .noOcclusion()));
+
+    /**
+     * The flagpole.
+     *
+     * <p>Wood, and deliberately cheap. A flag is decoration with a bit of pride in it, not a
+     * machine, and anything that makes a player think twice about planting one is the wrong price.
+     */
+    public static final DeferredBlock<CityFlagBlock> CITY_FLAG = BLOCKS.register("city_flag",
+            () -> new CityFlagBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.WOOD)
+                    .strength(1.0F)
+                    .sound(SoundType.WOOD)
                     .noOcclusion()));
 
     // ------------------------------------------------------------- the reactor

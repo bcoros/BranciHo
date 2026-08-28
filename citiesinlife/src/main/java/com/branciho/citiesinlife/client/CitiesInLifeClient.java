@@ -1,6 +1,7 @@
 package com.branciho.citiesinlife.client;
 
 import com.branciho.citiesinlife.CitiesInLife;
+import com.branciho.citiesinlife.client.render.CityFlagRenderer;
 import com.branciho.citiesinlife.client.render.CarModel;
 import com.branciho.citiesinlife.client.render.CarRenderer;
 import com.branciho.citiesinlife.client.render.CitizenModel;
@@ -76,6 +77,8 @@ public final class CitiesInLifeClient {
         // The turbine is three blocks wide and its rotor turns, so none of it can come from a block
         // model. All of it is drawn here.
         event.registerBlockEntityRenderer(ModBlockEntities.TURBINE.get(), TurbineRenderer::new);
+        event.registerBlockEntityRenderer(ModBlockEntities.CITY_FLAG.get(),
+                CityFlagRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.WINDMILL.get(), WindmillRenderer::new);
         // Only the moving half of a lever is drawn here. Five baked poses would be five
         // positions it jumps between, and the swing is what makes it feel like a switch.

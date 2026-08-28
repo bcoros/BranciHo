@@ -1,5 +1,6 @@
 package com.branciho.citiesinlife.client.screen;
 
+import com.branciho.citiesinlife.city.CityFlag;
 import com.branciho.citiesinlife.city.Pact;
 import com.branciho.citiesinlife.city.Relation;
 import com.branciho.citiesinlife.net.CitiesInLifeNetwork;
@@ -37,6 +38,9 @@ public class NeighboursScreen extends Screen {
     /** Room for the buttons on the right, which is what the text must never grow into. */
     private static final int BUTTON_WIDTH = 104;
     private static final int TEXT_RIGHT_MARGIN = BUTTON_WIDTH + 24;
+
+    /** One square of a neighbour's flag, drawn beside their name. */
+    private static final int FLAG_CELL = 5;
 
     private int left;
     private int top;
@@ -262,6 +266,18 @@ public class NeighboursScreen extends Screen {
                 0x30000000);
         graphics.fill(left + 12, top + 36, left + 15, top + PANEL_HEIGHT - 66,
                 0xFF000000 | theirs.colour());
+
+        // Their flag, drawn small beside the name. Sixteen pixels of colour identifies a city
+        // across a list far faster than reading its name does.
+        int flagLeft = left + PANEL_WIDTH - 12 - BUTTON_WIDTH - 12 - FLAG_CELL * CityFlag.WIDTH;
+        for (int fy = 0; fy < CityFlag.HEIGHT; fy++) {
+            for (int fx = 0; fx < CityFlag.WIDTH; fx++) {
+                int px = flagLeft + fx * FLAG_CELL;
+                int py = top + 44 + fy * FLAG_CELL;
+                graphics.fill(px, py, px + FLAG_CELL, py + FLAG_CELL,
+                        0xFF000000 | CityFlag.rgbAt(entry.flag(), fx, fy));
+            }
+        }
 
         int y = top + 44;
         graphics.drawString(this.font, clip(entry.name(), textWidth),

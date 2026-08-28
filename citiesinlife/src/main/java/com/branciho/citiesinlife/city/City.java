@@ -91,6 +91,9 @@ public final class City {
      */
     private final Map<UUID, Dealings> dealings = new HashMap<>();
 
+    /** Forty squares of dye. See {@link CityFlag}. */
+    private byte[] flag = CityFlag.blank();
+
     /**
      * Capacity the city's buildings offer, and how much of it is taken up.
      *
@@ -332,6 +335,14 @@ public final class City {
 
     public int waterTainted() {
         return waterTainted;
+    }
+
+    public byte[] flag() {
+        return flag;
+    }
+
+    public void setFlag(byte[] cells) {
+        this.flag = CityFlag.sanitise(cells);
     }
 
     public int powerImported() {
@@ -600,6 +611,7 @@ public final class City {
             deals.add(row);
         }
         tag.put("dealings", deals);
+        tag.putByteArray("flag", flag);
         return tag;
     }
 
@@ -725,6 +737,9 @@ public final class City {
 
         readIds(tag, "granted", city.granted);
         readIds(tag, "wars", city.wars);
+        // Sanitised on the way in, so a city saved before flags existed comes back with a blank
+        // one rather than an empty array everything downstream would have to guard against.
+        city.flag = CityFlag.sanitise(tag.getByteArray("flag"));
         ListTag deals = tag.getList("dealings", Tag.TAG_COMPOUND);
         for (int i = 0; i < deals.size(); i++) {
             CompoundTag row = deals.getCompound(i);

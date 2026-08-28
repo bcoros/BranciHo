@@ -40,9 +40,9 @@ public class CityScreen extends Screen {
         left = (this.width - PANEL_WIDTH) / 2;
         top = (this.height - PANEL_HEIGHT) / 2;
 
-        // Three across the bottom now. Neighbours sits between the land and the way out, because it
+        // Four across the bottom now. Neighbours sits between the land and the way out, because it
         // is the other half of the same subject: this is your land, and that is everybody else's.
-        int buttonWidth = (PANEL_WIDTH - 24 - 8) / 3;
+        int buttonWidth = (PANEL_WIDTH - 24 - 12) / 4;
         addRenderableWidget(Button.builder(
                         Component.translatable("screen.citiesinlife.land"),
                         button -> this.minecraft.setScreen(new LandMapScreen()))
@@ -53,6 +53,16 @@ public class CityScreen extends Screen {
                         Component.translatable("screen.citiesinlife.neighbours"),
                         button -> this.minecraft.setScreen(new NeighboursScreen()))
                 .bounds(left + 16 + buttonWidth, top + PANEL_HEIGHT - 30, buttonWidth, 20)
+                .build());
+
+        addRenderableWidget(Button.builder(
+                        Component.translatable("screen.citiesinlife.flag"),
+                        button -> this.minecraft.setScreen(new FlagScreen(
+                                ClientCityCache.city() == null
+                                        ? com.branciho.citiesinlife.city.CityFlag.blank()
+                                        : ClientCityCache.city().flag(),
+                                new CityScreen())))
+                .bounds(left + 20 + buttonWidth * 2, top + PANEL_HEIGHT - 30, buttonWidth, 20)
                 .build());
 
         addRenderableWidget(Button.builder(

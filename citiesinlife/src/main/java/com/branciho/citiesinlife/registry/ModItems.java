@@ -120,6 +120,9 @@ public final class ModItems {
     public static final DeferredItem<BlockItem> REGISTER_COUNTER =
             ITEMS.registerSimpleBlockItem("register_counter", ModBlocks.REGISTER_COUNTER);
 
+    public static final DeferredItem<BlockItem> CITY_FLAG =
+            ITEMS.registerSimpleBlockItem("city_flag", ModBlocks.CITY_FLAG);
+
     public static final DeferredItem<BlockItem> ALARM =
             ITEMS.registerSimpleBlockItem("alarm", ModBlocks.ALARM);
 

@@ -5,6 +5,7 @@ import com.branciho.citiesinlife.net.payload.ArmySyncPayload;
 import com.branciho.citiesinlife.net.payload.ClaimChunkPayload;
 import com.branciho.citiesinlife.net.payload.CitySyncPayload;
 import com.branciho.citiesinlife.net.payload.CallToArmsPayload;
+import com.branciho.citiesinlife.net.payload.SetFlagPayload;
 import com.branciho.citiesinlife.net.payload.ConfirmDeleteCityPayload;
 import com.branciho.citiesinlife.net.payload.DeleteAreaPayload;
 import com.branciho.citiesinlife.net.payload.DiplomacyPayload;
@@ -97,6 +98,10 @@ public final class CitiesInLifeNetwork {
         registrar.playToServer(DiplomacyPayload.TYPE, DiplomacyPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(
                         () -> onServer(context, player -> ServerActions.diplomacy(player, payload))));
+
+        registrar.playToServer(SetFlagPayload.TYPE, SetFlagPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(
+                        () -> onServer(context, player -> ServerActions.setFlag(player, payload))));
 
         registrar.playToServer(ClaimChunkPayload.TYPE, ClaimChunkPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(

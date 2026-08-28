@@ -6,6 +6,7 @@ import com.branciho.citiesinlife.city.Diplomacy;
 import com.branciho.citiesinlife.city.Pact;
 import com.branciho.citiesinlife.city.Relation;
 import com.branciho.citiesinlife.net.payload.CallToArmsPayload;
+import com.branciho.citiesinlife.net.payload.SetFlagPayload;
 import com.branciho.citiesinlife.net.payload.ClaimChunkPayload;
 import com.branciho.citiesinlife.net.payload.CitySyncPayload;
 import com.branciho.citiesinlife.net.payload.ConfirmDeleteCityPayload;
@@ -1521,6 +1522,36 @@ public final class ServerActions {
      * sender has any standing to do it is re-derived from server state, because a screen that can be
      * modified is a screen that will be.
      */
+    /**
+     * Adopt a new flag.
+     *
+     * <p>Every pole flying it repaints itself within ten seconds off the back of this; nothing here
+     * has to go looking for them.
+     */
+    public static void setFlag(ServerPlayer player, SetFlagPayload payload) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        CityData data = CityData.get(server);
+        City own = data.cityOf(player.getUUID(), player.serverLevel().dimension());
+        if (own == null) {
+            reject(player, "no_city");
+            return;
+        }
+        own.setFlag(payload.cells());
+        data.setDirty();
+        player.sendSystemMessage(Component.translatable(
+                "message.citiesinlife.flag_set", own.name()));
+        sync(player);
+        // Everybody else's Neighbours tab is showing the old colours.
+        for (ServerPlayer other : server.getPlayerList().getPlayers()) {
+            if (!other.getUUID().equals(player.getUUID())) {
+                syncNeighbours(other);
+            }
+        }
+    }
+
     public static void diplomacy(ServerPlayer player, DiplomacyPayload payload) {
         MinecraftServer server = player.getServer();
         if (server == null) {
@@ -1839,7 +1870,8 @@ public final class ServerActions {
                         own == null ? 0 : own.powerPrice(city.id()),
                         own == null ? 0 : own.waterPrice(city.id()),
                         city.powerPrice(own == null ? city.id() : own.id()),
-                        city.waterPrice(own == null ? city.id() : own.id())));
+                        city.waterPrice(own == null ? city.id() : own.id()),
+                        city.flag()));
             }
 
             for (long chunkKey : city.claimedChunks()) {
@@ -1944,6 +1976,7 @@ public final class ServerActions {
                         city.refuse(),
                         city.refuseTolerance(),
                         city.creativeFunded(),
+                        city.flag(),
                         city.claimedChunks().toLongArray()));
 
         CitiesInLifeNetwork.sendTo(player, new StructureSyncPayload(nearbyStructures(data, player)));

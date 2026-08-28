@@ -32,6 +32,7 @@ public record CitySyncPayload(
         int refuse,
         int refuseTolerance,
         boolean creativeFunded,
+        byte[] flag,
         long[] claimedChunks
 ) implements CustomPacketPayload {
 
@@ -40,7 +41,7 @@ public record CitySyncPayload(
     /** What a player with no city yet receives, so the screens have something well-formed to draw. */
     public static CitySyncPayload none() {
         return new CitySyncPayload(false, "", 0L, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0L, 0, 0,
-                false, new long[0]);
+                false, com.branciho.citiesinlife.city.CityFlag.blank(), new long[0]);
     }
 
     public static final CustomPacketPayload.Type<CitySyncPayload> TYPE =
@@ -70,6 +71,9 @@ public record CitySyncPayload(
         buf.writeVarInt(refuse);
         buf.writeVarInt(refuseTolerance);
         buf.writeBoolean(creativeFunded);
+        for (byte cell : com.branciho.citiesinlife.city.CityFlag.sanitise(flag)) {
+            buf.writeByte(cell);
+        }
 
         int count = Math.min(claimedChunks.length, MAX_CHUNKS);
         buf.writeVarInt(count);
@@ -99,6 +103,10 @@ public record CitySyncPayload(
         int refuse = buf.readVarInt();
         int refuseTolerance = buf.readVarInt();
         boolean creativeFunded = buf.readBoolean();
+        byte[] flag = new byte[com.branciho.citiesinlife.city.CityFlag.CELLS];
+        for (int i = 0; i < flag.length; i++) {
+            flag[i] = buf.readByte();
+        }
 
         int count = buf.readVarInt();
         if (count < 0 || count > MAX_CHUNKS) {
@@ -111,7 +119,7 @@ public record CitySyncPayload(
         return new CitySyncPayload(hasCity, name, treasury, housing, population, jobs, employed,
                 powerProduced, powerNeeded, waterSupplied, waterNeeded, waterTainted,
                 powerImported, waterImported, sewageHandled, sewageProduced, claimCost, refuse,
-                refuseTolerance, creativeFunded, chunks);
+                refuseTolerance, creativeFunded, flag, chunks);
     }
 
     @Override

@@ -36,6 +36,7 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.REPAIR_TOOL.get());
                         output.accept(ModItems.EXTINGUISHER.get());
                         output.accept(ModItems.ALARM.get());
+                        output.accept(ModItems.CITY_FLAG.get());
                         output.accept(ModItems.TRANSIT_STATION.get());
                         output.accept(ModItems.TOURIST_AIRPLANE.get());
                         output.accept(ModItems.TRANSPORT_AIRPLANE.get());
