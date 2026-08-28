@@ -29,6 +29,8 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.phys.BlockHitResult;
 import org.jetbrains.annotations.Nullable;
+import com.branciho.citiesinlife.sound.MachineSounds;
+import net.minecraft.util.RandomSource;
 
 /**
  * The nuclear turbine: the same machine as the steam turbine, fed by something far angrier.
@@ -160,5 +162,20 @@ public class NuclearTurbineBlock extends BaseEntityBlock implements PowerBlock, 
                 ? Math.round(turbine.outputMultiplier() * 100.0F) : 100;
         return Component.translatable("message.citiesinlife.upgraded_nuclear_turbine",
                 tierAt(level, pos, state) + 1, percent);
+    }
+
+    /**
+     * A turbine hall, which is eleven blocks of machine and should sound like it.
+     *
+     * <p>Half again as loud as a coal plant's turbine, and following the dial in both volume and
+     * pitch the same way the rotors follow it. Opening the throttle on a reactor should be
+     * something you hear from the control room, not only something the monitor reports.
+     */
+    @Override
+    public void animateTick(BlockState state, Level level, BlockPos pos, RandomSource random) {
+        super.animateTick(state, level, pos, random);
+        if (level.getBlockEntity(pos) instanceof TurbineBlockEntity turbine && turbine.running()) {
+            MachineSounds.turbine(level, pos, random, turbine.throttle() / 100.0F, 1.6F);
+        }
     }
 }

@@ -23,6 +23,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import com.branciho.citiesinlife.block.ReactorRodBlock;
+import com.branciho.citiesinlife.block.SealingBlock;
 
 /**
  * What a reactor does over ten seconds.
@@ -402,6 +404,11 @@ public final class NuclearSimulation {
      */
     private static void paintRods(ServerLevel level, ReactorSurvey survey, ReactorState state,
                                   int rodBlocks) {
+        // The one thing the core has to tell the room. Both limits count: an overpressured core
+        // and an overheated one are the same emergency from where the player is standing, and
+        // making them look different would only be a puzzle at the worst possible moment.
+        boolean critical = state.temperature >= TEMP_CRITICAL || state.pressure >= PRESSURE_CRITICAL;
+
         // Rounded UP, and never to zero while there is fuel in the rods. Rounding to nearest
         // meant the meter only lit at an eighth of capacity - four uranium in the smallest legal
         // plant - so the ordinary case of dropping a couple of uranium into the store and watching
@@ -417,8 +424,15 @@ public final class NuclearSimulation {
             for (int i = 0; i < column.height(); i++) {
                 BlockPos at = column.base().above(i);
                 BlockState was = level.getBlockState(at);
-                if (was.hasProperty(FuelRodBlock.FILL) && was.getValue(FuelRodBlock.FILL) != fill) {
-                    level.setBlock(at, was.setValue(FuelRodBlock.FILL, fill), Block.UPDATE_CLIENTS);
+                BlockState want = was;
+                if (want.hasProperty(FuelRodBlock.FILL)) {
+                    want = want.setValue(FuelRodBlock.FILL, fill);
+                }
+                if (want.hasProperty(ReactorRodBlock.CRITICAL)) {
+                    want = want.setValue(ReactorRodBlock.CRITICAL, critical);
+                }
+                if (want != was) {
+                    level.setBlock(at, want, Block.UPDATE_CLIENTS);
                 }
             }
         }
@@ -426,13 +440,45 @@ public final class NuclearSimulation {
             for (int i = 0; i < column.height(); i++) {
                 BlockPos at = column.base().above(i);
                 BlockState was = level.getBlockState(at);
-                if (was.hasProperty(ControlRodBlock.INSERTION)
-                        && was.getValue(ControlRodBlock.INSERTION) != state.insertion) {
-                    level.setBlock(at, was.setValue(ControlRodBlock.INSERTION, state.insertion),
-                            Block.UPDATE_CLIENTS);
+                BlockState want = was;
+                if (want.hasProperty(ControlRodBlock.INSERTION)) {
+                    want = want.setValue(ControlRodBlock.INSERTION, state.insertion);
+                }
+                if (want.hasProperty(ReactorRodBlock.CRITICAL)) {
+                    want = want.setValue(ReactorRodBlock.CRITICAL, critical);
+                }
+                if (want != was) {
+                    level.setBlock(at, want, Block.UPDATE_CLIENTS);
                 }
             }
         }
+        paintSeals(level, survey, critical);
+    }
+
+    /**
+     * Tell the lids what the core is doing, so an overloaded reactor leaks.
+     *
+     * <p>Its own pass because the seals are not part of a column - they sit one block above the
+     * top of each one - and because there are only as many of them as there are columns. A dozen
+     * block states, checked once per step, for the only symptom of a failing core that is visible
+     * from outside the building.
+     */
+    private static void paintSeals(ServerLevel level, ReactorSurvey survey, boolean critical) {
+        for (ReactorSurvey.Column column : survey.fuelColumns()) {
+            paintSeal(level, column.top().above(), critical);
+        }
+        for (ReactorSurvey.Column column : survey.controlColumns()) {
+            paintSeal(level, column.top().above(), critical);
+        }
+    }
+
+    private static void paintSeal(ServerLevel level, BlockPos at, boolean critical) {
+        BlockState was = level.getBlockState(at);
+        if (!was.hasProperty(SealingBlock.VENTING)
+                || was.getValue(SealingBlock.VENTING) == critical) {
+            return;
+        }
+        level.setBlock(at, was.setValue(SealingBlock.VENTING, critical), Block.UPDATE_CLIENTS);
     }
 
     /** Everything currently wrong, worst first. The head is the headline; the rest get counted. */

@@ -16,6 +16,9 @@ import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.Nullable;
+import com.branciho.citiesinlife.sound.MachineSounds;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.Level;
 
 /**
  * The lid on a rod column: a metal slab, and nothing else.
@@ -32,17 +35,34 @@ public class SealingBlock extends Block implements SimpleWaterloggedBlock {
 
     public static final BooleanProperty WATERLOGGED = BlockStateProperties.WATERLOGGED;
 
+    /**
+     * Whether the core underneath it is over its limits.
+     *
+     * <p>Set by the reactor on every seal it owns, exactly the way the rods' own critical flag is.
+     * The lid on a pressure vessel is the honest place for an overpressure to show, and it is the
+     * only part of a core visible from outside the building - a reactor hall you cannot see into
+     * now leaks steam through its roof when it is in trouble.
+     */
+    public static final BooleanProperty VENTING = BooleanProperty.create("venting");
+
     /** Half a block, sitting on the floor of its own space: a slab, as asked for. */
     private static final VoxelShape SHAPE = Block.box(0.0D, 0.0D, 0.0D, 16.0D, 8.0D, 16.0D);
 
     public SealingBlock(Properties properties) {
         super(properties);
-        registerDefaultState(defaultBlockState().setValue(WATERLOGGED, false));
+        registerDefaultState(defaultBlockState()
+                .setValue(WATERLOGGED, false)
+                .setValue(VENTING, false));
     }
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(WATERLOGGED);
+        builder.add(WATERLOGGED, VENTING);
+    }
+
+    /** Whether this seal is venting, for anything that wants to react to that. */
+    public static boolean venting(BlockState state) {
+        return state.hasProperty(VENTING) && state.getValue(VENTING);
     }
 
     @Override
@@ -72,5 +92,14 @@ public class SealingBlock extends Block implements SimpleWaterloggedBlock {
     protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos,
                                   CollisionContext context) {
         return SHAPE;
+    }
+
+    /** Steam out of the seams, and the hiss that goes with it. */
+    @Override
+    public void animateTick(BlockState state, Level level, BlockPos pos, RandomSource random) {
+        super.animateTick(state, level, pos, random);
+        if (venting(state)) {
+            MachineSounds.venting(level, pos, random);
+        }
     }
 }

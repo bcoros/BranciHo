@@ -16,6 +16,8 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import org.jetbrains.annotations.Nullable;
+import com.branciho.citiesinlife.sound.MachineSounds;
+import net.minecraft.util.RandomSource;
 
 /**
  * A wind turbine's nacelle: the machine at the top of a tower you built yourself.
@@ -74,5 +76,14 @@ public class WindmillBlock extends Block implements EntityBlock {
                 ? (BlockEntityTicker<T>) (BlockEntityTicker<WindmillBlockEntity>) WindmillBlockEntity::clientTick
                 : (BlockEntityTicker<T>) (BlockEntityTicker<WindmillBlockEntity>) WindmillBlockEntity::serverTick;
         return ticker;
+    }
+
+    /** The blades going past, which is the whole of what a wind turbine has to say. */
+    @Override
+    public void animateTick(BlockState state, Level level, BlockPos pos, RandomSource random) {
+        super.animateTick(state, level, pos, random);
+        if (level.getBlockEntity(pos) instanceof WindmillBlockEntity mill && mill.turning()) {
+            MachineSounds.windmill(level, pos, random);
+        }
     }
 }

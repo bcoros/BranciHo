@@ -15,6 +15,7 @@ import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
+import com.branciho.citiesinlife.sound.MachineSounds;
 
 /**
  * A citizen's car, driven along a route worked out before it ever existed.
@@ -56,6 +57,11 @@ public class CarEntity extends Entity {
     private final LongArrayList route = new LongArrayList();
     private int index;
     private @Nullable UUID passengerId;
+
+    /** How long since this car last made a noise, and how long it waits between them. */
+    private static final int ENGINE_INTERVAL = 8;
+
+    private int engineTicks;
 
     private double lastX;
     private double lastZ;
@@ -111,9 +117,33 @@ public class CarEntity extends Entity {
         travelledPrev = travelled;
         double dx = getX() - lastX;
         double dz = getZ() - lastZ;
-        travelled += (float) Math.sqrt(dx * dx + dz * dz);
+        float moved = (float) Math.sqrt(dx * dx + dz * dz);
+        travelled += moved;
         lastX = getX();
         lastZ = getZ();
+
+        if (level().isClientSide) {
+            listen(moved);
+        }
+    }
+
+    /**
+     * The engine, from the client only.
+     *
+     * <p>Every eight ticks rather than every tick: the sound is about half a second long, so any
+     * faster and a car would be playing four copies of itself over one another. Keyed off how far
+     * it actually moved this tick, so a car crawling through a junction sounds like one.
+     */
+    private void listen(float moved) {
+        if (++engineTicks < ENGINE_INTERVAL) {
+            return;
+        }
+        engineTicks = 0;
+        if (moved <= 0.005F) {
+            return;
+        }
+        MachineSounds.engine(level(), getX(), getY() + 0.5D, getZ(), level().random,
+                (float) (moved / SPEED_HIGHWAY));
     }
 
     private void drive(ServerLevel level) {

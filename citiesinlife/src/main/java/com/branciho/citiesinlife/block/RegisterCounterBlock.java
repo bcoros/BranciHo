@@ -30,6 +30,10 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.Nullable;
+import com.branciho.citiesinlife.entity.CitizenEntity;
+import com.branciho.citiesinlife.sound.MachineSounds;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.phys.AABB;
 
 /**
  * A till. Two people work here, and this is where a shop makes its money.
@@ -138,5 +142,28 @@ public class RegisterCounterBlock extends BaseEntityBlock {
             }
         }
         super.onRemove(state, level, pos, newState, moved);
+    }
+
+    /**
+     * A till being worked.
+     *
+     * <p>Gated on somebody actually standing behind the counter, for the same reason the office
+     * desk is: who has clocked in is server-side, but the person is an entity the client can see.
+     * A shop with nobody in it is silent, which is the correct sound for a shop with nobody in it.
+     */
+    @Override
+    public void animateTick(BlockState state, Level level, BlockPos pos, RandomSource random) {
+        super.animateTick(state, level, pos, random);
+        if (random.nextInt(4) != 0) {
+            return;
+        }
+        Direction facing = state.hasProperty(FACING) ? state.getValue(FACING) : Direction.NORTH;
+        // Both stations behind the counter, taken as one box: two tills' worth of ding is not
+        // twice as informative as one and would only be twice as loud.
+        BlockPos behind = pos.relative(facing.getOpposite());
+        AABB counter = new AABB(behind).minmax(new AABB(behind.relative(facing.getClockWise())));
+        if (!level.getEntitiesOfClass(CitizenEntity.class, counter.inflate(0.35D)).isEmpty()) {
+            MachineSounds.till(level, pos, random);
+        }
     }
 }

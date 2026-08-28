@@ -25,6 +25,8 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import org.jetbrains.annotations.Nullable;
+import com.branciho.citiesinlife.sound.MachineSounds;
+import net.minecraft.util.RandomSource;
 
 /**
  * The steam turbine: the other half of a coal plant.
@@ -142,5 +144,20 @@ public class TurbineBlock extends BaseEntityBlock implements PowerBlock, Upgrade
                 ? Math.round(turbine.outputMultiplier() * 100.0F) : 100;
         return Component.translatable("message.citiesinlife.upgraded_turbine",
                 tierAt(level, pos, state) + 1, percent);
+    }
+
+    /**
+     * How it sounds from outside.
+     *
+     * <p>Driven off {@code animateTick} rather than a ticker of its own: the client already picks
+     * random blocks near the player every tick, so riding that gives proximity for nothing and a
+     * turbine three hundred blocks away costs exactly zero.
+     */
+    @Override
+    public void animateTick(BlockState state, Level level, BlockPos pos, RandomSource random) {
+        super.animateTick(state, level, pos, random);
+        if (level.getBlockEntity(pos) instanceof TurbineBlockEntity turbine && turbine.running()) {
+            MachineSounds.turbine(level, pos, random, turbine.throttle() / 100.0F, 1.0F);
+        }
     }
 }

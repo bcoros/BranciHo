@@ -23,6 +23,8 @@ import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.Nullable;
+import com.branciho.citiesinlife.sound.MachineSounds;
+import net.minecraft.util.RandomSource;
 
 /**
  * A wooden power mast, three blocks tall — the kind that lines a road in half of Europe.
@@ -174,5 +176,20 @@ public class PowerMastBlock extends Block implements PowerBlock, MastBlock {
     private static BlockPos baseOf(BlockGetter level, BlockPos pos, BlockState state) {
         int segment = state.getBlock() instanceof PowerMastBlock ? state.getValue(SEGMENT) : 0;
         return pos.below(segment);
+    }
+
+    /**
+     * The buzz off a line.
+     *
+     * <p>Only from the crossarm. A mast is one machine occupying three blocks, and letting all
+     * three of them sing would make a single pole three times as loud as it should be and a row of
+     * them along a road unbearable.
+     */
+    @Override
+    public void animateTick(BlockState state, Level level, BlockPos pos, RandomSource random) {
+        super.animateTick(state, level, pos, random);
+        if (state.hasProperty(SEGMENT) && state.getValue(SEGMENT) == HEIGHT - 1) {
+            MachineSounds.mast(level, pos, random, 1.0F);
+        }
     }
 }

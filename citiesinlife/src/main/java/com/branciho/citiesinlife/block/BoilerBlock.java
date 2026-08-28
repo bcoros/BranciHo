@@ -24,6 +24,8 @@ import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.phys.BlockHitResult;
 import org.jetbrains.annotations.Nullable;
+import com.branciho.citiesinlife.sound.MachineSounds;
+import net.minecraft.util.RandomSource;
 
 /**
  * The coal boiler: coal and water in, steam and smoke out.
@@ -102,6 +104,15 @@ public class BoilerBlock extends BaseEntityBlock {
                 Containers.dropContents(level, pos, boiler);
             }
             super.onRemove(state, level, pos, newState, moved);
+        }
+    }
+
+    /** A lit firebox. Silent the moment the coal runs out, which is the tell you want. */
+    @Override
+    public void animateTick(BlockState state, Level level, BlockPos pos, RandomSource random) {
+        super.animateTick(state, level, pos, random);
+        if (state.hasProperty(LIT) && state.getValue(LIT)) {
+            MachineSounds.boiler(level, pos, random);
         }
     }
 }

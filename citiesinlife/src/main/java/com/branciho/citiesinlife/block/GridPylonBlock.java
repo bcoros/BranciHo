@@ -26,6 +26,8 @@ import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.Nullable;
+import com.branciho.citiesinlife.sound.MachineSounds;
+import net.minecraft.util.RandomSource;
 
 /**
  * The steel lattice transmission pylon: seven blocks of tower and a quarter of a kilometre of reach.
@@ -207,5 +209,19 @@ public class GridPylonBlock extends Block implements PowerBlock, MastBlock {
     private static BlockPos baseOf(BlockGetter level, BlockPos pos, BlockState state) {
         int segment = state.getBlock() instanceof GridPylonBlock ? state.getValue(SEGMENT) : 0;
         return pos.below(segment);
+    }
+
+    /**
+     * The same buzz, from seven blocks up and carrying rather more.
+     *
+     * <p>Louder than a wooden mast because it is a transmission tower, and from the head of it
+     * only, for the same reason a mast only sings from its crossarm.
+     */
+    @Override
+    public void animateTick(BlockState state, Level level, BlockPos pos, RandomSource random) {
+        super.animateTick(state, level, pos, random);
+        if (state.hasProperty(SEGMENT) && state.getValue(SEGMENT) == HEIGHT - 1) {
+            MachineSounds.mast(level, pos, random, 2.2F);
+        }
     }
 }

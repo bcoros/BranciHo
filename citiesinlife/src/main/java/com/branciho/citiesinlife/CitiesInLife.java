@@ -1,5 +1,6 @@
 package com.branciho.citiesinlife;
 
+import com.branciho.citiesinlife.config.CitiesInLifeClientConfig;
 import com.branciho.citiesinlife.config.CitiesInLifeConfig;
 import com.branciho.citiesinlife.registry.ModBlockEntities;
 import com.branciho.citiesinlife.registry.ModBlocks;
@@ -51,6 +52,11 @@ public final class CitiesInLife {
         // Server-side, because it decides what gets spawned rather than what gets drawn:
         // turning citizens down is a fact about the world, not about one player's view of it.
         container.registerConfig(ModConfig.Type.SERVER, CitiesInLifeConfig.SPEC);
+
+        // Client-side, for the opposite reason: how loud a turbine is decides nothing about the
+        // world, and a player on somebody else's server should not have to ask the host to turn
+        // it down.
+        container.registerConfig(ModConfig.Type.CLIENT, CitiesInLifeClientConfig.SPEC);
 
         // Put a Config button beside the mod in the Mods list. Behind a dist check and in its own
         // class, because the screen it points at is a client type: touching it from common code

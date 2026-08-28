@@ -1,5 +1,6 @@
 package com.branciho.citiesinlife.client.screen;
 
+import com.branciho.citiesinlife.config.CitiesInLifeClientConfig;
 import com.branciho.citiesinlife.net.CitiesInLifeNetwork;
 import com.branciho.citiesinlife.net.ClientCityCache;
 import com.branciho.citiesinlife.net.payload.ModSettingsPayload;
@@ -26,7 +27,7 @@ import net.minecraft.util.Mth;
 public class SettingsScreen extends Screen {
 
     private static final int WIDTH = 320;
-    private static final int HEIGHT = 234;
+    private static final int HEIGHT = 272;
     private static final int ROW = 26;
 
     private final Screen parent;
@@ -39,6 +40,16 @@ public class SettingsScreen extends Screen {
     private boolean opsIgnore;
     private boolean editable;
 
+    /**
+     * How loud the mod's machines are, for this player.
+     *
+     * <p>The one row here that is not the world's. It is read from and written to the client
+     * config rather than sent anywhere, which is why it stays usable when everything above it is
+     * greyed out: a guest on somebody else's server does not get to change how many citizens the
+     * cities have, and absolutely does get to turn the reactor down.
+     */
+    private int volume;
+
     public SettingsScreen(Screen parent) {
         super(Component.translatable("screen.citiesinlife.settings"));
         this.parent = parent;
@@ -50,6 +61,7 @@ public class SettingsScreen extends Screen {
         this.steam = known == null ? 100 : known.steamPlumePercent();
         this.opsIgnore = known != null && known.opsIgnoreBorders();
         this.editable = known != null && known.editable();
+        this.volume = CitiesInLifeClientConfig.machineVolumePercent();
     }
 
     @Override
@@ -69,6 +81,11 @@ public class SettingsScreen extends Screen {
         stepper(left, y, -25, 25, () -> steam, v -> steam = Mth.clamp(v, 0, 100));
         y += ROW;
         toggle(left, y, () -> opsIgnore, v -> opsIgnore = v);
+        y += ROW;
+        // Always active, and saved the moment it is clicked - the Save button beside it sends the
+        // world's settings to the server, which is not this row's business and is disabled for
+        // most of the people who want this row.
+        localStepper(left, y, -10, 10);
 
         addRenderableWidget(Button.builder(
                         Component.translatable("screen.citiesinlife.back"),
@@ -87,6 +104,24 @@ public class SettingsScreen extends Screen {
                 .build();
         save.active = editable;
         addRenderableWidget(save);
+    }
+
+    /** A stepper that changes a purely local setting and writes it out on the spot. */
+    private void localStepper(int left, int y, int down, int up) {
+        int x = left + WIDTH - 16 - 74;
+        addLocalStep(x, y, down);
+        addLocalStep(x + 40, y, up);
+    }
+
+    private void addLocalStep(int x, int y, int by) {
+        addRenderableWidget(Button.builder(
+                        Component.literal(by < 0 ? String.valueOf(by) : "+" + by),
+                        b -> {
+                            volume = Mth.clamp(volume + by, 0, 100);
+                            CitiesInLifeClientConfig.setMachineVolume(volume);
+                        })
+                .bounds(x, y, 36, 18)
+                .build());
     }
 
     private void stepper(int left, int y, int down, int up,
@@ -154,6 +189,8 @@ public class SettingsScreen extends Screen {
         label(graphics, left, y, "screen.citiesinlife.setting_steam", steam + "%");
         y += ROW;
         label(graphics, left, y, "screen.citiesinlife.setting_ops", "");
+        y += ROW;
+        label(graphics, left, y, "screen.citiesinlife.setting_volume", volume + "%");
 
         graphics.drawString(this.font, Component.translatable("screen.citiesinlife.settings_hint"),
                 left + 12, top + HEIGHT - 48, CityScreen.COLOUR_DIM, false);

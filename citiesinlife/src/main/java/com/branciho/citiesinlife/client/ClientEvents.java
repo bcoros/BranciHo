@@ -159,6 +159,7 @@ public final class ClientEvents {
 
         ClientSelection.tick();
         ClientRadiation.tick(minecraft);
+        BuildingSounds.tick(minecraft);
 
         // The server refuses to delete a city hall without being asked twice; this is the asking.
         ConfirmDeleteCityPayload pendingDelete = ClientCityCache.takeDeleteConfirm();

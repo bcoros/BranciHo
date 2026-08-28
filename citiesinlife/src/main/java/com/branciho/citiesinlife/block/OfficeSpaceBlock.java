@@ -29,6 +29,10 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.Nullable;
+import com.branciho.citiesinlife.entity.CitizenEntity;
+import com.branciho.citiesinlife.sound.MachineSounds;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.phys.AABB;
 
 /**
  * A desk. One person works here.
@@ -138,5 +142,33 @@ public class OfficeSpaceBlock extends BaseEntityBlock {
                     "message.citiesinlife.desk_status", desk.staffed(), desk.capacity()), true);
         }
         return InteractionResult.sidedSuccess(level.isClientSide);
+    }
+
+    /**
+     * Typing, and only when somebody is actually at the desk.
+     *
+     * <p>Asked of the world rather than of the block entity, and that is the whole trick. Who has
+     * checked in at a desk is server-side bookkeeping that the client is never told about, so a
+     * client asking {@code staffed()} is always told nobody - but the worker itself is an entity
+     * standing in the chair, which the client can see perfectly well. Looking for the person
+     * rather than the record is both the only thing that works here and the more honest answer:
+     * the typing you hear is coming from somebody you can see.
+     */
+    @Override
+    public void animateTick(BlockState state, Level level, BlockPos pos, RandomSource random) {
+        super.animateTick(state, level, pos, random);
+        if (random.nextInt(3) != 0) {
+            return;
+        }
+        BlockPos seat = pos.relative(state.hasProperty(FACING)
+                ? state.getValue(FACING) : Direction.NORTH);
+        if (occupied(level, new AABB(seat).inflate(0.35D))) {
+            MachineSounds.typing(level, pos, random);
+        }
+    }
+
+    /** Whether one of this city's people is standing in that space. */
+    private static boolean occupied(Level level, AABB where) {
+        return !level.getEntitiesOfClass(CitizenEntity.class, where).isEmpty();
     }
 }

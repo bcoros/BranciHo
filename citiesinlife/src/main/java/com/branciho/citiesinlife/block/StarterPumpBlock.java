@@ -12,6 +12,8 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.minecraft.world.level.material.Fluids;
+import com.branciho.citiesinlife.sound.MachineSounds;
+import net.minecraft.util.RandomSource;
 
 /**
  * The starter pump: where water gets into the system.
@@ -145,5 +147,21 @@ public class StarterPumpBlock extends AbstractPumpBlock implements Upgradeable {
     private static boolean isWater(BlockGetter level, BlockPos pos) {
         return level.getFluidState(pos).is(Fluids.WATER)
                 || level.getFluidState(pos).is(Fluids.FLOWING_WATER);
+    }
+
+    /**
+     * An intake lifting water.
+     *
+     * <p>Conditioned on the same question the pump itself answers - is there water next to it -
+     * so a pump that has been built one block too far from the river is silent, and silence is the
+     * symptom. That is the mistake this block is easiest to make, and it now has a tell you can
+     * hear before you have gone looking for the city panel.
+     */
+    @Override
+    public void animateTick(BlockState state, Level level, BlockPos pos, RandomSource random) {
+        super.animateTick(state, level, pos, random);
+        if (touchesWater(level, pos)) {
+            MachineSounds.pump(level, pos, random);
+        }
     }
 }
