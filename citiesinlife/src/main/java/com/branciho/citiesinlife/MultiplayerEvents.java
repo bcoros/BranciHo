@@ -31,6 +31,9 @@ import net.neoforged.neoforge.event.level.ExplosionEvent;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
+import com.branciho.citiesinlife.nuclear.Radiation;
+import net.minecraft.world.damagesource.DamageTypes;
+import net.minecraft.world.entity.LivingEntity;
 
 /**
  * Territory protection.
@@ -218,6 +221,16 @@ public final class MultiplayerEvents {
      * is a hole somebody can climb through by dressing up as a policeman.
      */
     private static boolean sanctioned(DamageSource source, Entity victim, City owner) {
+        // Fallout, and nothing else about it. A city's blanket protection made its own people the
+        // only living things in the world a meltdown could not touch - a reactor could level the
+        // neighbourhood and the citizens standing in the crater would walk out of it unharmed.
+        // Narrow on purpose: it is the two damage types the fallout actually deals, and only while
+        // the victim is genuinely standing in some, so it closes nothing else.
+        if (victim instanceof LivingEntity living
+                && (source.is(DamageTypes.MAGIC) || source.is(DamageTypes.WITHER))
+                && Radiation.inFallout(living)) {
+            return true;
+        }
         Entity attacker = source.getEntity();
         if (attacker instanceof CitizenEntity thug) {
             // A citizen only ever raises a hand as a criminal, and only to their own neighbours.
