@@ -94,13 +94,15 @@ public class SteamEmitterBlockEntity extends BlockEntity {
         // blocks from the viewer, which would cut a 34-block plume off at chest height for anybody
         // standing far enough back to see the whole plant.
         for (ServerPlayer player : serverLevel.players()) {
-            for (int level = 1; level <= height; level += PLUME_STEP) {
+            // "rung", not "level" - the method already has a Level called level, and naming a
+            // loop counter after it shadows the world.
+            for (int rung = 1; rung <= height; rung += PLUME_STEP) {
                 // Widening and thinning with height, so it billows out into a head instead of
                 // staying a pipe of smoke all the way up.
-                double climb = (double) level / height;
+                double climb = (double) rung / height;
                 double spread = 0.18D + climb * climb * 2.2D;
                 serverLevel.sendParticles(player, ParticleTypes.CLOUD, true,
-                        x, pos.getY() + level, z,
+                        x, pos.getY() + rung, z,
                         density, spread, 0.10D, spread, 0.015D);
             }
         }

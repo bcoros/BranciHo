@@ -11,6 +11,7 @@ import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.phys.AABB;
 
 /**
  * The cloth on the pole.
@@ -90,6 +91,23 @@ public class CityFlagRenderer implements BlockEntityRenderer<CityFlagBlockEntity
                 .setOverlay(overlay)
                 .setLight(light)
                 .setNormal(pose, 0.0F, 0.0F, 1.0F);
+    }
+
+    /**
+     * Big enough to hold the pole and the cloth.
+     *
+     * <p>Both reach outside the block: the pole is two blocks tall and the cloth is a block and a
+     * half of it hanging off one side. Left at the default one-block box, the whole thing vanishes
+     * the moment the block itself leaves the screen - which for something meant to be seen from
+     * across the map is exactly backwards.
+     *
+     * <p>On the renderer rather than on the block entity, which is where NeoForge puts it: the
+     * extension is on {@code BlockEntityRenderer}, and the same method written on the block entity
+     * overrides nothing at all and is never called.
+     */
+    @Override
+    public AABB getRenderBoundingBox(CityFlagBlockEntity flag) {
+        return new AABB(flag.getBlockPos()).inflate(3.0D);
     }
 
     private static float facing(CityFlagBlockEntity flag) {

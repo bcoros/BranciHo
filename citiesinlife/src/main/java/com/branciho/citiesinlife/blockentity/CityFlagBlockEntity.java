@@ -89,19 +89,6 @@ public class CityFlagBlockEntity extends BlockEntity {
         level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
     }
 
-    /**
-     * Big enough to hold the pole and the cloth.
-     *
-     * <p>Both of them reach outside the block: the pole is two blocks tall and the cloth is a block
-     * and a half of it hanging off one side. Left at the default one-block box, the whole thing
-     * vanishes the moment the block itself leaves the screen - which for something you are meant to
-     * see from across the map is exactly backwards.
-     */
-    @Override
-    public net.minecraft.world.phys.AABB getRenderBoundingBox() {
-        return new net.minecraft.world.phys.AABB(worldPosition).inflate(3.0D);
-    }
-
     // --------------------------------------------------------------- syncing
 
     @Override
