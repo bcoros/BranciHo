@@ -14,10 +14,15 @@ import com.branciho.citiesinlife.sim.CitySimulation;
 import com.branciho.citiesinlife.structure.Structure;
 import com.branciho.citiesinlife.structure.StructureType;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.core.particles.SimpleParticleType;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.Mth;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -56,14 +61,57 @@ public final class Meltdown {
     private static final int FINAL_DELAY = 40;
     private static final int SATELLITE_INTERVAL = 3;
     private static final int SATELLITES = 6;
-    private static final int SATELLITE_RING = 10;
+    /** Out past the rim of the final crater, so the ring scatters its edge instead of its middle. */
+    private static final int SATELLITE_RING = 52;
 
-    /** Vanilla TNT is 4.0. A pipe is unmistakably smaller; the last blast is unmistakably not. */
-    private static final float POWER_PIPE = 2.0F;
-    private static final float POWER_TURBINE = 6.0F;
-    private static final float POWER_CORE = 10.0F;
-    private static final float POWER_FINAL = 14.0F;
-    private static final float POWER_SATELLITE = 5.0F;
+    /**
+     * How hard each stage hits things that are alive.
+     *
+     * <p>Only entities and sound. The blocks are taken out by {@link #carve}, for a reason worth
+     * writing down: a vanilla explosion loses {@code (resistance + 0.3) * 0.3} of its strength per
+     * 0.3 blocks travelled, and water's blast resistance is 100 - so a single water block eats
+     * thirty points of a blast that started with fourteen. A reactor core is required to be
+     * submerged. Every blast in this sequence was therefore dying in the first block it touched,
+     * which is exactly what "the explosions do no damage, it is literally just effects" describes.
+     */
+    private static final float POWER_PIPE = 3.0F;
+    private static final float POWER_TURBINE = 9.0F;
+    private static final float POWER_CORE = 12.0F;
+    private static final float POWER_FINAL = 16.0F;
+    private static final float POWER_SATELLITE = 6.0F;
+
+    /**
+     * How much ground each stage actually takes, in blocks of radius.
+     *
+     * <p>These are the numbers that matter now, and unlike an explosion's power they mean exactly
+     * what they say: everything inside comes out, water and reinforced pipework included, and only
+     * blocks the game itself refuses to break survive.
+     */
+    private static final double RADIUS_PIPE = 3.0D;
+    private static final double RADIUS_TURBINE = 12.0D;
+    private static final double RADIUS_CORE = 22.0D;
+    private static final double RADIUS_FINAL = 44.0D;
+    private static final double RADIUS_SATELLITE = 7.0D;
+
+    /**
+     * The two big craters open over several ticks instead of one.
+     *
+     * <p>A 44-block sphere is a quarter of a million blocks. Doing that in a single tick is a
+     * visible freeze at the exact moment the player is trying to run; spread over these ticks in
+     * equal-volume shells it is both affordable and better - the crater visibly races outwards.
+     */
+    private static final int CORE_WAVE = 10;
+    private static final int FINAL_WAVE = 24;
+
+    /**
+     * Cheap block writes: tell the clients, tell nobody else.
+     *
+     * <p>No neighbour updates, so a quarter of a million removals does not trigger a quarter of a
+     * million water-flow and light recalculations. The crater stays dry as a result, which is the
+     * correct look anyway - the lake was in the fireball.
+     */
+    private static final int CARVE_FLAGS =
+            Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE | Block.UPDATE_SUPPRESS_DROPS;
 
     /** Beyond this the pipes are removed rather than detonated, so a huge plant cannot stall a tick. */
     private static final int MAX_PIPE_BLASTS = 48;
@@ -181,7 +229,7 @@ public final class Meltdown {
             if (step % PIPE_INTERVAL == 0) {
                 int index = step / PIPE_INTERVAL;
                 if (index < stage.pipes().size()) {
-                    blast(level, stage.pipes().get(index), POWER_PIPE * scale, false);
+                    blast(level, stage.pipes().get(index), POWER_PIPE * scale, RADIUS_PIPE, false);
                 }
             }
             return false;
@@ -206,7 +254,8 @@ public final class Meltdown {
             if (step % TURBINE_INTERVAL == 0) {
                 int index = step / TURBINE_INTERVAL;
                 if (index < stage.turbines().size()) {
-                    blast(level, stage.turbines().get(index), POWER_TURBINE * scale, true);
+                    blast(level, stage.turbines().get(index), POWER_TURBINE * scale,
+                            RADIUS_TURBINE, true);
                 }
             }
             return false;
@@ -227,18 +276,46 @@ public final class Meltdown {
                     level.setBlock(lid, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
                 }
             }
-            blast(level, stage.heart(), POWER_CORE * scale, true);
+            level.explode(null, stage.heart().getX() + 0.5D, stage.heart().getY() + 0.5D,
+                    stage.heart().getZ() + 0.5D, POWER_CORE * scale, true,
+                    Level.ExplosionInteraction.NONE);
+            mushroom(level, stage.heart(), RADIUS_CORE);
+            // Half a kilometre of fallout, starting here. The blast is the part you can outrun.
+            Radiation.fallout(level, stage.heart());
             return false;
         }
         if (t < coreAt) {
             return false;
         }
 
-        int finalAt = coreAt + FINAL_DELAY;
-        if (t == finalAt) {
-            blast(level, centre(plant), POWER_FINAL * scale, true);
+        // The core's crater, opening one shell per tick.
+        int coreWaveEnds = coreAt + CORE_WAVE;
+        if (t <= coreWaveEnds) {
+            wave(level, stage.heart(), RADIUS_CORE, t - coreAt - 1, CORE_WAVE);
             return false;
         }
+
+        int finalAt = coreWaveEnds + FINAL_DELAY;
+        if (t == finalAt) {
+            BlockPos heart = centre(plant);
+            level.explode(null, heart.getX() + 0.5D, heart.getY() + 0.5D, heart.getZ() + 0.5D,
+                    POWER_FINAL * scale, true, Level.ExplosionInteraction.NONE);
+            mushroom(level, heart, RADIUS_FINAL);
+            level.playSound(null, heart.getX(), heart.getY(), heart.getZ(),
+                    SoundEvents.GENERIC_EXPLODE.value(), SoundSource.BLOCKS, 8.0F, 0.28F);
+            return false;
+        }
+        if (t < finalAt) {
+            return false;
+        }
+
+        // ---- and the crater the whole thing was building towards -------------
+        int finalWaveEnds = finalAt + FINAL_WAVE;
+        if (t <= finalWaveEnds) {
+            wave(level, centre(plant), RADIUS_FINAL, t - finalAt - 1, FINAL_WAVE);
+            return false;
+        }
+        finalAt = finalWaveEnds;
 
         // ---- and the ring, which is what makes it read as an event rather than a sphere ----
         if (t > finalAt) {
@@ -251,7 +328,7 @@ public final class Meltdown {
                     BlockPos at = centre.offset(
                             (int) Math.round(Math.cos(angle) * SATELLITE_RING), 0,
                             (int) Math.round(Math.sin(angle) * SATELLITE_RING));
-                    blast(level, at, POWER_SATELLITE * scale, true);
+                    blast(level, at, POWER_SATELLITE * scale, RADIUS_SATELLITE, true);
                 }
                 return step / SATELLITE_INTERVAL - 1 >= SATELLITES - 1;
             }
@@ -266,9 +343,143 @@ public final class Meltdown {
      * terrain damage when it is off. A meltdown that quietly stopped being dangerous on half of all
      * servers would be worse than one that never existed.
      */
-    private static void blast(ServerLevel level, BlockPos at, float power, boolean fire) {
+    private static void blast(ServerLevel level, BlockPos at, float power, double radius,
+                              boolean fire) {
+        double reach = radius * scaleOf();
+        carve(level, at, 0.0D, reach, reach);
+        // NONE, not BLOCK. The vanilla ray-casting is the part that water defeats, and carve has
+        // already taken the ground; what is left here is what vanilla does well - hurling and
+        // hurting whatever is standing nearby, the sound, and the fireball.
         level.explode(null, at.getX() + 0.5D, at.getY() + 0.5D, at.getZ() + 0.5D,
-                power, fire, Level.ExplosionInteraction.BLOCK);
+                power, fire, Level.ExplosionInteraction.NONE);
+    }
+
+    private static float scaleOf() {
+        return (float) CitiesInLifeConfig.nuclearBlastScale();
+    }
+
+    /**
+     * Take the ground out ourselves, ignoring blast resistance entirely.
+     *
+     * <p>Everything between the two radii goes: water, reinforced pipework, the indestructible pipe
+     * included. The single exception is a block the game itself refuses to break - bedrock, the
+     * barrier, a portal frame - which is what a negative destroy speed means and the only thing a
+     * meltdown leaves standing.
+     *
+     * <p>The two radii let a crater open as a shell per tick rather than a sphere all at once. The
+     * loop bounds are solved from the sphere equation instead of scanning the bounding box, so a
+     * thin outer shell costs about what its own volume costs and not what the whole ball would.
+     */
+    private static void carve(ServerLevel level, BlockPos centre, double inner, double outer,
+                              double full) {
+        double outerSq = outer * outer;
+        double innerSq = inner * inner;
+        // Measured against the crater's FINAL radius, not this shell's. Feathering every shell
+        // against its own edge would eat holes through the middle of the crater rather than
+        // softening its rim, because from the halfway shell onwards every shell IS the rim.
+        double rim = full * 0.90D;
+        double rimSq = rim * rim;
+        double feather = Math.max(0.001D, full - rim);
+        RandomSource random = level.random;
+        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+        int reach = Mth.ceil(outer);
+        int floor = level.getMinBuildHeight();
+        int ceiling = level.getMaxBuildHeight() - 1;
+        for (int dx = -reach; dx <= reach; dx++) {
+            double leftY = outerSq - (double) dx * dx;
+            if (leftY < 0.0D) {
+                continue;
+            }
+            int spanY = (int) Math.sqrt(leftY);
+            for (int dy = -spanY; dy <= spanY; dy++) {
+                int y = centre.getY() + dy;
+                if (y < floor || y > ceiling) {
+                    continue;
+                }
+                double flat = (double) dx * dx + (double) dy * dy;
+                double leftZ = outerSq - flat;
+                if (leftZ < 0.0D) {
+                    continue;
+                }
+                int spanZ = (int) Math.sqrt(leftZ);
+                // Where the inner ball cuts this row, skip straight over it rather than testing
+                // every block in the middle of a crater that was hollowed out ticks ago.
+                double keptZ = innerSq - flat;
+                int skip = keptZ > 0.0D ? (int) Math.sqrt(keptZ) : -1;
+                for (int dz = -spanZ; dz <= spanZ; dz++) {
+                    if (skip >= 0 && dz > -skip && dz < skip) {
+                        dz = skip - 1;
+                        continue;
+                    }
+                    double distSq = flat + (double) dz * dz;
+                    if (distSq < innerSq) {
+                        continue;
+                    }
+                    // A rim that frays rather than stopping dead, so the crater does not read as
+                    // a geometric sphere: certain at the rim, mostly gone at the very edge.
+                    if (distSq > rimSq) {
+                        double out = (Math.sqrt(distSq) - rim) / feather;
+                        if (random.nextFloat() < out * out * 0.9D) {
+                            continue;
+                        }
+                    }
+                    cursor.set(centre.getX() + dx, y, centre.getZ() + dz);
+                    BlockState state = level.getBlockState(cursor);
+                    if (state.isAir()) {
+                        continue;
+                    }
+                    if (state.getDestroySpeed(level, cursor) < 0.0F) {
+                        continue;
+                    }
+                    level.setBlock(cursor, Blocks.AIR.defaultBlockState(), CARVE_FLAGS);
+                }
+            }
+        }
+    }
+
+    /**
+     * One shell of an expanding crater.
+     *
+     * <p>Radii by cube root, so every step removes the same volume and the wave front slows down as
+     * it widens - which is what an expanding shell of anything does.
+     */
+    private static void wave(ServerLevel level, BlockPos centre, double radius, int step,
+                             int steps) {
+        double scaled = radius * scaleOf();
+        double inner = scaled * Math.cbrt((double) step / steps);
+        double outer = scaled * Math.cbrt((double) (step + 1) / steps);
+        carve(level, centre, inner, outer, scaled);
+    }
+
+    /**
+     * The mushroom, and the flash that reaches the whole render distance.
+     *
+     * <p>Sent per player with the force flag, because the ordinary {@code sendParticles} drops
+     * anything more than 32 blocks from the viewer - which for a 44-block crater means the person
+     * it is aimed at is the one person who cannot see it.
+     */
+    private static void mushroom(ServerLevel level, BlockPos at, double radius) {
+        double x = at.getX() + 0.5D;
+        double y = at.getY() + 0.5D;
+        double z = at.getZ() + 0.5D;
+        for (ServerPlayer player : level.players()) {
+            far(level, player, ParticleTypes.FLASH, x, y, z, 6, radius * 0.25D, 0.0D);
+            far(level, player, ParticleTypes.EXPLOSION_EMITTER, x, y, z, 12, radius * 0.35D, 0.0D);
+            // The stem, then the cap: a column of smoke with a wider, slower crown on top of it.
+            for (int i = 0; i < 26; i++) {
+                double height = y + i * (radius * 0.14D);
+                double spread = radius * (i < 16 ? 0.16D : 0.55D);
+                far(level, player, ParticleTypes.LARGE_SMOKE, x, height, z, 24, spread, 0.05D);
+            }
+            far(level, player, ParticleTypes.CAMPFIRE_SIGNAL_SMOKE, x, y + radius * 1.9D, z,
+                    90, radius * 0.7D, 0.02D);
+        }
+    }
+
+    private static void far(ServerLevel level, ServerPlayer player, SimpleParticleType type,
+                            double x, double y, double z, int count, double spread, double speed) {
+        level.sendParticles(player, type, true, x, y, z, count, spread, spread * 0.4D, spread,
+                speed);
     }
 
     /**
@@ -364,6 +575,11 @@ public final class Meltdown {
     }
 
     /** Whether anything anywhere is currently melting, so the tick can bail out cheaply. */
+    /** In single player the next world would otherwise inherit this one's half-run sequences. */
+    public static void forgetAll() {
+        STAGES.clear();
+    }
+
     /** Whether this one structure is mid-meltdown, so nothing can quietly unregister it. */
     public static boolean melting(MinecraftServer server, UUID structureId) {
         ReactorData data = ReactorData.get(server);

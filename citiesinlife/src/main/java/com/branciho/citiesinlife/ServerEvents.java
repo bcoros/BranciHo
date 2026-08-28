@@ -13,6 +13,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import com.branciho.citiesinlife.nuclear.Meltdown;
+import com.branciho.citiesinlife.nuclear.Radiation;
 import com.branciho.citiesinlife.nuclear.ReactorSurvey;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
@@ -40,6 +41,8 @@ public final class ServerEvents {
         // Before the city tick: a melting reactor has left the ten-second cadence and is stepped
         // every tick until it is finished.
         Meltdown.tick(server);
+        // Outlives the meltdown it came from, and is ticked separately for exactly that reason.
+        Radiation.tick(server);
         CitySimulation.tick(server);
         CitizenDirector.tick(server);
         ServiceDirector.tick(server);
@@ -57,6 +60,8 @@ public final class ServerEvents {
     public static void onServerStopped(ServerStoppedEvent event) {
         PlantSurvey.forgetAll();
         ReactorSurvey.forgetAll();
+        Radiation.clear();
+        Meltdown.forgetAll();
     }
 
     @SubscribeEvent
