@@ -96,6 +96,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import com.branciho.citiesinlife.entity.MissileEntity;
+import com.branciho.citiesinlife.missile.MissileDirector;
+import com.branciho.citiesinlife.missile.MissileKind;
+import com.branciho.citiesinlife.missile.SiloSurvey;
+import com.branciho.citiesinlife.net.payload.LaunchMissilePayload;
+import com.branciho.citiesinlife.net.payload.MissileMapPayload;
+import net.minecraft.world.level.entity.EntityTypeTest;
 
 /**
  * Everything a client can ask the server to do, and every reason it might be told no.
@@ -2357,6 +2364,143 @@ public final class ServerActions {
         player.sendSystemMessage(machine.describe(level, pos, level.getBlockState(pos)));
         player.sendSystemMessage(Component.translatable("message.citiesinlife.upgrade_paid", cost));
         sync(player);
+    }
+
+
+    // ------------------------------------------------------------ the missile map
+
+    /**
+     * How far out the strategic map is told about.
+     *
+     * <p>Far bigger than the land map's twelve chunks — a weapon whose whole point is reaching
+     * somewhere you are not is useless on a map that stops at the edge of your own city. Ninety-six
+     * chunks is fifteen hundred blocks in every direction, which is comfortably further than any
+     * missile will fly.
+     */
+    private static final int MISSILE_MAP_RADIUS = 96;
+
+    /**
+     * Everything the missile map draws, for one player who is looking at one.
+     *
+     * <p>Sent on request and only on request. It is a great deal more than the ordinary sync and
+     * nobody who is not looking at a missile map should be paying for it.
+     */
+    public static void syncMissileMap(ServerPlayer player) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        ServerLevel level = player.serverLevel();
+        CityData data = CityData.get(server);
+        City mine = data.cityOf(player.getUUID(), level.dimension());
+
+        List<MissileMapPayload.Silo> silos = new ArrayList<>();
+        List<MissileMapPayload.Land> land = new ArrayList<>();
+        List<MissileMapPayload.Place> places = new ArrayList<>();
+        List<MissileMapPayload.Track> tracks = new ArrayList<>();
+
+        ChunkPos here = player.chunkPosition();
+        for (City city : data.cities()) {
+            if (!city.dimension().equals(level.dimension())) {
+                continue;
+            }
+            byte relation = relationOf(mine, city);
+            long centreX = 0;
+            long centreZ = 0;
+            int counted = 0;
+            for (long chunkKey : city.claimedChunks()) {
+                centreX += ChunkPos.getX(chunkKey);
+                centreZ += ChunkPos.getZ(chunkKey);
+                counted++;
+                if (land.size() >= MissileMapPayload.MAX_LAND) {
+                    continue;
+                }
+                if (Math.abs(ChunkPos.getX(chunkKey) - here.x) > MISSILE_MAP_RADIUS
+                        || Math.abs(ChunkPos.getZ(chunkKey) - here.z) > MISSILE_MAP_RADIUS) {
+                    continue;
+                }
+                land.add(new MissileMapPayload.Land(chunkKey, relation));
+            }
+            // The middle of what they have claimed, which is a better answer to "where is that
+            // city" than the city hall - a city grows away from its hall and the hall stays put.
+            if (counted > 0 && places.size() < MissileMapPayload.MAX_PLACES) {
+                places.add(new MissileMapPayload.Place(city.name(),
+                        (int) (centreX / counted), (int) (centreZ / counted), relation));
+            }
+        }
+
+        if (mine != null) {
+            for (Structure structure : data.structuresOf(mine)) {
+                if (structure.type() != StructureType.MISSILE_SILO
+                        || !structure.dimension().equals(level.dimension())) {
+                    continue;
+                }
+                boolean loaded = level.isLoaded(structure.min());
+                SiloSurvey survey = loaded ? SiloSurvey.of(level, structure) : null;
+                silos.add(new MissileMapPayload.Silo(
+                        structure.id(), structure.name(),
+                        (structure.min().getX() + structure.max().getX()) / 2,
+                        (structure.min().getZ() + structure.max().getZ()) / 2,
+                        survey == null ? 0 : survey.count(MissileKind.BALLISTIC),
+                        survey == null ? 0 : survey.count(MissileKind.NUCLEAR),
+                        survey == null ? 0 : survey.count(MissileKind.INTERCEPTOR),
+                        !loaded || MissileDirector.busy(structure.id())));
+                if (silos.size() >= MissileMapPayload.MAX_SILOS) {
+                    break;
+                }
+            }
+        }
+
+        for (MissileEntity rocket : level.getEntities(
+                EntityTypeTest.forClass(MissileEntity.class), rocket -> rocket.isAlive())) {
+            if (tracks.size() >= MissileMapPayload.MAX_TRACKS) {
+                break;
+            }
+            tracks.add(new MissileMapPayload.Track(
+                    (int) rocket.getX(), (int) rocket.getZ(),
+                    (int) rocket.target().x, (int) rocket.target().z,
+                    rocket.ticksToImpact() / 20,
+                    (byte) rocket.kind().ordinal(),
+                    mine != null && mine.id().equals(rocket.cityId())));
+        }
+
+        CitiesInLifeNetwork.sendTo(player,
+                new MissileMapPayload(silos, land, places, tracks));
+    }
+
+    /** How the viewer's city stands towards another, flattened to the byte the map draws with. */
+    private static byte relationOf(@Nullable City mine, City theirs) {
+        if (mine != null && mine.id().equals(theirs.id())) {
+            return MissileMapPayload.MINE;
+        }
+        return switch (Diplomacy.stance(theirs, mine)) {
+            case WAR -> MissileMapPayload.WAR;
+            case ALLIED -> MissileMapPayload.ALLIED;
+            case NEUTRAL -> MissileMapPayload.NEUTRAL;
+        };
+    }
+
+    /**
+     * Somebody has pressed launch.
+     *
+     * <p>Every rule lives in the director; this only turns the packet's strings back into things
+     * and reports whatever it says.
+     */
+    public static void launchMissile(ServerPlayer player, LaunchMissilePayload payload) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        MissileKind kind = MissileKind.byId(payload.kindId(), MissileKind.BALLISTIC);
+        String refusal = MissileDirector.launch(server, player, payload.siloId(),
+                payload.chunkX(), payload.chunkZ(), kind);
+        if (refusal != null) {
+            player.sendSystemMessage(Component.translatable(refusal));
+            return;
+        }
+        player.sendSystemMessage(Component.translatable("message.citiesinlife.missile_away",
+                kind.displayName()));
+        syncMissileMap(player);
     }
 
     private static void reject(ServerPlayer player, String key) {

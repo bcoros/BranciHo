@@ -43,6 +43,9 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
+import com.branciho.citiesinlife.net.payload.LaunchMissilePayload;
+import com.branciho.citiesinlife.net.payload.MissileMapPayload;
+import com.branciho.citiesinlife.net.payload.RequestMissileMapPayload;
 
 /**
  * Payload registration.
@@ -131,6 +134,15 @@ public final class CitiesInLifeNetwork {
                 (payload, context) -> context.enqueueWork(
                         () -> onServer(context, ServerActions::sync)));
 
+        registrar.playToServer(RequestMissileMapPayload.TYPE,
+                RequestMissileMapPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(
+                        () -> onServer(context, ServerActions::syncMissileMap)));
+
+        registrar.playToServer(LaunchMissilePayload.TYPE, LaunchMissilePayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(
+                        () -> onServer(context, player -> ServerActions.launchMissile(player, payload))));
+
         registrar.playToClient(CitySyncPayload.TYPE, CitySyncPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(() -> ClientCityCache.accept(payload)));
 
@@ -182,6 +194,10 @@ public final class CitiesInLifeNetwork {
 
         registrar.playToClient(PeaceOfferPayload.TYPE, PeaceOfferPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(() -> ClientCityCache.accept(payload)));
+
+        registrar.playToClient(MissileMapPayload.TYPE, MissileMapPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(
+                        () -> ClientCityCache.accept(payload)));
 
         registrar.playToServer(SetSettingsPayload.TYPE, SetSettingsPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(

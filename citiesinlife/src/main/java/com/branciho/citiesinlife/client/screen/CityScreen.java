@@ -23,7 +23,7 @@ public class CityScreen extends Screen {
     static final int COLOUR_GOOD = 0xFF66E576;
     static final int COLOUR_BAD = 0xFFFF6B6B;
 
-    private static final int PANEL_WIDTH = 244;
+    private static final int PANEL_WIDTH = 300;
     // Two more rows than it started with: power gained a water twin, and both need room for the
     // line that appears underneath when they fall short. Refuse added a third of the same shape.
     private static final int PANEL_HEIGHT = 276;
@@ -40,9 +40,10 @@ public class CityScreen extends Screen {
         left = (this.width - PANEL_WIDTH) / 2;
         top = (this.height - PANEL_HEIGHT) / 2;
 
-        // Four across the bottom now. Neighbours sits between the land and the way out, because it
-        // is the other half of the same subject: this is your land, and that is everybody else's.
-        int buttonWidth = (PANEL_WIDTH - 24 - 12) / 4;
+        // Five across the bottom now, and the panel widened to fit them at the width they already
+        // were rather than squeezing five into four's worth of room. The four-pixel gaps are baked
+        // into the x offsets below, so any change to the count means re-deriving all of them.
+        int buttonWidth = (PANEL_WIDTH - 24 - 16) / 5;
         addRenderableWidget(Button.builder(
                         Component.translatable("screen.citiesinlife.settings"),
                         button -> this.minecraft.setScreen(new SettingsScreen(new CityScreen())))
@@ -69,6 +70,12 @@ public class CityScreen extends Screen {
                                         : ClientCityCache.city().flag(),
                                 new CityScreen())))
                 .bounds(left + 20 + buttonWidth * 2, top + PANEL_HEIGHT - 30, buttonWidth, 20)
+                .build());
+
+        addRenderableWidget(Button.builder(
+                        Component.translatable("screen.citiesinlife.missiles"),
+                        button -> this.minecraft.setScreen(new MissileMapScreen()))
+                .bounds(left + 24 + buttonWidth * 3, top + PANEL_HEIGHT - 30, buttonWidth, 20)
                 .build());
 
         addRenderableWidget(Button.builder(

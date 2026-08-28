@@ -21,6 +21,7 @@ import it.unimi.dsi.fastutil.longs.LongSet;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
+import com.branciho.citiesinlife.net.payload.MissileMapPayload;
 
 /**
  * The last city and structure snapshot the server sent, for the screens and the world overlay to
@@ -51,6 +52,15 @@ public final class ClientCityCache {
     private static @Nullable PeaceOfferPayload pendingPeaceOffer;
     private static @Nullable ModSettingsPayload settings;
     private static int radiation;
+
+    /**
+     * The strategic picture, or null until the missile map has asked for one.
+     *
+     * <p>Kept whole rather than unpacked into indexes, because unlike the land map's chunk lookups
+     * every part of this is walked once per frame anyway - there are a handful of silos, a handful
+     * of cities and almost never a missile in the air.
+     */
+    private static @Nullable MissileMapPayload missileMap;
 
     private ClientCityCache() {
     }
@@ -173,6 +183,14 @@ public final class ClientCityCache {
         radiation = payload.strength();
     }
 
+    public static void accept(MissileMapPayload payload) {
+        missileMap = payload;
+    }
+
+    public static @Nullable MissileMapPayload missileMap() {
+        return missileMap;
+    }
+
     public static int radiation() {
         return radiation;
     }
@@ -266,5 +284,6 @@ public final class ClientCityCache {
         pendingPeaceOffer = null;
         settings = null;
         radiation = 0;
+        missileMap = null;
     }
 }

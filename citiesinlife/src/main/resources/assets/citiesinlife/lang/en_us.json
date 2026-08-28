@@ -632,5 +632,14 @@
   "message.citiesinlife.missile_incoming": "INCOMING %s - impact at %s, %s in %s seconds.",
   "message.citiesinlife.missile_landed": "A %s fired by %s has struck %s.",
   "message.citiesinlife.missile_landed_wild": "A %s fired by %s has struck open ground.",
-  "message.citiesinlife.registered_silo": "Registered %s. Stand a missile in it - a roof of sealing blocks, an alarm and a siren are all optional."
+  "message.citiesinlife.registered_silo": "Registered %s. Stand a missile in it - a roof of sealing blocks, an alarm and a siren are all optional.",
+  "screen.citiesinlife.missiles": "Missiles",
+  "screen.citiesinlife.missile_map": "Missile Command",
+  "screen.citiesinlife.your_silos": "Your silos",
+  "screen.citiesinlife.no_silos": "None registered.",
+  "screen.citiesinlife.known_cities": "Cities",
+  "screen.citiesinlife.pick_a_silo": "Choose a silo on the left first.",
+  "screen.citiesinlife.missile_map_hint": "Click a chunk to fire. Right-drag or arrow keys to pan. B / N counts are what is loaded.",
+  "screen.citiesinlife.missile_in_flight": "%s in the air - impact in %s seconds.",
+  "message.citiesinlife.missile_away": "%s away. The doors are opening."
 }
