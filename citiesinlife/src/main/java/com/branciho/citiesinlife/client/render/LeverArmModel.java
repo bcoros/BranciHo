@@ -82,11 +82,12 @@ public final class LeverArmModel {
                         .addBox(5.0F, -9.8F, -1.3F, 2, 3, 3),
                 PartPose.ZERO);
 
-        // One quad's worth of box, standing just proud of the housing's lamp recess so it reads
-        // as lit glass rather than as a painted square.
+        // Centred on its own origin, so the renderer places it with one translate rather than
+        // with a translate plus an offset baked in here. Two places deciding where the lamp goes
+        // is how it ended up floating beside the housing instead of inside it.
         root.addOrReplaceChild(LAMP, CubeListBuilder.create()
                         .texOffs(16, 0)
-                        .addBox(-2.0F, -6.0F, -5.4F, 4, 4, 1),
+                        .addBox(-2.0F, -1.5F, -0.5F, 4, 3, 1),
                 PartPose.ZERO);
 
         return LayerDefinition.create(mesh, TEXTURE_WIDTH, TEXTURE_HEIGHT);
