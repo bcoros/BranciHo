@@ -42,6 +42,10 @@
     "citiesinlife:heat_lever",
     "citiesinlife:pressure_lever",
     "citiesinlife:turbine_power",
-    "citiesinlife:main_monitor"
+    "citiesinlife:main_monitor",
+    "citiesinlife:ballistic_missile",
+    "citiesinlife:nuclear_missile",
+    "citiesinlife:interceptor_missile",
+    "citiesinlife:siren"
   ]
 }

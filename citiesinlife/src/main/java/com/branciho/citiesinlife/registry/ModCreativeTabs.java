@@ -81,6 +81,12 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.MILITARY_TOOL.get());
                         output.accept(ModItems.WAR_PLANNER_WAND.get());
                         output.accept(ModItems.SERVICE_RIFLE.get());
+                        output.accept(ModItems.MISSILE_STAGE.get());
+                        output.accept(ModItems.URANIUM_CORE.get());
+                        output.accept(ModItems.BALLISTIC_MISSILE.get());
+                        output.accept(ModItems.NUCLEAR_MISSILE.get());
+                        output.accept(ModItems.INTERCEPTOR_MISSILE.get());
+                        output.accept(ModItems.SIREN.get());
                     })
                     .build());
 

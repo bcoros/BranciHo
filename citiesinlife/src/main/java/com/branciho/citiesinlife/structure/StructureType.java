@@ -92,7 +92,25 @@ public enum StructureType implements StringRepresentable {
      * scroll order and the war wand's cycle both come from ordinal position, so inserting anywhere
      * else would silently reshuffle a list the player has already learned.
      */
-    NUCLEAR_PLANT("nuclear_plant", 0x7ED63E, 0, null, false);
+    NUCLEAR_PLANT("nuclear_plant", 0x7ED63E, 0, null, false),
+
+    /**
+     * A missile silo: a box with rockets standing in it.
+     *
+     * <p>Not measured, for the same reason a power plant is not — what matters is not how much
+     * room is inside but what is standing in it. The box is what turns a rocket somebody placed
+     * into a rocket somebody can fire: a missile outside a registered silo is scenery.
+     *
+     * <p>Everything else in the box is optional and additive. Sealing blocks become a roof that
+     * opens; an alarm gives you the light going red while the doors travel; a siren watches for
+     * what is coming the other way. A silo with none of them is a rocket on open ground, which
+     * works perfectly and can be seen from the air by anybody who wants to know where to aim.
+     *
+     * <p>Added at the END, like the reactor before it, because the planner's scroll order and the
+     * war wand's cycle both come from ordinal position and inserting anywhere else would silently
+     * reshuffle a list the player has already learned.
+     */
+    MISSILE_SILO("missile_silo", 0xB0552F, 0, null, false);
 
     /** Floor cells consumed by one dwelling. */
     public static final double CELLS_PER_DWELLING = 16.0D;

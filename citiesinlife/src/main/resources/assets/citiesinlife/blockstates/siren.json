@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "wailing=false": {
+      "model": "citiesinlife:block/siren"
+    },
+    "wailing=true": {
+      "model": "citiesinlife:block/siren_wailing"
+    }
+  }
+}

@@ -209,4 +209,33 @@ public final class MachineSounds {
     public static void siren(Level level, double x, double y, double z, boolean high) {
         at(level, x, y, z, SoundEvents.NOTE_BLOCK_BIT.value(), 0.9F, high ? 1.5F : 1.0F);
     }
+
+    // ---------------------------------------------------------------- rockets
+
+    /**
+     * A rocket under power.
+     *
+     * <p>An elytra, an octave down. Nothing in the game is a rocket engine, but a sustained rush of
+     * air pitched into the cellar is what one sounds like from the ground, and it is already the
+     * sound the game uses for something moving very fast through the sky.
+     */
+    public static void rocket(Level level, double x, double y, double z, RandomSource random) {
+        at(level, x, y, z, SoundEvents.ELYTRA_FLYING, 2.2F, 0.5F + random.nextFloat() * 0.06F);
+    }
+
+    /**
+     * The air-raid siren.
+     *
+     * <p>A raid horn, which already means "something is coming" to anybody who has played this game
+     * — and is the one vanilla sound long enough and loud enough to carry across a city. Alternated
+     * between two pitches so it rises and falls rather than repeating a note, which is the
+     * difference between a siren and a stuck block.
+     *
+     * <p>Loud, and still on the machine-volume dial. A warning you cannot turn down is a warning
+     * that gets the mod uninstalled.
+     */
+    public static void airRaid(Level level, BlockPos pos, RandomSource random) {
+        at(level, pos, SoundEvents.RAID_HORN.value(), 3.2F,
+                random.nextBoolean() ? 0.62F : 0.85F);
+    }
 }

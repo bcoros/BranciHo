@@ -19,6 +19,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import com.branciho.citiesinlife.missile.MissileDirector;
 
 /**
  * What the alarm is watching, and how loudly.
@@ -58,6 +59,17 @@ public class AlarmBlockEntity extends BlockEntity {
      */
     private AlarmBlock.Trouble reactorLevel = AlarmBlock.Trouble.NONE;
     private boolean insideReactor;
+
+    /**
+     * Whether this alarm is hanging in a missile silo, and whether that silo is opening up.
+     *
+     * <p>The same two existing states serve it: an alarm in a silo is either quiet or red, and it
+     * needs no new blockstate, model or sound to say the one thing it has to say. Reusing the
+     * colour a player has already learned means red goes on meaning "it is nearly too late" in a
+     * building where that is even more true than it was in a reactor hall.
+     */
+    private boolean insideSilo;
+    private boolean siloLaunching;
 
     public AlarmBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.ALARM.get(), pos, state);
@@ -106,6 +118,7 @@ public class AlarmBlockEntity extends BlockEntity {
         howManyClogged = 0;
         reactorLevel = AlarmBlock.Trouble.NONE;
         insideReactor = false;
+        insideSilo = false;
 
         if (level instanceof ServerLevel serverLevel) {
             Structure plant = CityData.get(serverLevel.getServer())
@@ -114,6 +127,15 @@ public class AlarmBlockEntity extends BlockEntity {
                 insideReactor = true;
                 insidePlant = true;
                 reactorLevel = reactorTrouble(serverLevel, plant);
+                return;
+            }
+            // A missile silo. The alarm has one thing to say here and it is worth saying loudly:
+            // the roof is opening. Red rather than amber, because there is no cautionary version
+            // of a launch - by the time the doors are moving the decision has been taken.
+            if (plant != null && plant.type() == StructureType.MISSILE_SILO) {
+                insideSilo = true;
+                insidePlant = true;
+                siloLaunching = MissileDirector.busy(plant.id());
                 return;
             }
         }
@@ -138,6 +160,9 @@ public class AlarmBlockEntity extends BlockEntity {
     }
 
     private AlarmBlock.Trouble trouble() {
+        if (insideSilo) {
+            return siloLaunching ? AlarmBlock.Trouble.FIRE : AlarmBlock.Trouble.NONE;
+        }
         if (insideReactor) {
             return reactorLevel;
         }

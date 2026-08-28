@@ -14,6 +14,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
+import com.branciho.citiesinlife.entity.MissileEntity;
 
 /** The mod's entities, and the attributes the living ones need to exist at all. */
 @EventBusSubscriber(modid = CitiesInLife.MOD_ID, bus = EventBusSubscriber.Bus.MOD)
@@ -89,6 +90,23 @@ public final class ModEntities {
      * CREATURE: a category with a spawn cap would have the game quietly deciding how many people a
      * city may have, which is the player's decision and lives in the config.
      */
+    /**
+     * A missile in the air.
+     *
+     * <p>A plain Entity like the car, so it must NOT appear in createAttributes below — that event
+     * accepts living things only and a plain entity there is a hard startup crash.
+     *
+     * <p>The tracking range is the largest in the mod on purpose. A warhead crossing the sky is
+     * meant to be seen from a long way off by people who have nothing to do with the war.
+     */
+    public static final DeferredHolder<EntityType<?>, EntityType<MissileEntity>> MISSILE =
+            ENTITIES.register("missile", () -> EntityType.Builder
+                    .<MissileEntity>of(MissileEntity::new, MobCategory.MISC)
+                    .sized(2.0F, 10.0F)
+                    .clientTrackingRange(32)
+                    .updateInterval(1)
+                    .build("missile"));
+
     @SubscribeEvent
     public static void createAttributes(EntityAttributeCreationEvent event) {
         event.put(CITIZEN.get(), CitizenEntity.createAttributes().build());

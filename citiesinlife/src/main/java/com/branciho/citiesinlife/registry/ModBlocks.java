@@ -48,6 +48,9 @@ import net.minecraft.world.level.material.MapColor;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredRegister;
+import com.branciho.citiesinlife.block.MissileBlock;
+import com.branciho.citiesinlife.block.SirenBlock;
+import com.branciho.citiesinlife.missile.MissileKind;
 
 /** The utility blocks. */
 public final class ModBlocks {
@@ -510,6 +513,46 @@ public final class ModBlocks {
 
     private ModBlocks() {
     }
+
+    /**
+     * The three rockets.
+     *
+     * <p>One class, three registrations, the way the cooling ports and the levers are done. What
+     * separates them is a {@link MissileKind}, and the registry name comes off the enum so the
+     * block, its texture and its lang key can never drift apart.
+     *
+     * <p>{@code noOcclusion} because a ten-block rocket standing on a half-block pad does not fill
+     * its own space, and {@code forceSolidOn} so the pad it stands on still behaves like ground.
+     */
+    public static final DeferredBlock<MissileBlock> BALLISTIC_MISSILE =
+            missile(MissileKind.BALLISTIC);
+
+    public static final DeferredBlock<MissileBlock> NUCLEAR_MISSILE =
+            missile(MissileKind.NUCLEAR);
+
+    public static final DeferredBlock<MissileBlock> INTERCEPTOR_MISSILE =
+            missile(MissileKind.INTERCEPTOR);
+
+    private static DeferredBlock<MissileBlock> missile(MissileKind kind) {
+        return BLOCKS.register(kind.id(),
+                () -> new MissileBlock(BlockBehaviour.Properties.of()
+                        .mapColor(MapColor.METAL)
+                        .strength(6.0F, 12.0F)
+                        .requiresCorrectToolForDrops()
+                        .sound(SoundType.METAL)
+                        .forceSolidOn()
+                        .noOcclusion(), kind));
+    }
+
+    /** The pole that tells a city something is coming. */
+    public static final DeferredBlock<SirenBlock> SIREN =
+            BLOCKS.register("siren",
+                    () -> new SirenBlock(BlockBehaviour.Properties.of()
+                            .mapColor(MapColor.COLOR_GRAY)
+                            .strength(3.0F, 6.0F)
+                            .requiresCorrectToolForDrops()
+                            .sound(SoundType.METAL)
+                            .noOcclusion()));
 
     public static void register(IEventBus modBus) {
         BLOCKS.register(modBus);

@@ -33,6 +33,9 @@ import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 import com.branciho.citiesinlife.client.render.FireTruckModel;
 import com.branciho.citiesinlife.client.render.AmbulanceModel;
+import com.branciho.citiesinlife.client.render.MissileModel;
+import com.branciho.citiesinlife.client.render.MissileRenderer;
+import com.branciho.citiesinlife.client.render.MissileEntityRenderer;
 
 /**
  * Client-side setup.
@@ -76,6 +79,7 @@ public final class CitiesInLifeClient {
         event.registerLayerDefinition(ServiceModel.LAYER, ServiceModel::createBodyLayer);
         event.registerLayerDefinition(TouristModel.LAYER, TouristModel::createBodyLayer);
         event.registerLayerDefinition(LeverArmModel.LAYER, LeverArmModel::create);
+        event.registerLayerDefinition(MissileModel.LAYER, MissileModel::create);
     }
 
     @SubscribeEvent
@@ -93,6 +97,8 @@ public final class CitiesInLifeClient {
         event.registerEntityRenderer(ModEntities.CITIZEN.get(), CitizenRenderer::new);
         event.registerEntityRenderer(ModEntities.SERVICE.get(), ServiceRenderer::new);
         event.registerEntityRenderer(ModEntities.CAR.get(), CarRenderer::new);
+        event.registerBlockEntityRenderer(ModBlockEntities.MISSILE.get(), MissileRenderer::new);
+        event.registerEntityRenderer(ModEntities.MISSILE.get(), MissileEntityRenderer::new);
         event.registerEntityRenderer(ModEntities.TOURIST.get(), TouristRenderer::new);
     }
 

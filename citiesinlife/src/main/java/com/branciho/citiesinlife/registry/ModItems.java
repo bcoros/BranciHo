@@ -241,6 +241,32 @@ public final class ModItems {
     private ModItems() {
     }
 
+    /**
+     * A rocket stage, and a block of enriched uranium: the two things you make on the way.
+     *
+     * <p>They exist because the price of a missile does not fit in a crafting grid. Twenty-four
+     * blocks of iron, sixty-four TNT and a block of redstone is thirty-odd stacks, and nine slots
+     * is nine slots — so the cost is paid in eight stages and six cores, which comes out at the
+     * same total and makes building one a small project rather than a single click.
+     */
+    public static final DeferredItem<Item> MISSILE_STAGE =
+            ITEMS.register("missile_stage", () -> new Item(new Item.Properties()));
+
+    public static final DeferredItem<Item> URANIUM_CORE =
+            ITEMS.register("uranium_core", () -> new Item(new Item.Properties()));
+
+    public static final DeferredItem<BlockItem> BALLISTIC_MISSILE =
+            ITEMS.registerSimpleBlockItem("ballistic_missile", ModBlocks.BALLISTIC_MISSILE);
+
+    public static final DeferredItem<BlockItem> NUCLEAR_MISSILE =
+            ITEMS.registerSimpleBlockItem("nuclear_missile", ModBlocks.NUCLEAR_MISSILE);
+
+    public static final DeferredItem<BlockItem> INTERCEPTOR_MISSILE =
+            ITEMS.registerSimpleBlockItem("interceptor_missile", ModBlocks.INTERCEPTOR_MISSILE);
+
+    public static final DeferredItem<BlockItem> SIREN =
+            ITEMS.registerSimpleBlockItem("siren", ModBlocks.SIREN);
+
     public static void register(IEventBus modBus) {
         ITEMS.register(modBus);
     }

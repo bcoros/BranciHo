@@ -1,10 +1,19 @@
 {
   "variants": {
-    "waterlogged=true": {
+    "open=0": {
       "model": "citiesinlife:block/sealing_block"
     },
-    "waterlogged=false": {
-      "model": "citiesinlife:block/sealing_block"
+    "open=1": {
+      "model": "citiesinlife:block/sealing_block_open_1"
+    },
+    "open=2": {
+      "model": "citiesinlife:block/sealing_block_open_2"
+    },
+    "open=3": {
+      "model": "citiesinlife:block/sealing_block_open_3"
+    },
+    "open=4": {
+      "model": "citiesinlife:block/sealing_block_open_4"
     }
   }
 }

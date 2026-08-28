@@ -25,6 +25,7 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
+import com.branciho.citiesinlife.blockentity.MissileBlockEntity;
 
 public final class ModBlockEntities {
 
@@ -156,6 +157,21 @@ public final class ModBlockEntities {
 
     private ModBlockEntities() {
     }
+
+    /**
+     * One type for all three rockets.
+     *
+     * <p>They differ by texture and scale, both of which the renderer reads off the block, so
+     * three block entity types would be three registrations to hold the same nothing.
+     */
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<MissileBlockEntity>>
+            MISSILE = BLOCK_ENTITIES.register("missile",
+                    () -> BlockEntityType.Builder
+                            .of(MissileBlockEntity::new,
+                                    ModBlocks.BALLISTIC_MISSILE.get(),
+                                    ModBlocks.NUCLEAR_MISSILE.get(),
+                                    ModBlocks.INTERCEPTOR_MISSILE.get())
+                            .build(null));
 
     public static void register(IEventBus modBus) {
         BLOCK_ENTITIES.register(modBus);

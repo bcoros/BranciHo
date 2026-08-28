@@ -19,6 +19,8 @@ import org.jetbrains.annotations.Nullable;
 import com.branciho.citiesinlife.sound.MachineSounds;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.Level;
+import net.minecraft.util.Mth;
+import net.minecraft.world.level.block.state.properties.IntegerProperty;
 
 /**
  * The lid on a rod column: a metal slab, and nothing else.
@@ -45,19 +47,58 @@ public class SealingBlock extends Block implements SimpleWaterloggedBlock {
      */
     public static final BooleanProperty VENTING = BooleanProperty.create("venting");
 
+    /**
+     * How far the panel has slid back. 0 is shut, {@link #FULLY_OPEN} is out of the way.
+     *
+     * <p>This block started as a lid for a reactor rod column and had no behaviour at all beyond
+     * being found or not found. It is now also the roof of a missile silo, and a silo roof has to
+     * do the one thing a reactor lid never did: get out of the way.
+     *
+     * <p>Five steps rather than a boolean, and no block entity, because the animation is the
+     * point. A blockstate the silo advances every few ticks gives a panel that visibly retracts,
+     * and a core of thirty sealing blocks stays thirty block states rather than becoming thirty
+     * ticking block entities to move a slab.
+     */
+    public static final IntegerProperty OPEN = IntegerProperty.create("open", 0, 4);
+
+    public static final int FULLY_OPEN = 4;
+
     /** Half a block, sitting on the floor of its own space: a slab, as asked for. */
-    private static final VoxelShape SHAPE = Block.box(0.0D, 0.0D, 0.0D, 16.0D, 8.0D, 16.0D);
+    /**
+     * One shape per step, so an opening door stops being something you stand on.
+     *
+     * <p>The panel retracts along +Z, matching the models exactly. A shape that disagreed with the
+     * model is the kind of bug where a rocket launches through a door that is visibly open and
+     * hits something that is not there.
+     */
+    private static final VoxelShape[] SHAPES = {
+            Block.box(0.0D, 0.0D, 0.0D, 16.0D, 8.0D, 16.0D),
+            Block.box(0.0D, 0.0D, 0.0D, 16.0D, 8.0D, 12.0D),
+            Block.box(0.0D, 0.0D, 0.0D, 16.0D, 8.0D, 8.0D),
+            Block.box(0.0D, 0.0D, 0.0D, 16.0D, 8.0D, 4.0D),
+            Block.box(0.0D, 0.0D, 0.0D, 16.0D, 8.0D, 1.0D)};
 
     public SealingBlock(Properties properties) {
         super(properties);
         registerDefaultState(defaultBlockState()
                 .setValue(WATERLOGGED, false)
-                .setValue(VENTING, false));
+                .setValue(VENTING, false)
+                .setValue(OPEN, 0));
     }
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(WATERLOGGED, VENTING);
+        builder.add(WATERLOGGED, VENTING, OPEN);
+    }
+
+    /** How far this panel has slid back, 0 to {@link #FULLY_OPEN}. */
+    public static int openness(BlockState state) {
+        return state.hasProperty(OPEN) ? state.getValue(OPEN) : 0;
+    }
+
+    /** Whether the way out is clear. */
+    public static boolean open(BlockState state) {
+        return openness(state) >= FULLY_OPEN;
     }
 
     /** Whether this seal is venting, for anything that wants to react to that. */
@@ -91,7 +132,7 @@ public class SealingBlock extends Block implements SimpleWaterloggedBlock {
     @Override
     protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos,
                                   CollisionContext context) {
-        return SHAPE;
+        return SHAPES[Mth.clamp(openness(state), 0, FULLY_OPEN)];
     }
 
     /** Steam out of the seams, and the hiss that goes with it. */

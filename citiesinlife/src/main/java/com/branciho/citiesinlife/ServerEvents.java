@@ -18,6 +18,8 @@ import com.branciho.citiesinlife.nuclear.ReactorSurvey;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import com.branciho.citiesinlife.city.Demolition;
+import com.branciho.citiesinlife.missile.MissileDirector;
+import com.branciho.citiesinlife.missile.Warhead;
 
 /** Server-side lifecycle: run the simulation, and make sure a joining player sees their city. */
 @EventBusSubscriber(modid = CitiesInLife.MOD_ID)
@@ -47,6 +49,10 @@ public final class ServerEvents {
         // After the explosions, and one tick behind them by design: the event that lists an
         // explosion's victims fires before any of them are gone.
         Demolition.tick(server);
+        // The crater an incoming warhead opens, one shell per tick, and the silos in the middle of
+        // opening their doors.
+        Warhead.tick(server);
+        MissileDirector.tick(server);
         CitySimulation.tick(server);
         CitizenDirector.tick(server);
         ServiceDirector.tick(server);
@@ -66,6 +72,8 @@ public final class ServerEvents {
         ReactorSurvey.forgetAll();
         Radiation.clear();
         Demolition.clear();
+        Warhead.clear();
+        MissileDirector.clear();
         Meltdown.forgetAll();
     }
 
