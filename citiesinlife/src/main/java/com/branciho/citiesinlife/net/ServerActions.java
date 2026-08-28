@@ -43,6 +43,7 @@ import com.branciho.citiesinlife.nuclear.Meltdown;
 import com.branciho.citiesinlife.nuclear.ReactorData;
 import com.branciho.citiesinlife.nuclear.ReactorFault;
 import com.branciho.citiesinlife.nuclear.ReactorLever;
+import com.branciho.citiesinlife.nuclear.ReactorReadout;
 import com.branciho.citiesinlife.nuclear.ReactorState;
 import com.branciho.citiesinlife.net.payload.OpenMonitorPayload;
 import com.branciho.citiesinlife.net.payload.ReactorSyncPayload;
@@ -228,16 +229,25 @@ public final class ServerActions {
             return;
         }
 
-        // A reactor is refused at the moment the box is drawn if it is not a reactor. Every other
-        // structure type can be registered around thin air and filled in later; this one cannot,
-        // because a half-built core that registers happily and then sits inert is indistinguishable
-        // from the feature being broken.
+        // A reactor box registers around thin air like every other structure type, and then tells
+        // you what it still needs.
+        //
+        // It used to be refused unless the finished reactor was already standing inside it, on the
+        // theory that a box which registers and sits inert looks like a broken feature. That was
+        // backwards: you cannot build a reactor without the box, because every reactor block reads
+        // its own status through the registration - so the refusal meant the plant could only be
+        // registered once it no longer needed to be, and until then the wand printed a build fault
+        // and the player had nothing to build against. The two structural refusals below stay,
+        // because neither is something the player fills in later.
+        ReactorFault stillNeeds = null;
         if (type == StructureType.NUCLEAR_PLANT) {
-            ReactorFault problem = ReactorSurvey.of(level, min, max).buildFault();
-            if (problem != null) {
-                player.sendSystemMessage(problem.describe());
+            ReactorSurvey survey = ReactorSurvey.of(level, min, max);
+            ReactorFault problem = survey.buildFault();
+            if (problem == ReactorFault.BOX_TOO_LARGE || problem == ReactorFault.MIXED_PLANT) {
+                player.sendSystemMessage(ReactorReadout.sentence(survey, problem));
                 return;
             }
+            stillNeeds = problem;
         }
 
         Structure overlap = data.overlapping(level.dimension(), min, max);
@@ -270,6 +280,12 @@ public final class ServerActions {
                 case MILITARY_BASE -> "message.citiesinlife.registered_base";
                 default -> "message.citiesinlife.registered_marker";
             }, name));
+            // The box is the thing you build against, so say what it is waiting for rather than
+            // leaving the player to punch a block they have not placed yet.
+            if (stillNeeds != null) {
+                player.sendSystemMessage(ReactorReadout.sentence(
+                        ReactorSurvey.of(level, min, max), stillNeeds));
+            }
             sync(player);
             return;
         }
