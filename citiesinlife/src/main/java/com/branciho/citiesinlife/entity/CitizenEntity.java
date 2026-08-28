@@ -52,7 +52,7 @@ import java.util.UUID;
  * graph was the obvious alternative and is exactly the thing that breaks the first time a junction is
  * missing.
  */
-public class CitizenEntity extends PathfinderMob implements CityMember {
+public class CitizenEntity extends PathfinderMob implements CityMember, Motorist {
 
     /** How many faces citizens come in. Purely cosmetic; the director picks one at random. */
     public static final int SKINS = 4;
@@ -438,10 +438,31 @@ public class CitizenEntity extends PathfinderMob implements CityMember {
         this.cityId = cityId;
     }
 
+    @Override
     public @Nullable UUID carId() {
         return carId;
     }
 
+    /**
+     * Held at "driving" for the whole journey, and put back to idle at the end of it.
+     *
+     * <p>This is the entire reason a citizen needs the hook at all. Their goals keep running
+     * while the car carries them - deliberately, so the two places that clean a broken trip up
+     * stay reachable - and without an activity that says "busy" one of those goals would decide
+     * to wander off from inside a moving car.
+     */
+    @Override
+    public void ridingChanged(boolean aboard) {
+        setActivity(aboard ? ACTIVITY_DRIVING : ACTIVITY_IDLE);
+    }
+
+    /** A citizen drives their own car. */
+    @Override
+    public CarEntity.Livery livery() {
+        return CarEntity.Livery.SALOON;
+    }
+
+    @Override
     public void setCarId(@Nullable UUID carId) {
         this.carId = carId;
     }

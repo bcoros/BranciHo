@@ -28,6 +28,18 @@ public final class CarModel {
     public static final String WHEEL_REAR_LEFT = "wheel_rear_left";
     public static final String WHEEL_REAR_RIGHT = "wheel_rear_right";
 
+    /**
+     * The two lamps on the roof of an emergency vehicle.
+     *
+     * <p>Part of the one shared car mesh rather than of three separate ones. A police car is a car
+     * with a light bar; giving each service its own model would have meant three copies of a
+     * saloon differing by one box, and three sets of UVs to keep in step.
+     *
+     * <p>Hidden on a citizen's own car, which is the whole of how the saloon stays a saloon.
+     */
+    public static final String LIGHT_LEFT = "light_left";
+    public static final String LIGHT_RIGHT = "light_right";
+
     private static final int TEXTURE_WIDTH = 128;
     private static final int TEXTURE_HEIGHT = 64;
 
@@ -48,6 +60,16 @@ public final class CarModel {
         root.addOrReplaceChild("cabin", CubeListBuilder.create()
                         .texOffs(0, 38)
                         .addBox(-6.0F, -16.0F, -6.0F, 12, 6, 16),
+                PartPose.ZERO);
+
+        // On the roof, straddling the middle. The cabin's top is at -16, so these sit on it.
+        root.addOrReplaceChild(LIGHT_LEFT, CubeListBuilder.create()
+                        .texOffs(78, 50)
+                        .addBox(-5.0F, -18.0F, -3.0F, 5, 2, 4),
+                PartPose.ZERO);
+        root.addOrReplaceChild(LIGHT_RIGHT, CubeListBuilder.create()
+                        .texOffs(100, 50)
+                        .addBox(0.0F, -18.0F, -3.0F, 5, 2, 4),
                 PartPose.ZERO);
 
         wheel(root, WHEEL_FRONT_LEFT, -7.5F, -10.0F);

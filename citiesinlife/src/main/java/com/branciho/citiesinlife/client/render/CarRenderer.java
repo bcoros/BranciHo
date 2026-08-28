@@ -26,7 +26,32 @@ import net.minecraft.resources.ResourceLocation;
  */
 public class CarRenderer extends EntityRenderer<CarEntity> {
 
-    private static final ResourceLocation TEXTURE = CitiesInLife.id("textures/entity/car/car.png");
+    /**
+     * One texture per livery, resolved once at class load.
+     *
+     * <p>Keyed by the enum's own ordinal so adding a livery is adding one enum constant and one
+     * PNG. Resolving the path per frame would be building a ResourceLocation sixty times a second
+     * per car to arrive at the same four answers.
+     */
+    private static final ResourceLocation[] TEXTURES = textures();
+
+    private static ResourceLocation[] textures() {
+        CarEntity.Livery[] liveries = CarEntity.Livery.values();
+        ResourceLocation[] paths = new ResourceLocation[liveries.length];
+        for (int i = 0; i < liveries.length; i++) {
+            paths[i] = CitiesInLife.id("textures/entity/car/" + liveries[i].texture() + ".png");
+        }
+        return paths;
+    }
+
+    /**
+     * How long each lamp holds before the other takes over.
+     *
+     * <p>Eight ticks, which is the same period the siren swaps tone on. That is not a coincidence
+     * worth leaving to chance - a light bar flashing out of step with its own siren looks like two
+     * separate faults.
+     */
+    private static final int FLASH_TICKS = 8;
 
     /**
      * How much bigger the car is drawn than it is authored.
@@ -53,6 +78,8 @@ public class CarRenderer extends EntityRenderer<CarEntity> {
 
     private final ModelPart root;
     private final ModelPart[] wheels;
+    private final ModelPart lightLeft;
+    private final ModelPart lightRight;
 
     public CarRenderer(EntityRendererProvider.Context context) {
         super(context);
@@ -62,6 +89,8 @@ public class CarRenderer extends EntityRenderer<CarEntity> {
                 root.getChild(CarModel.WHEEL_FRONT_RIGHT),
                 root.getChild(CarModel.WHEEL_REAR_LEFT),
                 root.getChild(CarModel.WHEEL_REAR_RIGHT)};
+        this.lightLeft = root.getChild(CarModel.LIGHT_LEFT);
+        this.lightRight = root.getChild(CarModel.LIGHT_RIGHT);
         this.shadowRadius = 1.0F * SCALE;
     }
 
@@ -81,13 +110,21 @@ public class CarRenderer extends EntityRenderer<CarEntity> {
             wheel.xRot = roll;
         }
 
-        VertexConsumer consumer = buffer.getBuffer(RenderType.entityCutoutNoCull(TEXTURE));
+        // One lamp at a time, alternating, which is what makes it read as flashing rather than as
+        // a coloured box bolted to the roof. A saloon shows neither.
+        boolean emergency = car.livery().emergency();
+        boolean left = (car.tickCount / FLASH_TICKS) % 2 == 0;
+        lightLeft.visible = emergency && left;
+        lightRight.visible = emergency && !left;
+
+        VertexConsumer consumer = buffer.getBuffer(
+                RenderType.entityCutoutNoCull(getTextureLocation(car)));
         root.render(poseStack, consumer, packedLight, OverlayTexture.NO_OVERLAY);
         poseStack.popPose();
     }
 
     @Override
     public ResourceLocation getTextureLocation(CarEntity entity) {
-        return TEXTURE;
+        return TEXTURES[entity.livery().ordinal()];
     }
 }

@@ -16,6 +16,9 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
 import com.branciho.citiesinlife.sound.MachineSounds;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializers;
+import net.minecraft.world.entity.PathfinderMob;
 
 /**
  * A citizen's car, driven along a route worked out before it ever existed.
@@ -36,6 +39,48 @@ import com.branciho.citiesinlife.sound.MachineSounds;
  * overrules it every tick.
  */
 public class CarEntity extends Entity {
+
+    /**
+     * Which vehicle this is.
+     *
+     * <p>One entity type rather than four, because the differences between a saloon and an
+     * ambulance that the game actually has to model are a texture, a light bar and a noise. Four
+     * entity types would have meant four registrations, four renderers and four copies of the
+     * routing for the sake of a paint job.
+     */
+    public enum Livery {
+
+        /** A citizen's own car. No light bar, no siren. */
+        SALOON("car", false),
+        POLICE("police_car", true),
+        FIRE("fire_truck", true),
+        AMBULANCE("ambulance", true);
+
+        private final String texture;
+        private final boolean emergency;
+
+        Livery(String texture, boolean emergency) {
+            this.texture = texture;
+            this.emergency = emergency;
+        }
+
+        public String texture() {
+            return texture;
+        }
+
+        /** Whether it has a light bar on the roof and a siren under the bonnet. */
+        public boolean emergency() {
+            return emergency;
+        }
+
+        public static Livery byId(int id) {
+            Livery[] values = values();
+            return id >= 0 && id < values.length ? values[id] : SALOON;
+        }
+    }
+
+    private static final EntityDataAccessor<Byte> DATA_LIVERY =
+            SynchedEntityData.defineId(CarEntity.class, EntityDataSerializers.BYTE);
 
     /** Blocks per tick on an ordinary street. About 3.6 m/s - a touch faster than walking. */
     private static final double SPEED_ROAD = 0.18D;
@@ -63,6 +108,9 @@ public class CarEntity extends Entity {
 
     private int engineTicks;
 
+    /** Which half of the two-tone the siren is on. */
+    private int sirenTicks;
+
     private double lastX;
     private double lastZ;
     private float travelled;
@@ -81,7 +129,17 @@ public class CarEntity extends Entity {
 
     @Override
     protected void defineSynchedData(SynchedEntityData.Builder builder) {
-        // Nothing about a car needs syncing beyond the position every entity already sends.
+        // The livery, and only the livery. Everything else about a car is either its position,
+        // which every entity already sends, or the route, which is nobody's business but its own.
+        builder.define(DATA_LIVERY, (byte) Livery.SALOON.ordinal());
+    }
+
+    public Livery livery() {
+        return Livery.byId(entityData.get(DATA_LIVERY));
+    }
+
+    public void setLivery(Livery livery) {
+        entityData.set(DATA_LIVERY, (byte) livery.ordinal());
     }
 
     public void setRoute(LongArrayList tiles) {
@@ -90,20 +148,29 @@ public class CarEntity extends Entity {
         index = 0;
     }
 
-    /** Take a citizen aboard: invisible, held still, and marked as driving. */
-    public void board(CitizenEntity citizen) {
-        passengerId = citizen.getUUID();
-        citizen.setCarId(getUUID());
-        citizen.setActivity(CitizenEntity.ACTIVITY_DRIVING);
-        citizen.setInvisible(true);
-        citizen.getNavigation().stop();
+    /**
+     * Take somebody aboard: invisible, held still, and driving whatever they drive.
+     *
+     * <p>The generic bound is doing real work. It says the passenger is both a mob this car can
+     * hold still and a person who owns a car - and it means the car takes its livery from whoever
+     * got in rather than from whoever spawned it, so a paramedic is in an ambulance because they
+     * are a paramedic and there is no second place for that to be decided wrongly.
+     */
+    public <T extends PathfinderMob & Motorist> void board(T rider) {
+        passengerId = rider.getUUID();
+        rider.setCarId(getUUID());
+        rider.ridingChanged(true);
+        setLivery(rider.livery());
+        rider.setInvisible(true);
+        rider.getNavigation().stop();
     }
 
-    public @Nullable CitizenEntity rider(ServerLevel level) {
+    public @Nullable PathfinderMob rider(ServerLevel level) {
         if (passengerId == null) {
             return null;
         }
-        return level.getEntity(passengerId) instanceof CitizenEntity citizen ? citizen : null;
+        return level.getEntity(passengerId) instanceof PathfinderMob mob && mob instanceof Motorist
+                ? mob : null;
     }
 
     @Override
@@ -144,10 +211,16 @@ public class CarEntity extends Entity {
         }
         MachineSounds.engine(level(), getX(), getY() + 0.5D, getZ(), level().random,
                 (float) (moved / SPEED_HIGHWAY));
+        if (livery().emergency()) {
+            // Two tones, alternating, taken from where the siren cycle happens to be. A siren
+            // that played one note would be an alarm; it is the swap between them that makes it
+            // read as something on its way somewhere.
+            MachineSounds.siren(level(), getX(), getY() + 1.0D, getZ(), sirenTicks++ % 2 == 0);
+        }
     }
 
     private void drive(ServerLevel level) {
-        CitizenEntity citizen = rider(level);
+        PathfinderMob citizen = rider(level);
         if (citizen == null || !citizen.isAlive()) {
             // The passenger is gone - unloaded, killed, or the city was razed. Nothing to carry.
             discard();
@@ -204,7 +277,7 @@ public class CarEntity extends Entity {
             discard();
             return;
         }
-        CitizenEntity citizen = rider(serverLevel);
+        PathfinderMob citizen = rider(serverLevel);
         if (citizen != null) {
             BlockPos near = arrived && !route.isEmpty()
                     ? BlockPos.of(route.getLong(route.size() - 1))
@@ -218,12 +291,14 @@ public class CarEntity extends Entity {
         discard();
     }
 
-    /** Hand the citizen back its own body. Safe when the car is already gone. */
-    public static void release(CitizenEntity citizen) {
-        citizen.setInvisible(false);
-        citizen.setCarId(null);
-        citizen.setActivity(CitizenEntity.ACTIVITY_IDLE);
-        citizen.getNavigation().stop();
+    /** Hand the passenger back their own body. Safe when the car is already gone. */
+    public static void release(PathfinderMob rider) {
+        rider.setInvisible(false);
+        if (rider instanceof Motorist motorist) {
+            motorist.setCarId(null);
+            motorist.ridingChanged(false);
+        }
+        rider.getNavigation().stop();
     }
 
     /**
@@ -275,6 +350,7 @@ public class CarEntity extends Entity {
         if (passengerId != null) {
             tag.putUUID("passenger", passengerId);
         }
+        tag.putByte("livery", (byte) livery().ordinal());
     }
 
     @Override
@@ -285,5 +361,8 @@ public class CarEntity extends Entity {
         }
         index = tag.getInt("index");
         passengerId = tag.hasUUID("passenger") ? tag.getUUID("passenger") : null;
+        // Absent on a car saved before the emergency services existed, and a car saved then was a
+        // citizen's own: the default is both the old behaviour and the right answer.
+        setLivery(Livery.byId(tag.getByte("livery")));
     }
 }

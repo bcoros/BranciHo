@@ -35,6 +35,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
+import com.branciho.citiesinlife.service.ServicePatrol;
 
 /**
  * The staffing of one service building.
@@ -139,6 +140,10 @@ public class ServiceSpawnerBlockEntity extends BlockEntity {
         } else if (onDuty.size() < wanted) {
             deploy(serverLevel, city, service, null);
         }
+
+        // After the staffing, and given whoever is actually out there: a station cannot send a
+        // patrol it has not yet hired.
+        ServicePatrol.consider(serverLevel, city, service, worldPosition, onDuty);
     }
 
     /**

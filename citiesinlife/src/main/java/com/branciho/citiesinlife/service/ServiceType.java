@@ -85,4 +85,14 @@ public enum ServiceType implements StringRepresentable {
         }
         return fallback;
     }
+
+    /**
+     * Whether this service has a vehicle it sends out on patrol.
+     *
+     * <p>The three with a recognisable one. A park keeper and a bin lorry are both perfectly real
+     * and neither would earn its own model and siren.
+     */
+    public boolean drives() {
+        return this == POLICE || this == FIRE || this == HOSPITAL;
+    }
 }

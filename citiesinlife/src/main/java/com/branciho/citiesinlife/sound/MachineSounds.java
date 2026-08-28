@@ -197,4 +197,16 @@ public final class MachineSounds {
                 0.28F + 0.3F * Mth.clamp(speed, 0.0F, 1.0F),
                 0.7F + 0.5F * Mth.clamp(speed, 0.0F, 1.0F) + random.nextFloat() * 0.05F);
     }
+
+    /**
+     * Two tones, alternating, from something on a call.
+     *
+     * <p>Note blocks, which is the only thing in the game that will hold a clean pitch. A fifth
+     * apart and swapped every eight ticks is the European two-tone almost exactly, and it carries
+     * a long way over a city because it is meant to - louder than any of the machines, because
+     * the whole purpose of a siren is to be heard over everything else.
+     */
+    public static void siren(Level level, double x, double y, double z, boolean high) {
+        at(level, x, y, z, SoundEvents.NOTE_BLOCK_BIT.value(), 0.9F, high ? 1.5F : 1.0F);
+    }
 }

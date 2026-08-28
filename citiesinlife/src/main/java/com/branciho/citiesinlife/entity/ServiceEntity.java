@@ -51,7 +51,7 @@ import java.util.UUID;
  * a service a cap rather than a headcount: a High police station with a quiet week has nobody
  * standing outside it.
  */
-public class ServiceEntity extends PathfinderMob implements CityMember {
+public class ServiceEntity extends PathfinderMob implements CityMember, Motorist {
 
     private static final EntityDataAccessor<Byte> DATA_ROLE =
             SynchedEntityData.defineId(ServiceEntity.class, EntityDataSerializers.BYTE);
@@ -161,6 +161,53 @@ public class ServiceEntity extends PathfinderMob implements CityMember {
 
     public void setStation(@Nullable BlockPos station) {
         this.station = station;
+    }
+
+    /** The vehicle this one is riding in. See {@link #carId()}. */
+    private @Nullable UUID carId;
+
+    /**
+     * The vehicle this one is riding in, if any.
+     *
+     * <p>Not saved. A patrol is at most a couple of minutes long and the car itself is not
+     * persisted across an unload either, so writing it down would only mean loading a world into
+     * a paramedic who believes they are in an ambulance that no longer exists.
+     */
+    @Override
+    public @Nullable UUID carId() {
+        return carId;
+    }
+
+    @Override
+    public void setCarId(@Nullable UUID carId) {
+        this.carId = carId;
+    }
+
+    /**
+     * Nothing to do.
+     *
+     * <p>A citizen uses this to hold an activity byte; a service worker has no such thing. Their
+     * goals are all conditioned on finding somebody to police or treat, and one riding past in a
+     * car simply does not find anybody - which is the correct behaviour and needed no flag.
+     */
+    @Override
+    public void ridingChanged(boolean aboard) {
+    }
+
+    /** What they turn up in, decided by what they do. */
+    @Override
+    public CarEntity.Livery livery() {
+        return switch (role()) {
+            case POLICE -> CarEntity.Livery.POLICE;
+            case FIRE -> CarEntity.Livery.FIRE;
+            case HOSPITAL -> CarEntity.Livery.AMBULANCE;
+            default -> CarEntity.Livery.SALOON;
+        };
+    }
+
+    /** Whether this service has a vehicle of its own at all. */
+    public boolean drives() {
+        return livery().emergency();
     }
 
     public @Nullable UUID soldierId() {
