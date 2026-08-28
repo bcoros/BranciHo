@@ -13,8 +13,10 @@ import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -77,6 +79,17 @@ public final class City {
      */
     private final Set<UUID> granted = new HashSet<>();
     private final Set<UUID> wars = new HashSet<>();
+
+    /**
+     * What this city has agreed to with each neighbour, and what it charges them.
+     *
+     * <p>One row per neighbour this city has ever had dealings with, holding a bitmask of {@link
+     * Pact}s it is offering and the two prices it wants for its surplus. Deliberately only this
+     * city's half of each arrangement: a pact is live when both cities hold the bit, so consent,
+     * cancellation and "waiting for them to answer" all fall out of comparing two masks and there
+     * is no third place where a half-torn-down agreement can hide.
+     */
+    private final Map<UUID, Dealings> dealings = new HashMap<>();
 
     /**
      * Capacity the city's buildings offer, and how much of it is taken up.
@@ -498,7 +511,8 @@ public final class City {
      * inherit somebody else's grudge.
      */
     public boolean forget(UUID otherCityId) {
-        return granted.remove(otherCityId) | wars.remove(otherCityId);
+        return granted.remove(otherCityId) | wars.remove(otherCityId)
+                | dealings.remove(otherCityId) != null;
     }
 
     public CompoundTag save() {
@@ -547,8 +561,81 @@ public final class City {
 
         tag.put("granted", writeIds(granted));
         tag.put("wars", writeIds(wars));
+        ListTag deals = new ListTag();
+        for (Map.Entry<UUID, Dealings> entry : dealings.entrySet()) {
+            CompoundTag row = new CompoundTag();
+            row.putUUID("id", entry.getKey());
+            row.putInt("pacts", entry.getValue().pacts);
+            row.putInt("powerPrice", entry.getValue().powerPrice);
+            row.putInt("waterPrice", entry.getValue().waterPrice);
+            deals.add(row);
+        }
+        tag.put("dealings", deals);
         return tag;
     }
+
+    /** This city's half of its arrangement with one neighbour. */
+    public static final class Dealings {
+        private int pacts;
+        private int powerPrice = 1;
+        private int waterPrice = 1;
+
+        private boolean empty() {
+            return pacts == 0 && powerPrice == 1 && waterPrice == 1;
+        }
+    }
+
+    // ------------------------------------------------------------------ pacts
+
+    /** Whether this city is holding its half of a pact with that one. */
+    public boolean offers(UUID otherCityId, Pact pact) {
+        Dealings row = dealings.get(otherCityId);
+        return row != null && (row.pacts & pact.bit()) != 0;
+    }
+
+    /**
+     * Set or clear this city's half of a pact.
+     *
+     * @return whether anything changed
+     */
+    public boolean setOffer(UUID otherCityId, Pact pact, boolean on) {
+        Dealings row = on ? dealings.computeIfAbsent(otherCityId, id -> new Dealings())
+                : dealings.get(otherCityId);
+        if (row == null) {
+            return false;
+        }
+        int was = row.pacts;
+        row.pacts = on ? was | pact.bit() : was & ~pact.bit();
+        if (!on && row.empty()) {
+            dealings.remove(otherCityId);
+        }
+        return row.pacts != was;
+    }
+
+    public int powerPrice(UUID otherCityId) {
+        Dealings row = dealings.get(otherCityId);
+        return row == null ? 1 : row.powerPrice;
+    }
+
+    public int waterPrice(UUID otherCityId) {
+        Dealings row = dealings.get(otherCityId);
+        return row == null ? 1 : row.waterPrice;
+    }
+
+    /** What this city charges that one per unit per step. Zero is a gift, and allowed. */
+    public void setPrices(UUID otherCityId, int power, int water) {
+        Dealings row = dealings.computeIfAbsent(otherCityId, id -> new Dealings());
+        row.powerPrice = Mth.clamp(power, 0, MAX_PRICE);
+        row.waterPrice = Mth.clamp(water, 0, MAX_PRICE);
+    }
+
+    /** Every neighbour this city has any arrangement with. */
+    public Set<UUID> dealtWith() {
+        return dealings.keySet();
+    }
+
+    /** The most anybody may charge per unit per step, so a typo cannot bankrupt a neighbour. */
+    public static final int MAX_PRICE = 999;
 
     private static ListTag writeIds(Set<UUID> ids) {
         ListTag list = new ListTag();
@@ -609,6 +696,20 @@ public final class City {
 
         readIds(tag, "granted", city.granted);
         readIds(tag, "wars", city.wars);
+        ListTag deals = tag.getList("dealings", Tag.TAG_COMPOUND);
+        for (int i = 0; i < deals.size(); i++) {
+            CompoundTag row = deals.getCompound(i);
+            if (!row.hasUUID("id")) {
+                continue;
+            }
+            Dealings held = new Dealings();
+            held.pacts = row.getInt("pacts");
+            // Absent on a city saved before pacts existed, and a price of zero read from a missing
+            // tag would silently turn every future export into a gift.
+            held.powerPrice = row.contains("powerPrice") ? row.getInt("powerPrice") : 1;
+            held.waterPrice = row.contains("waterPrice") ? row.getInt("waterPrice") : 1;
+            city.dealings.put(row.getUUID("id"), held);
+        }
         return city;
     }
 }

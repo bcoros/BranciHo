@@ -3,6 +3,7 @@ package com.branciho.citiesinlife.net;
 import com.branciho.citiesinlife.city.City;
 import com.branciho.citiesinlife.city.CityData;
 import com.branciho.citiesinlife.city.Diplomacy;
+import com.branciho.citiesinlife.city.Pact;
 import com.branciho.citiesinlife.city.Relation;
 import com.branciho.citiesinlife.net.payload.ClaimChunkPayload;
 import com.branciho.citiesinlife.net.payload.CitySyncPayload;
@@ -63,6 +64,7 @@ import com.branciho.citiesinlife.net.payload.UpgradePayload;
 import com.branciho.citiesinlife.water.WaterBlock;
 import com.branciho.citiesinlife.water.WaterGrid;
 import com.branciho.citiesinlife.water.WaterRole;
+import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -1578,6 +1580,8 @@ public final class ServerActions {
                     tell(server, target, "message.citiesinlife.war_declared_on_you", own.name());
                     player.sendSystemMessage(Component.translatable(
                             "message.citiesinlife.war_declared", target.name()));
+                    announceWar(server, own, target);
+                    callAllies(server, data, own, target);
                     yield true;
                 }
                 yield false;
@@ -1592,6 +1596,79 @@ public final class ServerActions {
                     tell(server, target, "message.citiesinlife.peace_agreed", own.name());
                     player.sendSystemMessage(Component.translatable(
                             "message.citiesinlife.peace_agreed", target.name()));
+                    yield true;
+                }
+                yield false;
+            }
+            case DiplomacyPayload.ACTION_PACT_OFFER -> {
+                Pact pact = pactOf(payload.a());
+                if (pact == null) {
+                    yield false;
+                }
+                // A pact and a war are the same contradiction a grant and a war are. Offering
+                // somebody your electricity while shelling them is not a state worth modelling.
+                if (Diplomacy.stance(own, target) == Relation.WAR) {
+                    reject(player, "at_war_cannot_grant");
+                    yield false;
+                }
+                if (!own.setOffer(target.id(), pact, true)) {
+                    yield false;
+                }
+                if (Diplomacy.pactActive(own, target, pact)) {
+                    // The second click of the two. Both sides are told, because an agreement
+                    // coming into force is news to the one who proposed it as well.
+                    Component name = pact.displayName();
+                    player.sendSystemMessage(Component.translatable(
+                            "message.citiesinlife.pact_active", name, target.name()));
+                    tellComponent(server, target, "message.citiesinlife.pact_active",
+                            name, own.name());
+                } else {
+                    player.sendSystemMessage(Component.translatable(
+                            "message.citiesinlife.pact_offered", pact.displayName(),
+                            target.name()));
+                    tellComponent(server, target, "message.citiesinlife.pact_proposed",
+                            own.name(), pact.displayName());
+                }
+                yield true;
+            }
+            case DiplomacyPayload.ACTION_PACT_CANCEL -> {
+                Pact pact = pactOf(payload.a());
+                if (pact == null) {
+                    yield false;
+                }
+                boolean wasLive = Diplomacy.pactActive(own, target, pact);
+                if (!own.setOffer(target.id(), pact, false)) {
+                    yield false;
+                }
+                player.sendSystemMessage(Component.translatable(
+                        "message.citiesinlife.pact_ended", pact.displayName(), target.name()));
+                if (wasLive) {
+                    tellComponent(server, target, "message.citiesinlife.pact_ended_by",
+                            own.name(), pact.displayName());
+                }
+                yield true;
+            }
+            case DiplomacyPayload.ACTION_SET_PRICES -> {
+                own.setPrices(target.id(), payload.a(), payload.b());
+                player.sendSystemMessage(Component.translatable(
+                        "message.citiesinlife.prices_set", target.name(),
+                        own.powerPrice(target.id()), own.waterPrice(target.id())));
+                yield true;
+            }
+            case DiplomacyPayload.ACTION_JOIN_WAR -> {
+                // An ally answering a call to arms. Free, unlike declaring one yourself: the
+                // aggressor has already paid for this war, and charging their friends to show up
+                // would make an alliance something you cannot afford to honour.
+                if (Diplomacy.stance(own, target) == Relation.WAR) {
+                    yield false;
+                }
+                own.revoke(target.id());
+                target.revoke(own.id());
+                if (own.declareWar(target.id())) {
+                    tell(server, target, "message.citiesinlife.war_declared_on_you", own.name());
+                    player.sendSystemMessage(Component.translatable(
+                            "message.citiesinlife.war_declared", target.name()));
+                    announceWar(server, own, target);
                     yield true;
                 }
                 yield false;
@@ -1647,6 +1724,76 @@ public final class ServerActions {
         }
     }
 
+    /** The same, for messages whose arguments are already Components. */
+    private static void tellComponent(MinecraftServer server, City city, String key,
+                                      Object... arguments) {
+        ServerPlayer owner = server.getPlayerList().getPlayer(city.owner());
+        if (owner != null) {
+            owner.sendSystemMessage(Component.translatable(key, arguments));
+        }
+    }
+
+    /** Which pacts the first city is holding its half of, towards the second. */
+    private static int pactMask(@Nullable City holder, @Nullable City towards) {
+        if (holder == null || towards == null) {
+            return 0;
+        }
+        int mask = 0;
+        for (Pact pact : Pact.values()) {
+            if (holder.offers(towards.id(), pact)) {
+                mask |= pact.bit();
+            }
+        }
+        return mask;
+    }
+
+    private static @Nullable Pact pactOf(int ordinal) {
+        Pact[] values = Pact.values();
+        return ordinal >= 0 && ordinal < values.length ? values[ordinal] : null;
+    }
+
+    /**
+     * Everybody hears about a war, whether or not it is theirs.
+     *
+     * <p>Told to the whole server rather than to the two sides, because a war is the one thing in
+     * this mod that changes what is safe to walk into. A player with no stake in it still wants to
+     * know which two cities have stopped being places you can visit.
+     */
+    private static void announceWar(MinecraftServer server, City aggressor, City defender) {
+        Component line = Component.translatable("message.citiesinlife.war_announced",
+                aggressor.name(), defender.name()).withStyle(ChatFormatting.RED);
+        for (ServerPlayer everyone : server.getPlayerList().getPlayers()) {
+            everyone.sendSystemMessage(line);
+        }
+    }
+
+    /**
+     * Ask the aggressor's allies whether they are coming.
+     *
+     * <p>An alliance commits nobody. What it buys is the question, and the question has to arrive
+     * with a way to answer it - so this is a message with a button on it rather than a line of text
+     * telling somebody to go and open a screen.
+     */
+    private static void callAllies(MinecraftServer server, CityData data, City aggressor,
+                                   City defender) {
+        for (City ally : data.cities()) {
+            if (ally.id().equals(aggressor.id()) || ally.id().equals(defender.id())) {
+                continue;
+            }
+            if (!Diplomacy.pactActive(aggressor, ally, Pact.ALLIANCE)) {
+                continue;
+            }
+            if (Diplomacy.stance(ally, defender) == Relation.WAR) {
+                continue;
+            }
+            ServerPlayer friend = server.getPlayerList().getPlayer(ally.owner());
+            if (friend != null) {
+                CitiesInLifeNetwork.sendTo(friend, new CallToArmsPayload(
+                        defender.id(), aggressor.name(), defender.name()));
+            }
+        }
+    }
+
     /** The other cities in this dimension, and the land they hold near the player. */
     public static void syncNeighbours(ServerPlayer player) {
         MinecraftServer server = player.getServer();
@@ -1685,7 +1832,13 @@ public final class ServerActions {
                         theirs.ordinal(),
                         yours.ordinal(),
                         city.claimedChunks().size(),
-                        distanceInChunks(here, city)));
+                        distanceInChunks(here, city),
+                        pactMask(own, city),
+                        pactMask(city, own),
+                        own == null ? 0 : own.powerPrice(city.id()),
+                        own == null ? 0 : own.waterPrice(city.id()),
+                        city.powerPrice(own == null ? city.id() : own.id()),
+                        city.waterPrice(own == null ? city.id() : own.id())));
             }
 
             for (long chunkKey : city.claimedChunks()) {

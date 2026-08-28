@@ -3,6 +3,7 @@ package com.branciho.citiesinlife.net;
 import net.minecraft.core.BlockPos;
 import com.branciho.citiesinlife.net.payload.CitySyncPayload;
 import com.branciho.citiesinlife.net.payload.ReactorSyncPayload;
+import com.branciho.citiesinlife.net.payload.CallToArmsPayload;
 import com.branciho.citiesinlife.net.payload.ConfirmDeleteCityPayload;
 import com.branciho.citiesinlife.net.payload.ForeignLandPayload;
 import com.branciho.citiesinlife.net.payload.NeighbourCitiesPayload;
@@ -43,6 +44,7 @@ public final class ClientCityCache {
     private static List<NeighbourCitiesPayload.Entry> neighbours = List.of();
     private static Long2ByteOpenHashMap foreignLand = new Long2ByteOpenHashMap();
     private static @Nullable ConfirmDeleteCityPayload pendingDeleteConfirm;
+    private static @Nullable CallToArmsPayload pendingCallToArms;
 
     private ClientCityCache() {
     }
@@ -154,6 +156,17 @@ public final class ClientCityCache {
      */
     public static void accept(ConfirmDeleteCityPayload payload) {
         pendingDeleteConfirm = payload;
+    }
+
+    /** An ally's war, arriving as a question. Same hand-off as the delete confirmation. */
+    public static void accept(CallToArmsPayload payload) {
+        pendingCallToArms = payload;
+    }
+
+    public static @Nullable CallToArmsPayload takeCallToArms() {
+        CallToArmsPayload pending = pendingCallToArms;
+        pendingCallToArms = null;
+        return pending;
     }
 
     /** Take the pending confirmation request, if there is one. */

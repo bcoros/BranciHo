@@ -60,6 +60,33 @@ public final class Diplomacy {
     }
 
     /**
+     * Whether a pact is live between two cities.
+     *
+     * <p>Both halves, always. There is no such thing as a one-sided pact and no code anywhere else
+     * should be tempted to invent one.
+     */
+    public static boolean pactActive(@Nullable City a, @Nullable City b, Pact pact) {
+        return a != null && b != null && !a.id().equals(b.id())
+                && a.offers(b.id(), pact) && b.offers(a.id(), pact);
+    }
+
+    /** The same question with the middle showing, so a button can say Accept rather than Offer. */
+    public static Pact.State pactState(@Nullable City own, @Nullable City other, Pact pact) {
+        if (own == null || other == null || own.id().equals(other.id())) {
+            return Pact.State.NONE;
+        }
+        boolean mine = own.offers(other.id(), pact);
+        boolean theirs = other.offers(own.id(), pact);
+        if (mine && theirs) {
+            return Pact.State.ACTIVE;
+        }
+        if (mine) {
+            return Pact.State.OFFERED;
+        }
+        return theirs ? Pact.State.INVITED : Pact.State.NONE;
+    }
+
+    /**
      * Whether this player may place, break or otherwise interfere at this position.
      *
      * <p>Unclaimed ground is everybody's, your own city is yours, and somebody else's needs either

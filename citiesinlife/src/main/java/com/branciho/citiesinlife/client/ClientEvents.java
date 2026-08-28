@@ -1,6 +1,7 @@
 package com.branciho.citiesinlife.client;
 
 import com.branciho.citiesinlife.CitiesInLife;
+import com.branciho.citiesinlife.client.screen.CallToArmsScreen;
 import com.branciho.citiesinlife.client.screen.CityScreen;
 import com.branciho.citiesinlife.client.screen.ConfirmDeleteCityScreen;
 import com.branciho.citiesinlife.client.screen.MilitaryScreen;
@@ -10,6 +11,7 @@ import com.branciho.citiesinlife.client.screen.RoadToolScreen;
 import com.branciho.citiesinlife.net.CitiesInLifeNetwork;
 import com.branciho.citiesinlife.net.ClientArmyCache;
 import com.branciho.citiesinlife.net.ClientCityCache;
+import com.branciho.citiesinlife.net.payload.CallToArmsPayload;
 import com.branciho.citiesinlife.net.payload.ConfirmDeleteCityPayload;
 import com.branciho.citiesinlife.net.payload.DeleteAreaPayload;
 import com.branciho.citiesinlife.net.payload.LinkPowerPayload;
@@ -133,6 +135,12 @@ public final class ClientEvents {
         ConfirmDeleteCityPayload pendingDelete = ClientCityCache.takeDeleteConfirm();
         if (pendingDelete != null) {
             minecraft.setScreen(new ConfirmDeleteCityScreen(pendingDelete));
+        }
+
+        // An ally's declaration, arriving as a question with buttons on it.
+        CallToArmsPayload call = ClientCityCache.takeCallToArms();
+        if (call != null) {
+            minecraft.setScreen(new CallToArmsScreen(call));
         }
 
         // The control room, opened at the server's request. A block's use handler runs server-side

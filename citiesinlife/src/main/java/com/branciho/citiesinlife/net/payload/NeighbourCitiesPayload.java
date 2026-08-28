@@ -28,9 +28,17 @@ public record NeighbourCitiesPayload(List<Entry> cities) implements CustomPacket
      *
      * @param theirStance how they regard you — this is the one that decides whether you may build
      * @param yourStance  how you regard them, so the buttons can say Revoke rather than Grant
+     * @param yourPacts   the pacts you are holding your half of, as a bitmask
+     * @param theirPacts  the pacts they are holding theirs of, so a button can say Accept rather
+     *                    than Propose without a second round trip to find out
+     * @param theirPowerPrice what they charge you per unit per step, so you can read the bill
+     *                        before agreeing to it rather than after
      */
     public record Entry(UUID cityId, String name, String ownerName,
-                        int theirStance, int yourStance, int chunks, int distance) {
+                        int theirStance, int yourStance, int chunks, int distance,
+                        int yourPacts, int theirPacts,
+                        int yourPowerPrice, int yourWaterPrice,
+                        int theirPowerPrice, int theirWaterPrice) {
     }
 
     public static final CustomPacketPayload.Type<NeighbourCitiesPayload> TYPE =
@@ -51,6 +59,12 @@ public record NeighbourCitiesPayload(List<Entry> cities) implements CustomPacket
             buf.writeVarInt(entry.yourStance());
             buf.writeVarInt(entry.chunks());
             buf.writeVarInt(entry.distance());
+            buf.writeVarInt(entry.yourPacts());
+            buf.writeVarInt(entry.theirPacts());
+            buf.writeVarInt(entry.yourPowerPrice());
+            buf.writeVarInt(entry.yourWaterPrice());
+            buf.writeVarInt(entry.theirPowerPrice());
+            buf.writeVarInt(entry.theirWaterPrice());
         }
     }
 
@@ -65,6 +79,12 @@ public record NeighbourCitiesPayload(List<Entry> cities) implements CustomPacket
                     buf.readUUID(),
                     buf.readUtf(MAX_NAME),
                     buf.readUtf(MAX_NAME),
+                    buf.readVarInt(),
+                    buf.readVarInt(),
+                    buf.readVarInt(),
+                    buf.readVarInt(),
+                    buf.readVarInt(),
+                    buf.readVarInt(),
                     buf.readVarInt(),
                     buf.readVarInt(),
                     buf.readVarInt(),
