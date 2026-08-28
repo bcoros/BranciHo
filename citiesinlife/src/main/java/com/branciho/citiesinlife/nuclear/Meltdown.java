@@ -25,6 +25,7 @@ import net.minecraft.world.level.block.state.BlockState;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -32,9 +33,12 @@ import java.util.UUID;
 /**
  * The end of a reactor, staged over thirteen seconds.
  *
- * <p>Once armed there is no reprieve, no grace period and no last-second lever. The three to eleven
- * minutes of siren before arming <em>are</em> the grace period; bolting another one on the end would
- * be a lie the alarms had already told the player not to expect.
+ * <p>Once armed there is no reprieve, no grace period and no last-second lever. The siren before
+ * arming <em>is</em> the grace period; bolting another one on the end would be a lie the alarms had
+ * already told the player not to expect. That window is short and worth stating honestly: from the
+ * amber alarm at 720 degrees to arming at 980 is five steps in the fastest excursion and ten in the
+ * ordinary one — fifty seconds to a hundred. Long enough to reach a lever, not long enough to
+ * rebuild anything.
  *
  * <p>Stepped every server tick rather than every ten seconds, because at the simulation's cadence
  * this would be a twenty-minute slideshow instead of something you can run away from. Three seconds
@@ -64,6 +68,21 @@ public final class Meltdown {
     /** Beyond this the pipes are removed rather than detonated, so a huge plant cannot stall a tick. */
     private static final int MAX_PIPE_BLASTS = 48;
 
+    /**
+     * What each melting reactor was scheduled against.
+     *
+     * <p>In memory only. The counts that the phase arithmetic depends on live on {@link
+     * ReactorState} and are persisted; this is just the positions, which are cheap to find again
+     * and only matter for the thirteen seconds the sequence runs. A restart mid-meltdown rebuilds
+     * the lists from whatever is left standing and keeps the persisted schedule, so the boundaries
+     * stay exactly where they were.
+     */
+    private static final Map<UUID, Stage> STAGES = new HashMap<>();
+
+    private record Stage(List<BlockPos> pipes, List<BlockPos> turbines, List<BlockPos> rods,
+                         BlockPos heart) {
+    }
+
     private Meltdown() {
     }
 
@@ -83,6 +102,11 @@ public final class Meltdown {
             }
             ServerLevel level = server.getLevel(plant.dimension());
             if (level == null) {
+                // Treated exactly like a missing structure. Skipping instead left meltdownTick at
+                // whatever it had reached, which NuclearSimulation.step reads as "melting" and
+                // returns on - so a plant whose dimension went away was frozen out of the
+                // simulation for the rest of the world's life, permanently about to explode.
+                finished.add(entry.getKey());
                 continue;
             }
             if (advance(level, plant, state)) {
@@ -92,6 +116,7 @@ public final class Meltdown {
         }
         for (UUID id : finished) {
             data.forget(id);
+            STAGES.remove(id);
         }
         if (!finished.isEmpty()) {
             data.setDirty();
@@ -112,7 +137,6 @@ public final class Meltdown {
 
     /** Advance one tick. Returns true when the sequence is over. */
     private static boolean advance(ServerLevel level, Structure plant, ReactorState state) {
-        ReactorSurvey survey = ReactorSurvey.of(level, plant.min(), plant.max());
         int t = state.meltdownTick++;
         // Narrowed here rather than at each call site: every blast power is a float, and
         // float * double is a double that javac will not silently narrow back.
@@ -120,6 +144,7 @@ public final class Meltdown {
 
         if (t == 0) {
             state.output = 0;
+            ReactorSurvey survey = ReactorSurvey.of(level, plant.min(), plant.max());
             // Every alarm in the box goes to its loudest setting and stays there.
             for (BlockPos at : survey.alarms()) {
                 BlockState alarm = level.getBlockState(at);
@@ -138,38 +163,50 @@ public final class Meltdown {
             return false;
         }
 
-        List<BlockPos> pipes = plumbing(level, plant, survey);
-        int pipeTicks = Math.min(pipes.size(), MAX_PIPE_BLASTS) * PIPE_INTERVAL;
+        // The list is captured once, and the schedule is arithmetic on counts that were frozen at
+        // the same moment. Both halves matter. The first version rebuilt this list every tick from
+        // a world the meltdown was busy deleting, so the boundaries walked backwards while t walked
+        // forwards: a blast that took two pipes dropped the end of the pipe phase below the current
+        // tick, both the "<" and the "==" tests missed, and the sequence fell through into the
+        // turbine phase at a step number that its own modulo never matched again. The turbines were
+        // simply never detonated. It also meant a full 150,000-block rescan and sort every server
+        // tick for the length of the meltdown, in the exact window the player is meant to be
+        // running away.
+        Stage stage = stageFor(level, plant, state);
+        int pipeTicks = Math.min(state.meltdownPipes, MAX_PIPE_BLASTS) * PIPE_INTERVAL;
 
         // ---- the fuse burns along the pipework ------------------------------
         if (t < FUSE + pipeTicks) {
             int step = (t - FUSE);
             if (step % PIPE_INTERVAL == 0) {
                 int index = step / PIPE_INTERVAL;
-                if (index < pipes.size()) {
-                    blast(level, pipes.get(index), POWER_PIPE * scale, false);
+                if (index < stage.pipes().size()) {
+                    blast(level, stage.pipes().get(index), POWER_PIPE * scale, false);
                 }
             }
             return false;
         }
-        // Anything past the cap is taken away quietly rather than detonated.
+        // Anything past the cap is taken away quietly rather than detonated. Indexed into the
+        // captured list, because the live one has already shrunk below the cap by now and this
+        // loop used to run zero times - leaving a big plant's outer pipework standing.
         if (t == FUSE + pipeTicks) {
-            for (int i = MAX_PIPE_BLASTS; i < pipes.size(); i++) {
-                level.setBlock(pipes.get(i), Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
+            for (int i = MAX_PIPE_BLASTS; i < stage.pipes().size(); i++) {
+                level.setBlock(stage.pipes().get(i), Blocks.AIR.defaultBlockState(),
+                        Block.UPDATE_ALL);
             }
             return false;
         }
 
         int afterPipes = FUSE + pipeTicks + 1;
-        int turbineTicks = survey.turbines().size() * TURBINE_INTERVAL;
+        int turbineTicks = state.meltdownTurbines * TURBINE_INTERVAL;
 
         // ---- the turbines go, one at a time --------------------------------
         if (t < afterPipes + turbineTicks) {
             int step = t - afterPipes;
             if (step % TURBINE_INTERVAL == 0) {
                 int index = step / TURBINE_INTERVAL;
-                if (index < survey.turbines().size()) {
-                    blast(level, survey.turbines().get(index), POWER_TURBINE * scale, true);
+                if (index < stage.turbines().size()) {
+                    blast(level, stage.turbines().get(index), POWER_TURBINE * scale, true);
                 }
             }
             return false;
@@ -181,17 +218,16 @@ public final class Meltdown {
         if (t == coreAt) {
             // The rods are removed first so the blast is not spent chewing through three hundred
             // hand-placed 6x6 blocks it would clear anyway.
-            BlockPos heart = centroid(survey.rodBlocks(), centre(plant));
-            for (BlockPos at : survey.rodBlocks()) {
+            for (BlockPos at : stage.rods()) {
                 level.setBlock(at, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
             }
-            for (BlockPos at : survey.rodBlocks()) {
+            for (BlockPos at : stage.rods()) {
                 BlockPos lid = at.above();
                 if (level.getBlockState(lid).getBlock() instanceof SealingBlock) {
                     level.setBlock(lid, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
                 }
             }
-            blast(level, heart, POWER_CORE * scale, true);
+            blast(level, stage.heart(), POWER_CORE * scale, true);
             return false;
         }
         if (t < coreAt) {
@@ -233,6 +269,31 @@ public final class Meltdown {
     private static void blast(ServerLevel level, BlockPos at, float power, boolean fire) {
         level.explode(null, at.getX() + 0.5D, at.getY() + 0.5D, at.getZ() + 0.5D,
                 power, fire, Level.ExplosionInteraction.BLOCK);
+    }
+
+    /**
+     * The block lists this meltdown runs against, found once and remembered.
+     *
+     * <p>Also the moment the two counts are frozen onto the reactor's saved state, if they were not
+     * frozen already. After a restart mid-sequence the lists are rebuilt from whatever survived,
+     * but the counts come back off disk, so every phase boundary lands exactly where it did before
+     * the world was closed.
+     */
+    private static Stage stageFor(ServerLevel level, Structure plant, ReactorState state) {
+        Stage known = STAGES.get(plant.id());
+        if (known != null) {
+            return known;
+        }
+        ReactorSurvey survey = ReactorSurvey.of(level, plant.min(), plant.max());
+        List<BlockPos> rods = List.copyOf(survey.rodBlocks());
+        Stage stage = new Stage(plumbing(level, plant, survey),
+                List.copyOf(survey.turbines()), rods, centroid(rods, centre(plant)));
+        if (state.meltdownPipes < 0) {
+            state.meltdownPipes = stage.pipes().size();
+            state.meltdownTurbines = stage.turbines().size();
+        }
+        STAGES.put(plant.id(), stage);
+        return stage;
     }
 
     /** Everything on the cooling circuit, nearest the core first, so the fuse visibly burns inward. */
@@ -303,6 +364,12 @@ public final class Meltdown {
     }
 
     /** Whether anything anywhere is currently melting, so the tick can bail out cheaply. */
+    /** Whether this one structure is mid-meltdown, so nothing can quietly unregister it. */
+    public static boolean melting(MinecraftServer server, UUID structureId) {
+        ReactorData data = ReactorData.get(server);
+        return data.known(structureId) && data.of(structureId).melting();
+    }
+
     public static boolean anyMelting(MinecraftServer server) {
         for (ReactorState state : ReactorData.get(server).all().values()) {
             if (state.melting()) {

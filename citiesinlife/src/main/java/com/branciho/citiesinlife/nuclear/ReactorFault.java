@@ -67,6 +67,21 @@ public enum ReactorFault {
     FUEL_EXHAUSTED("fuel_exhausted", Kind.RUNNING),
     SAFE_MODE_RESTART("safe_mode_restart", Kind.RUNNING),
 
+    /**
+     * The four that name the thing actually about to kill the plant.
+     *
+     * <p>Everything above is a cause. These are the effect, and until they existed the monitor's
+     * risk line read "ALL SYSTEMS NOMINAL" through every one of the ten steps between the amber
+     * alarm and the explosion — a perfectly built reactor with fuel in the tank and the HEAT lever
+     * thrown has no build fault, no loop fault, no clog and no empty tank, so the list came back
+     * empty right up to the detonation. The gauges were the only warning, and the gauges are a
+     * number you have to already know how to read.
+     */
+    CORE_OVERHEATING("core_overheating", Kind.RUNNING),
+    CORE_CRITICAL("core_critical", Kind.RUNNING),
+    PRESSURE_HIGH("pressure_high", Kind.RUNNING),
+    PRESSURE_BURSTING("pressure_bursting", Kind.RUNNING),
+
     /** Not a fault at all, and says so. The plant is off because somebody turned it off. */
     OFF("off", Kind.NOTICE),
 

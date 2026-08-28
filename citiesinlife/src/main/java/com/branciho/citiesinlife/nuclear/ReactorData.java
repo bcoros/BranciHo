@@ -9,6 +9,7 @@ import net.minecraft.world.level.saveddata.SavedData;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -44,6 +45,20 @@ public final class ReactorData extends SavedData {
 
     public void forget(UUID structureId) {
         if (reactors.remove(structureId) != null) {
+            setDirty();
+        }
+    }
+
+    /**
+     * Drop every row whose plant no longer exists.
+     *
+     * <p>A melting reactor is never swept, even if its structure has gone: {@link Meltdown} owns
+     * those rows and ends them itself, and taking one away here would be one more way to cancel a
+     * meltdown by accident.
+     */
+    public void forgetOrphans(Set<UUID> live) {
+        if (reactors.entrySet().removeIf(
+                entry -> !live.contains(entry.getKey()) && !entry.getValue().melting())) {
             setDirty();
         }
     }

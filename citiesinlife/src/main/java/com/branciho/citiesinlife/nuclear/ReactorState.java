@@ -49,6 +49,19 @@ public class ReactorState {
      */
     public int meltdownTick = -1;
 
+    /**
+     * How many pipes and turbines the meltdown was scheduled against, captured when the fuse ends.
+     *
+     * <p>Persisted for the same reason {@link #meltdownTick} is, and for one more: the sequence's
+     * phase boundaries are arithmetic on these two numbers, and the sequence spends its whole life
+     * destroying the blocks they count. Recomputing them each tick moved the boundaries backwards
+     * underneath a tick counter that only ever moves forwards, so phases were stepped over
+     * entirely - on a plant with an odd pipe count the turbines were never detonated at all and
+     * the fuel rods were sometimes never removed. Numbers fixed at the start cannot drift.
+     */
+    public int meltdownPipes = -1;
+    public int meltdownTurbines = -1;
+
     /** Eighty seconds of trend for the monitor's two sparklines: 8 temperatures then 8 pressures. */
     public final short[] history = new short[16];
 
@@ -91,6 +104,8 @@ public class ReactorState {
         tag.putInt("fault", fault);
         tag.putInt("faultCount", faultCount);
         tag.putInt("meltdownTick", meltdownTick);
+        tag.putInt("meltdownPipes", meltdownPipes);
+        tag.putInt("meltdownTurbines", meltdownTurbines);
         tag.putLong("stamp", stamp);
         int[] trace = new int[history.length];
         for (int i = 0; i < history.length; i++) {
@@ -114,6 +129,9 @@ public class ReactorState {
         state.fault = tag.contains("fault") ? tag.getInt("fault") : -1;
         state.faultCount = tag.getInt("faultCount");
         state.meltdownTick = tag.contains("meltdownTick") ? tag.getInt("meltdownTick") : -1;
+        state.meltdownPipes = tag.contains("meltdownPipes") ? tag.getInt("meltdownPipes") : -1;
+        state.meltdownTurbines =
+                tag.contains("meltdownTurbines") ? tag.getInt("meltdownTurbines") : -1;
         state.stamp = tag.contains("stamp") ? tag.getLong("stamp") : Long.MIN_VALUE;
         int[] trace = tag.getIntArray("history");
         for (int i = 0; i < state.history.length && i < trace.length; i++) {

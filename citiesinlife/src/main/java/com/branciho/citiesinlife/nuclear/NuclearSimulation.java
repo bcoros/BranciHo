@@ -19,14 +19,19 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 
 /**
  * What a reactor does over ten seconds.
  *
  * <p>The whole model is three equations and a clamp, and they are written to be learnable by
- * watching rather than by reading. Move a lever and the TARGET on the monitor jumps this step while
- * the core starts walking toward it — so you never discover a threshold by dying at it.
+ * watching rather than by reading. Move a lever and the TARGET on the monitor answers before the
+ * core does, so you never discover a threshold by dying at it. The turbine dial answers on the same
+ * step; HEAT takes two, because the control rods travel one notch per step and the TARGET is
+ * following them rather than the switch.
  *
  * <p>Two properties are deliberate and worth stating plainly, because everything else is
  * calibration:
@@ -61,7 +66,18 @@ public final class NuclearSimulation {
     /** What being flooded is worth. The only part of the sink that does not need the loop. */
     private static final double PASSIVE_COOL = 0.20D;
     private static final double COOLER_COOL = 0.35D;
-    private static final double LOOP_BASE = 0.55D;
+    /**
+     * What an intact loop is worth at a wide-open turbine.
+     *
+     * <p>This number is the difference between HEAT being a risk and HEAT being a suicide switch.
+     * The withdrawn-rod drive is 1.0 and HEAT_SCALE is 720, so the hottest a flawless reactor can
+     * be asked to sit is 40 + 720 / (PASSIVE_COOL + LOOP_BASE). At 0.55 that was 1000 degrees -
+     * above the 980 meltdown line at every dial position, unconditionally, on a plant with nothing
+     * wrong with it. At 0.60 it is 940: forty degrees of headroom, well past the amber alarm and
+     * the red one, survivable only with the turbine wide open and nothing else going wrong. Which
+     * is what a HEAT lever next to a COOLER lever is supposed to mean.
+     */
+    private static final double LOOP_BASE = 0.60D;
     private static final double IDLE_DUMP = LOOP_BASE * 0.45D;
 
     public static final double TEMP_OVERHEAT = 720.0D;
@@ -90,12 +106,13 @@ public final class NuclearSimulation {
 
     // ---- output -----------------------------------------------------------
     /**
-     * Electricity per fuel rod block at full drive.
+     * Electricity per fuel rod block before the heat fraction.
      *
-     * <p>Twenty per block at the standard cruise. The smallest legal plant is four columns eight
-     * tall — 32 blocks, 640 units — against the coal turbine's 150 and a windmill's 50. One
-     * building replaces four coal plants, and the largest legal one covers a city of a hundred
-     * thousand. Far more powerful, as asked; not absurd.
+     * <p>Not the per-block output: HF_CAP holds the heat fraction to half, so 30 is the arithmetic
+     * ceiling and about 18 is the standard cruise. The smallest legal plant is four columns eight
+     * tall — 32 blocks, a little under 600 units — against the coal turbine's 150 and a windmill's
+     * 50. One building replaces four coal plants, and the largest legal one covers a city of a
+     * hundred thousand. Far more powerful, as asked; not absurd.
      */
     private static final int RATING_PER_BLOCK = 60;
     private static final double HF_FLOOR_TEMP = 200.0D;
@@ -130,11 +147,13 @@ public final class NuclearSimulation {
     public static void tick(MinecraftServer server) {
         CityData data = CityData.get(server);
         ReactorData reactors = ReactorData.get(server);
+        Set<UUID> live = new HashSet<>();
         for (City city : data.cities()) {
             for (Structure structure : data.structuresOf(city)) {
                 if (structure.type() != StructureType.NUCLEAR_PLANT) {
                     continue;
                 }
+                live.add(structure.id());
                 ServerLevel level = server.getLevel(structure.dimension());
                 if (level == null) {
                     continue;
@@ -142,6 +161,13 @@ public final class NuclearSimulation {
                 step(level, reactors, reactors.of(structure.id()), structure);
             }
         }
+        // ReactorData's own documentation says deleting the structure drops the row. Nothing was
+        // making that true: every path that removes a structure - the city tool's delete box, a
+        // seizure, deleting a whole city - left the temperature, pressure, fuel and eighty seconds
+        // of history behind in citiesinlife_reactors.dat for the life of the world. Swept here
+        // rather than at each call site so a removal path added later cannot forget to do it.
+        // Melting rows are left alone; Meltdown owns those and drops them when the sequence ends.
+        reactors.forgetOrphans(live);
         reactors.setDirty();
     }
 
@@ -180,7 +206,14 @@ public final class NuclearSimulation {
         double p = dial / (double) ReactorLeverBlock.MAX_POSITION;
 
         // ---- 2. how healthy the loop is ------------------------------------
-        ReactorFault loopFault = build != null ? null : survey.loopFault(level);
+        // Asked of the plumbing alone, and asked even when the box has a build fault, because the
+        // two questions are genuinely separate. The first version zeroed the entire sink on ANY
+        // build fault, so a cruising reactor that lost one waterlogged rod block - NOT_SUBMERGED,
+        // a build fault - went from a healthy 0.75 sink to exactly 0.0 with its cooling loop
+        // completely intact, and climbed the full 60-degree rate cap every step from 520 to 980.
+        // Eighty seconds, no way back, for a bucket. Losing the water should cost the passive
+        // fifth that being flooded buys, and nothing else.
+        ReactorFault loopFault = survey.loopFault(level);
         int latched = 0;
         for (BlockPos port : survey.ports().values()) {
             if (level.getBlockEntity(port) instanceof CoolingPortBlockEntity cell
@@ -188,7 +221,7 @@ public final class NuclearSimulation {
                 latched++;
             }
         }
-        double loopHealth = (build != null || loopFault != null)
+        double loopHealth = loopFault != null
                 ? 0.0D
                 : Math.max(0.0D, 1.0D - 0.25D * latched);
 
@@ -217,9 +250,14 @@ public final class NuclearSimulation {
         double loopDraw = loopHealth * (dial > 0 ? LOOP_BASE * (0.45D + 0.55D * p) : IDLE_DUMP);
         double sink = passive + loopDraw + loopHealth * (cooler ? COOLER_COOL : 0.0D);
 
-        state.targetTemperature = sink <= 0.0D
-                ? CEILING * 40.0D
-                : AMBIENT + HEAT_SCALE * drive / sink;
+        // Numerator first. A core with no drive is not producing heat, so it has nowhere to
+        // climb to no matter how absent its cooling is - and the sentinel used to answer 56,000
+        // degrees for that case, which walked an unbuilt, unfuelled, switched-off box up to the
+        // 1400 ceiling at the rate cap and detonated it four minutes later. Nothing that is not
+        // running gets a target above ambient.
+        state.targetTemperature = drive <= 0.0D
+                ? AMBIENT
+                : (sink <= 0.0D ? CEILING : AMBIENT + HEAT_SCALE * drive / sink);
         state.previousTemperature = state.temperature;
         double delta = Mth.clamp(LAG * (state.targetTemperature - state.temperature),
                 -RATE_CAP, RATE_CAP);
@@ -262,10 +300,14 @@ public final class NuclearSimulation {
             if (at == null || !(level.getBlockEntity(at) instanceof CoolingPortBlockEntity cell)) {
                 continue;
             }
-            if (state.output > 0 && !emitter) {
-                cell.foul(FOUL_RATE[port.ordinal()]);
-            } else {
+            // The emitter clears fouling. An idle reactor does not. Clearing on any zero-output
+            // step meant a player could flick the turbine dial off for a few steps and wash the
+            // ports clean - one step on, one step off is a net minus two per step, so no port ever
+            // latched and the chimney the whole mechanic exists to make matter was never needed.
+            if (emitter) {
                 cell.clear();
+            } else if (state.output > 0) {
+                cell.foul(FOUL_RATE[port.ordinal()]);
             }
         }
         if (emitter && state.output > 0) {
@@ -308,11 +350,21 @@ public final class NuclearSimulation {
         state.record();
 
         // ---- 11. the OFF guarantee, as a line of code -------------------------
-        if (dial == 0) {
+        // Two conditions, and the second one is not a nicety. The dial is the owner's promise:
+        // turbine power off means it will not generate electricity and it will not explode. The
+        // build fault is the other half - a box that the game does not consider a reactor, with no
+        // fuel in it and no output, must not be able to detonate because somebody clicked a lever
+        // to see what it did. A running plant that loses a block mid-excursion is a different
+        // thing, and that one still melts down, because by then it is hot and it is fuelled.
+        if (dial == 0 || build != null) {
             return;
         }
         if (state.temperature >= TEMP_MELTDOWN || state.pressure >= PRESSURE_BURST) {
             state.meltdownTick = 0;
+            // Cleared so the sequence measures this plant rather than inheriting a schedule from
+            // one that melted down before it.
+            state.meltdownPipes = -1;
+            state.meltdownTurbines = -1;
         }
     }
 
@@ -360,12 +412,23 @@ public final class NuclearSimulation {
         if (build != null) {
             wrong.add(build);
         }
-        // A dry core is louder than anything except not being a reactor, because it is the one
-        // state that a shutdown does not save you from.
+        // A dry core is louder than anything except not being a reactor: it stops the plant dead
+        // and costs it the one part of its cooling that does not depend on the loop.
         if (!survey.submerged()) {
             wrong.add(ReactorFault.CORE_UNCOVERED);
         }
-        if (loopFault != null) {
+        // Ahead of every cause, because this is the effect and it is the one on a timer.
+        if (state.temperature >= TEMP_CRITICAL) {
+            wrong.add(ReactorFault.CORE_CRITICAL);
+        } else if (state.temperature >= TEMP_OVERHEAT) {
+            wrong.add(ReactorFault.CORE_OVERHEATING);
+        }
+        if (state.pressure >= PRESSURE_CRITICAL) {
+            wrong.add(ReactorFault.PRESSURE_BURSTING);
+        } else if (state.pressure >= PRESSURE_WARN) {
+            wrong.add(ReactorFault.PRESSURE_HIGH);
+        }
+        if (loopFault != null && loopFault != build) {
             wrong.add(loopFault);
         }
         if (latched > 0) {

@@ -39,6 +39,7 @@ import com.branciho.citiesinlife.blockentity.CoolingPortBlockEntity;
 import com.branciho.citiesinlife.blockentity.UraniumStorageBlockEntity;
 import com.branciho.citiesinlife.block.ReactorLeverBlock;
 import com.branciho.citiesinlife.nuclear.CoolingPort;
+import com.branciho.citiesinlife.nuclear.Meltdown;
 import com.branciho.citiesinlife.nuclear.ReactorData;
 import com.branciho.citiesinlife.nuclear.ReactorFault;
 import com.branciho.citiesinlife.nuclear.ReactorLever;
@@ -416,6 +417,18 @@ public final class ServerActions {
         if (doomed.isEmpty()) {
             reject(player, "nothing_in_area");
             return;
+        }
+
+        // A meltdown in progress is not something a menu button gets to call off. Meltdown.tick
+        // finds its reactor by structure id, so unregistering the plant mid-sequence used to end
+        // the whole thing silently: no explosion, no damage, and the same box registers again cold
+        // at forty degrees. That is the opposite of the promise the alarms have been making for the
+        // last minute and a half.
+        for (Structure structure : doomed) {
+            if (Meltdown.melting(server, structure.id())) {
+                reject(player, "reactor_melting_down");
+                return;
+            }
         }
 
         // The city hall is not just another registration: taking it away takes the city with it, so
@@ -1230,6 +1243,11 @@ public final class ServerActions {
         // same shape of reason.
         if (type == StructureType.NUCLEAR_PLANT && target.type() != StructureType.NUCLEAR_PLANT) {
             reject(player, "cannot_seize_into_reactor");
+            return;
+        }
+
+        if (Meltdown.melting(server, target.id())) {
+            reject(player, "reactor_melting_down");
             return;
         }
 
