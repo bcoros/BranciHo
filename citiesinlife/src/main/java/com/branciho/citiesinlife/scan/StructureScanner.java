@@ -24,11 +24,30 @@ import java.util.List;
  */
 public final class StructureScanner {
 
-    /** Biggest selection that may be measured, in blocks. */
-    public static final int MAX_VOLUME = 150_000;
+    /**
+     * Biggest selection that may be measured, in blocks.
+     *
+     * <p>Raised from 150,000 because people build things far larger than that and were being told
+     * their build was "too large to measure" with no recourse. This scan is a one-off on a
+     * deliberate click rather than something that runs every tick, so a big box costs a single
+     * frame at registration and nothing afterwards.
+     */
+    public static final int MAX_VOLUME = 1_000_000;
+
+    /**
+     * Biggest box that something re-reads on a timer.
+     *
+     * <p>Deliberately much smaller than {@link #MAX_VOLUME} and deliberately a separate number. A
+     * power plant and a reactor are walked afresh every twenty ticks to find their machinery, so
+     * for those the box size is a running cost rather than a one-off. Registration refuses a plant
+     * box above this outright — the alternative is the failure this codebase has already had once,
+     * where a box between two disagreeing limits registered happily and then behaved as though it
+     * were empty.
+     */
+    public static final int MAX_SURVEY_VOLUME = 150_000;
 
     /** Biggest footprint on either horizontal axis. */
-    public static final int MAX_SPAN = 128;
+    public static final int MAX_SPAN = 256;
 
     /** Biggest vertical span. Taller than any building, and a bound on the per-column arrays. */
     public static final int MAX_HEIGHT = 384;

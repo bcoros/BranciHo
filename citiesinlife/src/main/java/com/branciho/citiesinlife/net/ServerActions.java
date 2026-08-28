@@ -206,6 +206,19 @@ public final class ServerActions {
             }
         }
 
+        // A plant's box is re-read every twenty ticks to find its machinery, so unlike an
+        // ordinary building it cannot be arbitrarily large. Refused here rather than left to
+        // register and then quietly behave as though it were empty.
+        if (type.isPlant()) {
+            long volume = (long) (max.getX() - min.getX() + 1)
+                    * (max.getY() - min.getY() + 1)
+                    * (max.getZ() - min.getZ() + 1);
+            if (volume > StructureScanner.MAX_SURVEY_VOLUME) {
+                reject(player, "plant_box_too_large");
+                return;
+            }
+        }
+
         // A plant is coal or wind, never both. Catching it here means the player is told when they
         // draw the box, rather than finding out later from a boiler that quietly refuses to light.
         if (type == StructureType.POWER_PLANT

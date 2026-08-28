@@ -12,7 +12,10 @@ import net.minecraft.resources.ResourceLocation;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
+import com.branciho.citiesinlife.client.ClientConfigScreen;
+import net.neoforged.api.distmarker.Dist;
 import net.neoforged.fml.config.ModConfig;
+import net.neoforged.fml.loading.FMLEnvironment;
 import org.slf4j.Logger;
 
 /**
@@ -46,6 +49,13 @@ public final class CitiesInLife {
         // Server-side, because it decides what gets spawned rather than what gets drawn:
         // turning citizens down is a fact about the world, not about one player's view of it.
         container.registerConfig(ModConfig.Type.SERVER, CitiesInLifeConfig.SPEC);
+
+        // Put a Config button beside the mod in the Mods list. Behind a dist check and in its own
+        // class, because the screen it points at is a client type: touching it from common code
+        // would take a dedicated server down on startup.
+        if (FMLEnvironment.dist == Dist.CLIENT) {
+            ClientConfigScreen.register(container);
+        }
 
         LOGGER.info("Cities In Life {} initialising", container.getModInfo().getVersion());
     }

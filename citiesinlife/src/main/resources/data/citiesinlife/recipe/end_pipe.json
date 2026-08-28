@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "pattern": [
+    " C ",
+    " C ",
+    " B "
+  ],
+  "key": {
+    "C": {
+      "item": "minecraft:copper_ingot"
+    },
+    "B": {
+      "item": "minecraft:bucket"
+    }
+  },
+  "result": {
+    "id": "citiesinlife:end_pipe",
+    "count": 2
+  }
+}

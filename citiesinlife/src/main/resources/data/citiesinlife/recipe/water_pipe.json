@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "pattern": [
+    "CCC",
+    "CCC"
+  ],
+  "key": {
+    "C": {
+      "item": "minecraft:copper_ingot"
+    }
+  },
+  "result": {
+    "id": "citiesinlife:water_pipe",
+    "count": 12
+  }
+}

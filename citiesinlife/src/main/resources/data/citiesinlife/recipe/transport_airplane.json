@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "pattern": [
+    "GGG",
+    "IRI",
+    "CCC"
+  ],
+  "key": {
+    "G": {
+      "item": "minecraft:glass"
+    },
+    "I": {
+      "item": "minecraft:iron_ingot"
+    },
+    "R": {
+      "item": "minecraft:redstone_block"
+    },
+    "C": {
+      "item": "minecraft:copper_ingot"
+    }
+  },
+  "result": {
+    "id": "citiesinlife:transport_airplane",
+    "count": 1
+  }
+}

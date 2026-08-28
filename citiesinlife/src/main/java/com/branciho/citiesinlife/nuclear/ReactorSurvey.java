@@ -54,7 +54,7 @@ import java.util.Map;
  */
 public final class ReactorSurvey {
 
-    private static final int MAX_VOLUME = StructureScanner.MAX_VOLUME;
+    private static final int MAX_VOLUME = StructureScanner.MAX_SURVEY_VOLUME;
 
     /** Four fuel columns per turbine. Fixed by the owner and not negotiable. */
     public static final int FUEL_COLUMNS_PER_TURBINE = 4;

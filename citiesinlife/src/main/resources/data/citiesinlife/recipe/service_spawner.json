@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "pattern": [
+    "IGI",
+    "GEG",
+    "IGI"
+  ],
+  "key": {
+    "I": {
+      "item": "minecraft:iron_ingot"
+    },
+    "G": {
+      "item": "minecraft:gold_ingot"
+    },
+    "E": {
+      "item": "minecraft:emerald"
+    }
+  },
+  "result": {
+    "id": "citiesinlife:service_spawner",
+    "count": 1
+  }
+}

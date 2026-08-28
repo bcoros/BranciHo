@@ -43,7 +43,7 @@ public final class PlantSurvey {
      * as though it were empty: no turbine found, no mixed-generator refusal, and no message saying
      * why. A box the planner accepts is a box this has to be able to read.
      */
-    private static final int MAX_VOLUME = StructureScanner.MAX_VOLUME;
+    private static final int MAX_VOLUME = StructureScanner.MAX_SURVEY_VOLUME;
 
     /**
      * How long one walk of a plant is reused for.

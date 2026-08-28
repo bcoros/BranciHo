@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "building",
+  "ingredients": [
+    {
+      "item": "citiesinlife:water_pipe"
+    },
+    {
+      "item": "minecraft:obsidian"
+    }
+  ],
+  "result": {
+    "id": "citiesinlife:indestructible_pipe",
+    "count": 1
+  }
+}

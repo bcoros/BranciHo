@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "pattern": [
+    " D ",
+    " L ",
+    " S "
+  ],
+  "key": {
+    "D": {
+      "item": "minecraft:diamond"
+    },
+    "L": {
+      "item": "minecraft:lapis_lazuli"
+    },
+    "S": {
+      "item": "minecraft:stick"
+    }
+  },
+  "result": {
+    "id": "citiesinlife:planner_wand",
+    "count": 1
+  }
+}

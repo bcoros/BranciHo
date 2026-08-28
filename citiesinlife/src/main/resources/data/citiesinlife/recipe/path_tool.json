@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "pattern": [
+    " Q ",
+    " S ",
+    " S "
+  ],
+  "key": {
+    "Q": {
+      "item": "minecraft:quartz"
+    },
+    "S": {
+      "item": "minecraft:stick"
+    }
+  },
+  "result": {
+    "id": "citiesinlife:path_tool",
+    "count": 1
+  }
+}

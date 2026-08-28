@@ -1,6 +1,9 @@
 package com.branciho.citiesinlife.entity;
 
 import com.branciho.citiesinlife.city.CityData;
+import com.branciho.citiesinlife.entity.ai.Shifts;
+import net.minecraft.world.level.block.BedBlock;
+import net.minecraft.world.phys.Vec3;
 import com.branciho.citiesinlife.city.CityMember;
 import com.branciho.citiesinlife.entity.ai.CitizenSleepGoal;
 import com.branciho.citiesinlife.entity.ai.CommitMurderGoal;
@@ -284,6 +287,32 @@ public class CitizenEntity extends PathfinderMob implements CityMember {
                 && level() instanceof ServerLevel serverLevel
                 && (carId == null || !(serverLevel.getEntity(carId) instanceof CarEntity))) {
             CarEntity.release(this);
+        }
+
+        // Sleeping survives a save; the goal that started it does not.
+        //
+        // LivingEntity.readAdditionalSaveData restores Pose.SLEEPING straight from NBT, but a
+        // reloaded citizen has a brand new, empty goal selector - so CitizenSleepGoal.stop() is
+        // never called and nothing ever clears the pose. The work and stroll goals then walk the
+        // citizen around lying down, forever, and the only thing in vanilla that undoes it is
+        // LivingEntity.hurt. Which is exactly why hitting them fixed it.
+        //
+        // This lives in aiStep because aiStep runs whatever the goal selector is doing, so it is
+        // the one place that can catch a pose whose owner has gone.
+        if (isSleeping()) {
+            BlockPos bed = getSleepingPos().orElse(null);
+            boolean stillInBed = bed != null
+                    && level().getBlockState(bed).getBlock() instanceof BedBlock
+                    && blockPosition().distSqr(bed) <= 4.0D;
+            if (!stillInBed || !Shifts.sleepingHours(level())) {
+                stopSleeping();
+            } else {
+                // Asleep and legitimately so. Pin them: a sleeper who is still being pathed
+                // somewhere slides across the floor in a sleeping pose, which is the other half
+                // of what this looked like.
+                getNavigation().stop();
+                setDeltaMovement(Vec3.ZERO);
+            }
         }
 
         // A razed city leaves its people behind. Nothing counts them against a cap any longer and

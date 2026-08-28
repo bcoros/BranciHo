@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "redstone",
+  "pattern": [
+    " L ",
+    "CRC",
+    " C "
+  ],
+  "key": {
+    "L": {
+      "item": "minecraft:lever"
+    },
+    "C": {
+      "item": "minecraft:copper_ingot"
+    },
+    "R": {
+      "item": "minecraft:redstone"
+    }
+  },
+  "result": {
+    "id": "citiesinlife:pressure_lever",
+    "count": 1
+  }
+}

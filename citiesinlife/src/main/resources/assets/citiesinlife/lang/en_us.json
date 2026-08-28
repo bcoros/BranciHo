@@ -119,6 +119,7 @@
   "screen.citiesinlife.reactor_none": "NO REACTOR ON THIS TERMINAL",
   "screen.citiesinlife.reactor_melting": "The plant is committed. Get clear.",
   "screen.citiesinlife.reactor_and_more": "  and %s more",
+  "message.citiesinlife.plant_box_too_large": "A power plant box is re-read constantly to find its machinery, so it has to be tighter than an ordinary building. Draw it round the plant rather than round the district.",
   "reactor.citiesinlife.built": "Reactor: %s turbine(s), columns %s tall, %s fuel rod blocks. Built and ready.",
   "reactor.citiesinlife.not_registered": "Not a registered nuclear plant - draw a box round it with the Planner Wand and pick Nuclear Plant.",
   "reactor.citiesinlife.box_too_large": "That box is too big for the reactor to read. Draw it tighter round the plant.",

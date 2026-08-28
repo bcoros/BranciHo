@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "pattern": [
+    " I ",
+    "IBI",
+    " I "
+  ],
+  "key": {
+    "I": {
+      "item": "minecraft:iron_ingot"
+    },
+    "B": {
+      "item": "minecraft:bucket"
+    }
+  },
+  "result": {
+    "id": "citiesinlife:extinguisher",
+    "count": 1
+  }
+}

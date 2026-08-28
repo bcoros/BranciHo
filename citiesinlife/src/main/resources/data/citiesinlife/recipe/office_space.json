@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "pattern": [
+    "QQQ",
+    "PGP",
+    "PPP"
+  ],
+  "key": {
+    "Q": {
+      "item": "minecraft:quartz"
+    },
+    "P": {
+      "item": "minecraft:oak_planks"
+    },
+    "G": {
+      "item": "minecraft:glass"
+    }
+  },
+  "result": {
+    "id": "citiesinlife:office_space",
+    "count": 4
+  }
+}
