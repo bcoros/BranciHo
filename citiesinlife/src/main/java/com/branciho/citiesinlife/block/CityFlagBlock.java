@@ -2,6 +2,7 @@ package com.branciho.citiesinlife.block;
 
 import com.branciho.citiesinlife.blockentity.CityFlagBlockEntity;
 import com.branciho.citiesinlife.registry.ModBlockEntities;
+import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
@@ -13,7 +14,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseEntityBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.RenderShape;
-import net.minecraft.world.level.block.SimpleWaterloggedBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityTicker;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -34,6 +34,8 @@ import org.jetbrains.annotations.Nullable;
  */
 public class CityFlagBlock extends BaseEntityBlock {
 
+    public static final MapCodec<CityFlagBlock> CODEC = simpleCodec(CityFlagBlock::new);
+
     public static final DirectionProperty FACING = BlockStateProperties.HORIZONTAL_FACING;
 
     private static final VoxelShape SHAPE = Block.box(6.0D, 0.0D, 6.0D, 10.0D, 16.0D, 10.0D);
@@ -41,6 +43,11 @@ public class CityFlagBlock extends BaseEntityBlock {
     public CityFlagBlock(Properties properties) {
         super(properties);
         registerDefaultState(defaultBlockState().setValue(FACING, Direction.NORTH));
+    }
+
+    @Override
+    protected MapCodec<? extends BaseEntityBlock> codec() {
+        return CODEC;
     }
 
     @Override
