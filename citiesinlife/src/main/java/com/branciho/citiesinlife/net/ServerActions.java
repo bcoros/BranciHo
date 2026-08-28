@@ -6,8 +6,10 @@ import com.branciho.citiesinlife.city.CityData;
 import com.branciho.citiesinlife.city.Diplomacy;
 import com.branciho.citiesinlife.city.Pact;
 import com.branciho.citiesinlife.city.Relation;
+import com.branciho.citiesinlife.city.Warfare;
 import com.branciho.citiesinlife.net.payload.CallToArmsPayload;
 import com.branciho.citiesinlife.net.payload.ModSettingsPayload;
+import com.branciho.citiesinlife.net.payload.PeaceOfferPayload;
 import com.branciho.citiesinlife.net.payload.SetSettingsPayload;
 import com.branciho.citiesinlife.net.payload.SetFlagPayload;
 import com.branciho.citiesinlife.net.payload.ClaimChunkPayload;
@@ -1680,7 +1682,7 @@ public final class ServerActions {
                 }
                 own.revoke(target.id());
                 target.revoke(own.id());
-                if (own.declareWar(target.id())) {
+                if (own.declareWar(target.id(), server.overworld().getGameTime())) {
                     own.withdraw(WAR_COST);
                     tell(server, target, "message.citiesinlife.war_declared_on_you", own.name());
                     player.sendSystemMessage(Component.translatable(
@@ -1692,18 +1694,46 @@ public final class ServerActions {
                 yield false;
             }
             case DiplomacyPayload.ACTION_MAKE_PEACE -> {
-                // Ending a war clears both sides. Requiring each of them to stand down separately
-                // read as a broken button to whichever city was attacked: it had nothing of its own
-                // to withdraw, so its only option did nothing at all. The cost of declaring is what
-                // keeps war from being spammed; making peace hard to reach never did.
-                boolean ended = own.makePeace(target.id()) | target.makePeace(own.id());
-                if (ended) {
-                    tell(server, target, "message.citiesinlife.peace_agreed", own.name());
-                    player.sendSystemMessage(Component.translatable(
-                            "message.citiesinlife.peace_agreed", target.name()));
-                    yield true;
+                // An offer, not an act. Ending a war used to be one click by either side, which
+                // made the whole thing a formality - the side that was losing could simply stop it.
+                // Now the other city has to agree, and can refuse.
+                if (Diplomacy.stance(own, target) != Relation.WAR) {
+                    yield false;
                 }
-                yield false;
+                // If they have already offered us one, this click is an acceptance. Two offers
+                // sitting on the table waiting for somebody to press a differently worded button
+                // would be a stalemate nobody chose.
+                if (target.offeringPeaceTo(own.id())) {
+                    yield signPeace(server, own, target, player);
+                }
+                if (!own.offerPeace(target.id())) {
+                    yield false;
+                }
+                player.sendSystemMessage(Component.translatable(
+                        "message.citiesinlife.peace_offered", target.name()));
+                tell(server, target, "message.citiesinlife.peace_offered_to_you", own.name());
+                ServerPlayer them = server.getPlayerList().getPlayer(target.owner());
+                if (them != null) {
+                    CitiesInLifeNetwork.sendTo(them,
+                            new PeaceOfferPayload(own.id(), own.name()));
+                }
+                yield true;
+            }
+            case DiplomacyPayload.ACTION_ACCEPT_PEACE -> {
+                if (!target.offeringPeaceTo(own.id())) {
+                    reject(player, "no_peace_offer");
+                    yield false;
+                }
+                yield signPeace(server, own, target, player);
+            }
+            case DiplomacyPayload.ACTION_DECLINE_PEACE -> {
+                if (!target.withdrawPeaceOffer(own.id())) {
+                    yield false;
+                }
+                player.sendSystemMessage(Component.translatable(
+                        "message.citiesinlife.peace_declined", target.name()));
+                tell(server, target, "message.citiesinlife.peace_declined_by", own.name());
+                yield true;
             }
             case DiplomacyPayload.ACTION_PACT_OFFER -> {
                 Pact pact = pactOf(payload.a());
@@ -1769,7 +1799,7 @@ public final class ServerActions {
                 }
                 own.revoke(target.id());
                 target.revoke(own.id());
-                if (own.declareWar(target.id())) {
+                if (own.declareWar(target.id(), server.overworld().getGameTime())) {
                     tell(server, target, "message.citiesinlife.war_declared_on_you", own.name());
                     player.sendSystemMessage(Component.translatable(
                             "message.citiesinlife.war_declared", target.name()));
@@ -1819,6 +1849,31 @@ public final class ServerActions {
                 }
             }
         }
+    }
+
+    /**
+     * End the war, both ways, and clear anything left on the table.
+     *
+     * <p>Symmetric on purpose: a war exists while either side is hostile, so ending one has to
+     * clear both or the peace would be a peace only one of them was in.
+     */
+    private static boolean signPeace(MinecraftServer server, City own, City target,
+                                     ServerPlayer player) {
+        boolean ended = own.makePeace(target.id()) | target.makePeace(own.id());
+        if (!ended) {
+            return false;
+        }
+        own.withdrawPeaceOffer(target.id());
+        target.withdrawPeaceOffer(own.id());
+        tell(server, target, "message.citiesinlife.peace_agreed", own.name());
+        player.sendSystemMessage(Component.translatable(
+                "message.citiesinlife.peace_agreed", target.name()));
+        Component line = Component.translatable("message.citiesinlife.peace_announced",
+                own.name(), target.name()).withStyle(ChatFormatting.GREEN);
+        for (ServerPlayer everyone : server.getPlayerList().getPlayers()) {
+            everyone.sendSystemMessage(line);
+        }
+        return true;
     }
 
     /** Tell a city's owner something, if they happen to be online to hear it. */
@@ -1944,7 +1999,10 @@ public final class ServerActions {
                         own == null ? 0 : own.waterPrice(city.id()),
                         city.powerPrice(own == null ? city.id() : own.id()),
                         city.waterPrice(own == null ? city.id() : own.id()),
-                        city.flag()));
+                        city.flag(),
+                        own != null && own.offeringPeaceTo(city.id()),
+                        own != null && city.offeringPeaceTo(own.id()),
+                        own != null && Warfare.attacking(server, own, city)));
             }
 
             for (long chunkKey : city.claimedChunks()) {

@@ -11,6 +11,7 @@ import com.branciho.citiesinlife.entity.ai.PoliceGoal;
 import com.branciho.citiesinlife.entity.ai.RefuseGoal;
 import com.branciho.citiesinlife.entity.ai.RifleGoal;
 import com.branciho.citiesinlife.entity.ai.SoldierGoal;
+import com.branciho.citiesinlife.entity.ai.TrenchGoal;
 import com.branciho.citiesinlife.entity.ai.SoldierTargetGoal;
 import com.branciho.citiesinlife.service.ServiceType;
 import net.minecraft.core.BlockPos;
@@ -117,6 +118,9 @@ public class ServiceEntity extends PathfinderMob implements CityMember {
         goalSelector.addGoal(4, new MedicGoal(this));
         goalSelector.addGoal(4, new RefuseGoal(this));
         goalSelector.addGoal(4, new SoldierGoal(this));
+        // The other half of a war. Mutually exclusive with the one above by their own checks:
+        // you are either advancing on their ground or dug into yours, never both.
+        goalSelector.addGoal(4, new TrenchGoal(this));
         goalSelector.addGoal(6, new WaterAvoidingRandomStrollGoal(this, 0.9D));
         goalSelector.addGoal(7, new LookAtPlayerGoal(this, Player.class, 8.0F));
         goalSelector.addGoal(8, new RandomLookAroundGoal(this));

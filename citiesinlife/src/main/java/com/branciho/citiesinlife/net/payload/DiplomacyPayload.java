@@ -34,6 +34,12 @@ public record DiplomacyPayload(UUID targetCityId, int action, int a, int b)
     /** An ally answering a call to arms by declaring on the same target. */
     public static final int ACTION_JOIN_WAR = 7;
 
+    /** Accept a treaty they have offered. Ends the war for both. */
+    public static final int ACTION_ACCEPT_PEACE = 8;
+
+    /** Refuse one. The war carries on and they are told so. */
+    public static final int ACTION_DECLINE_PEACE = 9;
+
     /** The two-argument actions only. Everything else can use this. */
     public static DiplomacyPayload of(UUID target, int action) {
         return new DiplomacyPayload(target, action, 0, 0);

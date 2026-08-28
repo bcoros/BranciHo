@@ -4,6 +4,7 @@ import com.branciho.citiesinlife.city.City;
 import com.branciho.citiesinlife.city.CityData;
 import com.branciho.citiesinlife.city.Diplomacy;
 import com.branciho.citiesinlife.city.Relation;
+import com.branciho.citiesinlife.city.Warfare;
 import com.branciho.citiesinlife.entity.ServiceEntity;
 import com.branciho.citiesinlife.registry.ModEntities;
 import com.branciho.citiesinlife.service.ServiceType;
@@ -56,8 +57,68 @@ public final class WarDirector {
             return;
         }
         CityData data = CityData.get(server);
+        announcePhases(server, data);
         for (ServerLevel level : server.getAllLevels()) {
             pressLevel(server, data, level);
+        }
+    }
+
+    /**
+     * Which phase each war is in, remembered only so the change can be announced.
+     *
+     * <p>Keyed by the pair, smaller id first, so both directions are the same war. In memory: a
+     * missed announcement after a restart is worth less than a saved field that could disagree with
+     * the arithmetic that produces it.
+     */
+    private static final Map<String, Long> ANNOUNCED = new HashMap<>();
+
+    /**
+     * Tell both sides when the offensive changes hands.
+     *
+     * <p>Without this the swap is invisible: your soldiers simply stop marching and start digging,
+     * and the only way to find out why is to open a screen. A war that changes shape every three
+     * minutes has to say so.
+     */
+    private static void announcePhases(MinecraftServer server, CityData data) {
+        for (City a : data.cities()) {
+            for (City b : data.cities()) {
+                if (a.id().compareTo(b.id()) >= 0
+                        || Diplomacy.stance(a, b) != Relation.WAR) {
+                    continue;
+                }
+                City attacker = Warfare.attacker(server, a, b);
+                if (attacker == null) {
+                    continue;
+                }
+                long started = Math.max(a.warStarted(b.id()), b.warStarted(a.id()));
+                if (started < 0L) {
+                    continue;
+                }
+                long phase = (server.overworld().getGameTime() - started) / Warfare.PHASE_TICKS;
+                String key = a.id() + ":" + b.id();
+                Long last = ANNOUNCED.get(key);
+                if (last != null && last == phase) {
+                    continue;
+                }
+                ANNOUNCED.put(key, phase);
+                if (last == null) {
+                    // First sighting of a war that was already running. Nothing has changed hands
+                    // yet as far as anybody watching is concerned.
+                    continue;
+                }
+                City defender = attacker.id().equals(a.id()) ? b : a;
+                tellPlain(server, attacker, "message.citiesinlife.war_phase_attack",
+                        defender.name());
+                tellPlain(server, defender, "message.citiesinlife.war_phase_defend",
+                        attacker.name());
+            }
+        }
+    }
+
+    private static void tellPlain(MinecraftServer server, City city, String key, String other) {
+        ServerPlayer player = playerFor(server, city.owner());
+        if (player != null) {
+            player.sendSystemMessage(Component.translatable(key, other));
         }
     }
 

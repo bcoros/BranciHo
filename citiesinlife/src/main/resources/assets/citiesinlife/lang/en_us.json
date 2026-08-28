@@ -592,5 +592,22 @@
   "guide.citiesinlife.nuclear.p3": "THE COOLING LOOP, in order: pipes into the INPUT WATER port, out of the OUTPUT COOLED port, through pipes back to the INPUT COOLED port beside the uranium store, through the core, out of the OUTPUT HEATED port, and back round to the input.\n\nThe water input and the cooled output are joined by one hand-drawn link with the Pipe Line Tool. A PRESSURISED PIPE must be the last pipe on the cooled run.",
   "guide.citiesinlife.nuclear.p4": "THE CONTROLS. TURBINE POWER is the master dial - at zero the plant makes nothing and cannot explode, and that is a guarantee. COOLER adds cooling. HEAT pulls the rods out for more power and much more risk. PRESSURE is the relief valve: it drops the pressure fast and costs you output while it is open.\n\nThe MAIN MONITOR shows temperature, pressure and what is wrong. An ALARM inside the box goes amber and then red.",
   "guide.citiesinlife.nuclear.p5": "A URANIUM STORAGE block feeds the rods automatically - right click it with uranium. A STEAM EMITTER is the chimney: without one the cooling ports foul up and clog.\n\nIf it melts down, RUN. The pipes go, then the turbines, then the core, then a crater about eighty blocks across - and the fallout reaches five hundred blocks and lasts ten minutes. The clicking you can hear is not a warning, it is a countdown.",
-  "screen.citiesinlife.flag_chosen": "Painting with: %s"
+  "screen.citiesinlife.flag_chosen": "Painting with: %s",
+  "screen.citiesinlife.send_treaty": "Send peace treaty",
+  "screen.citiesinlife.peace_offer": "Peace treaty offered",
+  "screen.citiesinlife.peace_offer_body": "%s has offered you a peace treaty. Accepting ends the war for both of you. Refusing carries it on, and they will be told. You can decide later from the Neighbours tab.",
+  "screen.citiesinlife.peace_accept": "Accept treaty",
+  "screen.citiesinlife.peace_decline": "Refuse treaty",
+  "screen.citiesinlife.you_attacking": "You are ATTACKING this phase",
+  "screen.citiesinlife.you_defending": "You are DEFENDING this phase",
+  "screen.citiesinlife.they_want_peace": "They have offered a peace treaty",
+  "screen.citiesinlife.you_offered_peace": "Treaty sent - waiting on them",
+  "message.citiesinlife.peace_offered": "Peace treaty sent to %s. It stands until they answer.",
+  "message.citiesinlife.peace_offered_to_you": "%s has offered you a peace treaty.",
+  "message.citiesinlife.peace_declined": "You refused %s's treaty. The war continues.",
+  "message.citiesinlife.peace_declined_by": "%s refused your treaty. The war continues.",
+  "message.citiesinlife.peace_announced": "%s and %s have signed a peace treaty",
+  "message.citiesinlife.no_peace_offer": "They have not offered you a treaty.",
+  "message.citiesinlife.war_phase_attack": "Your forces are on the offensive against %s.",
+  "message.citiesinlife.war_phase_defend": "%s is on the offensive. Your soldiers are digging in."
 }

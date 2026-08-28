@@ -4,6 +4,7 @@ import com.branciho.citiesinlife.city.City;
 import com.branciho.citiesinlife.city.CityData;
 import com.branciho.citiesinlife.city.Diplomacy;
 import com.branciho.citiesinlife.city.Relation;
+import com.branciho.citiesinlife.city.Warfare;
 import com.branciho.citiesinlife.entity.ServiceEntity;
 import com.branciho.citiesinlife.service.ServiceType;
 import net.minecraft.core.BlockPos;
@@ -58,19 +59,42 @@ public class SoldierGoal extends Goal {
         setFlags(EnumSet.of(Goal.Flag.MOVE, Goal.Flag.LOOK));
     }
 
+    /**
+     * Marching is for the side that is attacking.
+     *
+     * <p>This used to ask {@code !mine.wars().isEmpty()}, which is not "am I at war" - it is "did I
+     * declare one". {@link City#wars()} only ever holds entries for the city that declared, so for
+     * the side that was declared on the answer was always no. Their soldiers never marched, never
+     * picked an objective, and only fought when somebody walked into them. Half of every war stood
+     * still, and the half that stood still was always the same half.
+     */
     @Override
     public boolean canUse() {
         if (soldier.role() != ServiceType.MILITARY) {
             return false;
         }
         City mine = soldier.city();
-        return mine != null && !mine.wars().isEmpty() && pickObjective(mine) != null;
+        return mine != null && onTheOffensive(mine) && pickObjective(mine) != null;
     }
 
     @Override
     public boolean canContinueToUse() {
         City mine = soldier.city();
-        return objective != null && mine != null && !mine.wars().isEmpty();
+        return objective != null && mine != null && onTheOffensive(mine);
+    }
+
+    /** Whether this soldier's city is currently the attacker in any war it is part of. */
+    private boolean onTheOffensive(City mine) {
+        if (!(soldier.level() instanceof ServerLevel level)) {
+            return false;
+        }
+        for (City enemy : CityData.get(level.getServer()).cities()) {
+            if (!enemy.id().equals(mine.id())
+                    && Warfare.attacking(level.getServer(), mine, enemy)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
@@ -160,6 +184,12 @@ public class SoldierGoal extends Goal {
                     || Diplomacy.stance(enemy, mine) != Relation.WAR) {
                 continue;
             }
+            // Only ground belonging to somebody we are currently advancing on. Being at war with
+            // two cities while defending against one of them should not send the army marching
+            // into that one anyway.
+            if (!Warfare.attacking(level.getServer(), mine, enemy)) {
+                continue;
+            }
             for (long chunkKey : enemy.claimedChunks()) {
                 ChunkPos chunk = new ChunkPos(chunkKey);
                 BlockPos centre = new BlockPos(chunk.getMiddleBlockX(),
@@ -197,6 +227,12 @@ public class SoldierGoal extends Goal {
         City owner = Diplomacy.owner(level.getServer(), level.dimension(), spot);
         if (owner == null || owner.id().equals(mine.id())
                 || Diplomacy.stance(owner, mine) != Relation.WAR) {
+            return;
+        }
+        // Charges are an attacker's business. A defender blowing craters in the ground they are
+        // trying to hold is not a defence, and it is the one thing that would make losing a phase
+        // worse than losing the war.
+        if (!Warfare.attacking(level.getServer(), mine, owner)) {
             return;
         }
         if (!level.getBlockState(spot).canBeReplaced()

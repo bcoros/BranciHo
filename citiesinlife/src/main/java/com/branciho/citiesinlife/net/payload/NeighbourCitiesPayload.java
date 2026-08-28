@@ -38,7 +38,8 @@ public record NeighbourCitiesPayload(List<Entry> cities) implements CustomPacket
                         int theirStance, int yourStance, int chunks, int distance,
                         int yourPacts, int theirPacts,
                         int yourPowerPrice, int yourWaterPrice,
-                        int theirPowerPrice, int theirWaterPrice, byte[] flag) {
+                        int theirPowerPrice, int theirWaterPrice, byte[] flag,
+                        boolean youOfferedPeace, boolean theyOfferedPeace, boolean youAttack) {
     }
 
     public static final CustomPacketPayload.Type<NeighbourCitiesPayload> TYPE =
@@ -68,6 +69,9 @@ public record NeighbourCitiesPayload(List<Entry> cities) implements CustomPacket
             for (byte cell : com.branciho.citiesinlife.city.CityFlag.sanitise(entry.flag())) {
                 buf.writeByte(cell);
             }
+            buf.writeBoolean(entry.youOfferedPeace());
+            buf.writeBoolean(entry.theyOfferedPeace());
+            buf.writeBoolean(entry.youAttack());
         }
     }
 
@@ -92,7 +96,10 @@ public record NeighbourCitiesPayload(List<Entry> cities) implements CustomPacket
                     buf.readVarInt(),
                     buf.readVarInt(),
                     buf.readVarInt(),
-                    readFlag(buf));
+                    readFlag(buf),
+                    buf.readBoolean(),
+                    buf.readBoolean(),
+                    buf.readBoolean());
             cities.add(entry);
         }
         return new NeighbourCitiesPayload(cities);

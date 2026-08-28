@@ -144,20 +144,39 @@ public class NeighboursScreen extends Screen {
         }
 
         // War sits at the bottom, away from everything else, and asks before it does anything.
-        addRenderableWidget(Button.builder(
-                        Component.translatable(atWar
-                                ? "screen.citiesinlife.stand_down"
-                                : "screen.citiesinlife.declare_war"),
-                        button -> {
-                            if (atWar) {
-                                send(entry, DiplomacyPayload.ACTION_MAKE_PEACE);
-                            } else {
-                                this.minecraft.setScreen(new ConfirmWarScreen(
-                                        entry.cityId(), entry.name(), this));
-                            }
-                        })
-                .bounds(x, top + PANEL_HEIGHT - 58, BUTTON_WIDTH, 18)
-                .build());
+        // At war it becomes the treaty, which is three different buttons depending on who has
+        // asked whom: send one, wait on them, or answer theirs.
+        if (atWar && entry.theyOfferedPeace()) {
+            addRenderableWidget(Button.builder(
+                            Component.translatable("screen.citiesinlife.peace_accept"),
+                            button -> send(entry, DiplomacyPayload.ACTION_ACCEPT_PEACE))
+                    .bounds(x, top + PANEL_HEIGHT - 80, BUTTON_WIDTH, 18)
+                    .build());
+            addRenderableWidget(Button.builder(
+                            Component.translatable("screen.citiesinlife.peace_decline"),
+                            button -> send(entry, DiplomacyPayload.ACTION_DECLINE_PEACE))
+                    .bounds(x, top + PANEL_HEIGHT - 58, BUTTON_WIDTH, 18)
+                    .build());
+        } else {
+            Button treaty = Button.builder(
+                            Component.translatable(atWar
+                                    ? "screen.citiesinlife.send_treaty"
+                                    : "screen.citiesinlife.declare_war"),
+                            button -> {
+                                if (atWar) {
+                                    send(entry, DiplomacyPayload.ACTION_MAKE_PEACE);
+                                } else {
+                                    this.minecraft.setScreen(new ConfirmWarScreen(
+                                            entry.cityId(), entry.name(), this));
+                                }
+                            })
+                    .bounds(x, top + PANEL_HEIGHT - 58, BUTTON_WIDTH, 18)
+                    .build();
+            // Offering twice does nothing, and a live button that does nothing is worse than a
+            // dead one that says why.
+            treaty.active = !(atWar && entry.youOfferedPeace());
+            addRenderableWidget(treaty);
+        }
 
         // Pricing is only worth showing once there is a supply to price.
         if (stateOf(entry, Pact.UTILITIES) == Pact.State.ACTIVE) {
@@ -308,6 +327,28 @@ public class NeighboursScreen extends Screen {
                 Component.translatable("screen.citiesinlife.you_regard_them", yours.displayName()),
                 textLeft, y, 0xFF000000 | yours.colour(), false);
         y += 16;
+
+        // At war, the pacts are all off anyway; what matters is which way the fighting is going
+        // and whether anybody has asked to stop.
+        if (Relation.byOrdinal(entry.theirStance()) == Relation.WAR
+                || Relation.byOrdinal(entry.yourStance()) == Relation.WAR) {
+            graphics.drawString(this.font,
+                    Component.translatable(entry.youAttack()
+                            ? "screen.citiesinlife.you_attacking"
+                            : "screen.citiesinlife.you_defending"),
+                    textLeft, y, CityScreen.COLOUR_BAD, false);
+            y += 12;
+            if (entry.theyOfferedPeace()) {
+                graphics.drawString(this.font,
+                        Component.translatable("screen.citiesinlife.they_want_peace"),
+                        textLeft, y, CityScreen.COLOUR_GOOD, false);
+            } else if (entry.youOfferedPeace()) {
+                graphics.drawString(this.font,
+                        Component.translatable("screen.citiesinlife.you_offered_peace"),
+                        textLeft, y, CityScreen.COLOUR_ACCENT, false);
+            }
+            return;
+        }
 
         for (Pact pact : Pact.values()) {
             Pact.State state = stateOf(entry, pact);

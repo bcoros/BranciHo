@@ -6,6 +6,7 @@ import com.branciho.citiesinlife.net.payload.ClaimChunkPayload;
 import com.branciho.citiesinlife.net.payload.CitySyncPayload;
 import com.branciho.citiesinlife.net.payload.CallToArmsPayload;
 import com.branciho.citiesinlife.net.payload.ModSettingsPayload;
+import com.branciho.citiesinlife.net.payload.PeaceOfferPayload;
 import com.branciho.citiesinlife.net.payload.RadiationPayload;
 import com.branciho.citiesinlife.net.payload.SetSettingsPayload;
 import com.branciho.citiesinlife.net.payload.SetFlagPayload;
@@ -177,6 +178,9 @@ public final class CitiesInLifeNetwork {
                 (payload, context) -> context.enqueueWork(() -> ClientCityCache.accept(payload)));
 
         registrar.playToClient(RadiationPayload.TYPE, RadiationPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() -> ClientCityCache.accept(payload)));
+
+        registrar.playToClient(PeaceOfferPayload.TYPE, PeaceOfferPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(() -> ClientCityCache.accept(payload)));
 
         registrar.playToServer(SetSettingsPayload.TYPE, SetSettingsPayload.STREAM_CODEC,

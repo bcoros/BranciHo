@@ -81,6 +81,25 @@ public final class City {
     private final Set<UUID> wars = new HashSet<>();
 
     /**
+     * When each war this city declared began, in game time.
+     *
+     * <p>Kept because a war has a shape over time and not just an on-off state: the side that
+     * declared attacks first, and the two of them swap every few minutes. Both cities have to agree
+     * about whose turn it is, and the only thing they both have access to is the declaration - so
+     * the clock lives with the declaration, on the city that made it.
+     */
+    private final Map<UUID, Long> warStarted = new HashMap<>();
+
+    /**
+     * Cities this one has offered peace to.
+     *
+     * <p>An offer, not an act. Held rather than sent and forgotten, so a treaty proposed to
+     * somebody who is offline is still waiting for them when they log in - which is the whole point
+     * of it being a treaty rather than a button that ends the war on its own.
+     */
+    private final Set<UUID> peaceOffers = new HashSet<>();
+
+    /**
      * What this city has agreed to with each neighbour, and what it charges them.
      *
      * <p>One row per neighbour this city has ever had dealings with, holding a bitmask of {@link
@@ -521,12 +540,33 @@ public final class City {
      * <p>Stored one way round; two cities are at war while either of them is hostile. Call
      * {@link #makePeace} on <em>both</em> to end it, which is what the server does.
      */
-    public boolean declareWar(UUID otherCityId) {
+    public boolean declareWar(UUID otherCityId, long gameTime) {
+        warStarted.put(otherCityId, gameTime);
         return wars.add(otherCityId);
+    }
+
+    /** When this city's war with that one started, or -1 if it never declared one. */
+    public long warStarted(UUID otherCityId) {
+        Long when = warStarted.get(otherCityId);
+        return when == null ? -1L : when;
+    }
+
+    public boolean offeringPeaceTo(UUID otherCityId) {
+        return peaceOffers.contains(otherCityId);
+    }
+
+    public boolean offerPeace(UUID otherCityId) {
+        return peaceOffers.add(otherCityId);
+    }
+
+    public boolean withdrawPeaceOffer(UUID otherCityId) {
+        return peaceOffers.remove(otherCityId);
     }
 
     /** Drop this city's own hostility. Ending a war means doing this on both sides. */
     public boolean makePeace(UUID otherCityId) {
+        warStarted.remove(otherCityId);
+        peaceOffers.remove(otherCityId);
         return wars.remove(otherCityId);
     }
 
@@ -551,6 +591,8 @@ public final class City {
      * inherit somebody else's grudge.
      */
     public boolean forget(UUID otherCityId) {
+        warStarted.remove(otherCityId);
+        peaceOffers.remove(otherCityId);
         return granted.remove(otherCityId) | wars.remove(otherCityId)
                 | dealings.remove(otherCityId) != null;
     }
@@ -601,6 +643,15 @@ public final class City {
 
         tag.put("granted", writeIds(granted));
         tag.put("wars", writeIds(wars));
+        tag.put("peaceOffers", writeIds(peaceOffers));
+        ListTag started = new ListTag();
+        for (Map.Entry<UUID, Long> entry : warStarted.entrySet()) {
+            CompoundTag row = new CompoundTag();
+            row.putUUID("id", entry.getKey());
+            row.putLong("at", entry.getValue());
+            started.add(row);
+        }
+        tag.put("warStarted", started);
         ListTag deals = new ListTag();
         for (Map.Entry<UUID, Dealings> entry : dealings.entrySet()) {
             CompoundTag row = new CompoundTag();
@@ -737,6 +788,14 @@ public final class City {
 
         readIds(tag, "granted", city.granted);
         readIds(tag, "wars", city.wars);
+        readIds(tag, "peaceOffers", city.peaceOffers);
+        ListTag started = tag.getList("warStarted", Tag.TAG_COMPOUND);
+        for (int i = 0; i < started.size(); i++) {
+            CompoundTag row = started.getCompound(i);
+            if (row.hasUUID("id")) {
+                city.warStarted.put(row.getUUID("id"), row.getLong("at"));
+            }
+        }
         // Sanitised on the way in, so a city saved before flags existed comes back with a blank
         // one rather than an empty array everything downstream would have to guard against.
         city.flag = CityFlag.sanitise(tag.getByteArray("flag"));

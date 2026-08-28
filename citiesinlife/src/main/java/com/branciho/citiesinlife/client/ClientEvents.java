@@ -4,6 +4,7 @@ import com.branciho.citiesinlife.CitiesInLife;
 import com.branciho.citiesinlife.client.ClientRadiation;
 import com.branciho.citiesinlife.client.screen.CallToArmsScreen;
 import com.branciho.citiesinlife.client.screen.GuideScreen;
+import com.branciho.citiesinlife.client.screen.PeaceOfferScreen;
 import com.branciho.citiesinlife.client.screen.CityScreen;
 import com.branciho.citiesinlife.client.screen.ConfirmDeleteCityScreen;
 import com.branciho.citiesinlife.client.screen.MilitaryScreen;
@@ -14,6 +15,7 @@ import com.branciho.citiesinlife.net.CitiesInLifeNetwork;
 import com.branciho.citiesinlife.net.ClientArmyCache;
 import com.branciho.citiesinlife.net.ClientCityCache;
 import com.branciho.citiesinlife.net.payload.CallToArmsPayload;
+import com.branciho.citiesinlife.net.payload.PeaceOfferPayload;
 import com.branciho.citiesinlife.net.payload.ConfirmDeleteCityPayload;
 import com.branciho.citiesinlife.net.payload.DeleteAreaPayload;
 import com.branciho.citiesinlife.net.payload.LinkPowerPayload;
@@ -162,6 +164,12 @@ public final class ClientEvents {
         ConfirmDeleteCityPayload pendingDelete = ClientCityCache.takeDeleteConfirm();
         if (pendingDelete != null) {
             minecraft.setScreen(new ConfirmDeleteCityScreen(pendingDelete));
+        }
+
+        // A treaty on the table. Same hand-off: the server cannot open a screen, so it asks.
+        PeaceOfferPayload peace = ClientCityCache.takePeaceOffer();
+        if (peace != null) {
+            minecraft.setScreen(new PeaceOfferScreen(peace));
         }
 
         // An ally's declaration, arriving as a question with buttons on it.

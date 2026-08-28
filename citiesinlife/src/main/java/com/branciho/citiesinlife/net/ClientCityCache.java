@@ -5,6 +5,7 @@ import com.branciho.citiesinlife.net.payload.CitySyncPayload;
 import com.branciho.citiesinlife.net.payload.ReactorSyncPayload;
 import com.branciho.citiesinlife.net.payload.CallToArmsPayload;
 import com.branciho.citiesinlife.net.payload.ModSettingsPayload;
+import com.branciho.citiesinlife.net.payload.PeaceOfferPayload;
 import com.branciho.citiesinlife.net.payload.RadiationPayload;
 import com.branciho.citiesinlife.net.payload.ConfirmDeleteCityPayload;
 import com.branciho.citiesinlife.net.payload.ForeignLandPayload;
@@ -47,6 +48,7 @@ public final class ClientCityCache {
     private static Long2ByteOpenHashMap foreignLand = new Long2ByteOpenHashMap();
     private static @Nullable ConfirmDeleteCityPayload pendingDeleteConfirm;
     private static @Nullable CallToArmsPayload pendingCallToArms;
+    private static @Nullable PeaceOfferPayload pendingPeaceOffer;
     private static @Nullable ModSettingsPayload settings;
     private static int radiation;
 
@@ -185,6 +187,17 @@ public final class ClientCityCache {
         pendingCallToArms = payload;
     }
 
+    /** A treaty on the table, arriving as a question. */
+    public static void accept(PeaceOfferPayload payload) {
+        pendingPeaceOffer = payload;
+    }
+
+    public static @Nullable PeaceOfferPayload takePeaceOffer() {
+        PeaceOfferPayload pending = pendingPeaceOffer;
+        pendingPeaceOffer = null;
+        return pending;
+    }
+
     public static @Nullable CallToArmsPayload takeCallToArms() {
         CallToArmsPayload pending = pendingCallToArms;
         pendingCallToArms = null;
@@ -250,6 +263,7 @@ public final class ClientCityCache {
         foreignLand = new Long2ByteOpenHashMap();
         pendingDeleteConfirm = null;
         pendingCallToArms = null;
+        pendingPeaceOffer = null;
         settings = null;
         radiation = 0;
     }
