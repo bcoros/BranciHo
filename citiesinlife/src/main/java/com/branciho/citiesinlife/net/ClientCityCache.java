@@ -1,6 +1,8 @@
 package com.branciho.citiesinlife.net;
 
+import net.minecraft.core.BlockPos;
 import com.branciho.citiesinlife.net.payload.CitySyncPayload;
+import com.branciho.citiesinlife.net.payload.ReactorSyncPayload;
 import com.branciho.citiesinlife.net.payload.ConfirmDeleteCityPayload;
 import com.branciho.citiesinlife.net.payload.ForeignLandPayload;
 import com.branciho.citiesinlife.net.payload.NeighbourCitiesPayload;
@@ -43,6 +45,35 @@ public final class ClientCityCache {
     private static @Nullable ConfirmDeleteCityPayload pendingDeleteConfirm;
 
     private ClientCityCache() {
+    }
+
+    /**
+     * The reactor the open monitor is showing.
+     *
+     * <p>Kept here with everything else the client is told rather than on the screen, so a screen
+     * that is closed and reopened does not flash empty while it waits for the first packet.
+     */
+    private static ReactorSyncPayload reactor = ReactorSyncPayload.none();
+
+    /** Set when the server wants a control-room screen opened, cleared by the client tick. */
+    private static @Nullable BlockPos pendingMonitor;
+
+    public static void accept(ReactorSyncPayload payload) {
+        reactor = payload;
+    }
+
+    public static ReactorSyncPayload reactor() {
+        return reactor;
+    }
+
+    public static void openMonitor(BlockPos at) {
+        pendingMonitor = at;
+    }
+
+    public static @Nullable BlockPos takeMonitor() {
+        BlockPos taken = pendingMonitor;
+        pendingMonitor = null;
+        return taken;
     }
 
     public static void accept(CitySyncPayload payload) {

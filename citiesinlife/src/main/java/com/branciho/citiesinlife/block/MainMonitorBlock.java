@@ -1,6 +1,9 @@
 package com.branciho.citiesinlife.block;
 
+import com.branciho.citiesinlife.net.ServerActions;
 import com.branciho.citiesinlife.nuclear.ReactorReadout;
+import com.branciho.citiesinlife.nuclear.ReactorSurvey;
+import net.minecraft.server.level.ServerPlayer;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -73,12 +76,27 @@ public class MainMonitorBlock extends Block {
         return SHAPES.getOrDefault(state.getValue(FACING), SHAPES.get(Direction.NORTH));
     }
 
+    /**
+     * Open the control room.
+     *
+     * <p>The screen is opened client-side from a cached request rather than directly, because a
+     * block's use handler runs on the server and {@code Minecraft.setScreen} does not exist there.
+     * A monitor standing outside a registered reactor falls back to the one-line readout every
+     * other reactor block gives, so it is never simply dead.
+     */
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos,
                                                Player player, BlockHitResult hit) {
-        if (!level.isClientSide) {
+        if (level.isClientSide) {
+            return InteractionResult.SUCCESS;
+        }
+        if (ReactorSurvey.at(level, pos).registered()) {
+            if (player instanceof ServerPlayer viewer) {
+                ServerActions.openMonitor(viewer, pos);
+            }
+        } else {
             player.displayClientMessage(ReactorReadout.describe(level, pos), true);
         }
-        return InteractionResult.sidedSuccess(level.isClientSide);
+        return InteractionResult.CONSUME;
     }
 }

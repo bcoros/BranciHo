@@ -10,6 +10,9 @@ import com.branciho.citiesinlife.net.payload.DiplomacyPayload;
 import com.branciho.citiesinlife.net.payload.ForeignLandPayload;
 import com.branciho.citiesinlife.net.payload.LinkPowerPayload;
 import com.branciho.citiesinlife.net.payload.LinkOutletPayload;
+import com.branciho.citiesinlife.net.payload.OpenMonitorPayload;
+import com.branciho.citiesinlife.net.payload.ReactorSyncPayload;
+import com.branciho.citiesinlife.net.payload.RequestReactorPayload;
 import com.branciho.citiesinlife.net.payload.UpgradePayload;
 import com.branciho.citiesinlife.net.payload.LinkWaterPayload;
 import com.branciho.citiesinlife.net.payload.MarkPathPayload;
@@ -78,6 +81,10 @@ public final class CitiesInLifeNetwork {
                 (payload, context) -> context.enqueueWork(
                         () -> onServer(context, player -> ServerActions.upgrade(player, payload))));
 
+        registrar.playToServer(RequestReactorPayload.TYPE, RequestReactorPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(
+                        () -> onServer(context, player -> ServerActions.sendReactor(player, payload))));
+
         registrar.playToServer(MarkPathPayload.TYPE, MarkPathPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(
                         () -> onServer(context, player -> ServerActions.markPath(player, payload))));
@@ -127,6 +134,13 @@ public final class CitiesInLifeNetwork {
                 (payload, context) -> context.enqueueWork(() -> ClientCityCache.accept(payload)));
 
         registrar.playToClient(PathSyncPayload.TYPE, PathSyncPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() -> ClientCityCache.accept(payload)));
+
+        registrar.playToClient(OpenMonitorPayload.TYPE, OpenMonitorPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(
+                        () -> ClientCityCache.openMonitor(payload.monitor())));
+
+        registrar.playToClient(ReactorSyncPayload.TYPE, ReactorSyncPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(() -> ClientCityCache.accept(payload)));
 
         registrar.playToClient(RoadSyncPayload.TYPE, RoadSyncPayload.STREAM_CODEC,

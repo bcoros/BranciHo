@@ -5,6 +5,7 @@ import com.branciho.citiesinlife.client.screen.CityScreen;
 import com.branciho.citiesinlife.client.screen.ConfirmDeleteCityScreen;
 import com.branciho.citiesinlife.client.screen.MilitaryScreen;
 import com.branciho.citiesinlife.client.screen.NameCityScreen;
+import com.branciho.citiesinlife.client.screen.ReactorScreen;
 import com.branciho.citiesinlife.client.screen.RoadToolScreen;
 import com.branciho.citiesinlife.net.CitiesInLifeNetwork;
 import com.branciho.citiesinlife.net.ClientArmyCache;
@@ -132,6 +133,13 @@ public final class ClientEvents {
         ConfirmDeleteCityPayload pendingDelete = ClientCityCache.takeDeleteConfirm();
         if (pendingDelete != null) {
             minecraft.setScreen(new ConfirmDeleteCityScreen(pendingDelete));
+        }
+
+        // The control room, opened at the server's request. A block's use handler runs server-side
+        // where setScreen does not exist, so the open has to come back as a message.
+        BlockPos monitor = ClientCityCache.takeMonitor();
+        if (monitor != null) {
+            minecraft.setScreen(new ReactorScreen(monitor));
         }
 
         while (KeyBindings.OPEN_CITY.consumeClick()) {

@@ -35,7 +35,17 @@ import com.branciho.citiesinlife.blockentity.TransportAirplaneBlockEntity;
 import com.branciho.citiesinlife.block.TransportAirplaneBlock;
 import com.branciho.citiesinlife.road.RoadNetwork;
 import com.branciho.citiesinlife.road.RoadTile;
+import com.branciho.citiesinlife.blockentity.CoolingPortBlockEntity;
+import com.branciho.citiesinlife.blockentity.UraniumStorageBlockEntity;
+import com.branciho.citiesinlife.block.ReactorLeverBlock;
+import com.branciho.citiesinlife.nuclear.CoolingPort;
+import com.branciho.citiesinlife.nuclear.ReactorData;
 import com.branciho.citiesinlife.nuclear.ReactorFault;
+import com.branciho.citiesinlife.nuclear.ReactorLever;
+import com.branciho.citiesinlife.nuclear.ReactorState;
+import com.branciho.citiesinlife.net.payload.OpenMonitorPayload;
+import com.branciho.citiesinlife.net.payload.ReactorSyncPayload;
+import com.branciho.citiesinlife.net.payload.RequestReactorPayload;
 import com.branciho.citiesinlife.nuclear.ReactorSurvey;
 import com.branciho.citiesinlife.plant.PlantSurvey;
 import com.branciho.citiesinlife.power.PowerBlock;
@@ -1823,6 +1833,98 @@ public final class ServerActions {
 
     private static boolean tooFar(ServerPlayer player, BlockPos pos) {
         return player.blockPosition().distSqr(pos) > (double) MAX_REACH * MAX_REACH;
+    }
+
+    // ---------------------------------------------------------- the control room
+
+    /**
+     * Answer a monitor with everything its screen shows.
+     *
+     * <p>Only on request, and only to the one player asking. A reactor's gauges move once every ten
+     * seconds, so pushing them at everybody would be a lot of traffic for numbers nobody is looking
+     * at — and the screen re-asks while it is open, which is what makes it live.
+     */
+    public static void sendReactor(ServerPlayer player, RequestReactorPayload payload) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        ServerLevel level = player.serverLevel();
+        BlockPos at = payload.monitor();
+        if (tooFar(player, at)) {
+            CitiesInLifeNetwork.sendTo(player, ReactorSyncPayload.none());
+            return;
+        }
+        Structure plant = CityData.get(server).structureAt(level.dimension(), at);
+        if (plant == null || plant.type() != StructureType.NUCLEAR_PLANT) {
+            CitiesInLifeNetwork.sendTo(player, ReactorSyncPayload.none());
+            return;
+        }
+
+        ReactorSurvey survey = ReactorSurvey.of(level, plant.min(), plant.max());
+        ReactorData data = ReactorData.get(server);
+        ReactorState state = data.of(plant.id());
+
+        int dial = ReactorLeverBlock.positionAt(level, survey.levers().get(ReactorLever.TURBINE));
+        int[] clog = new int[ReactorSyncPayload.PORTS];
+        int latched = 0;
+        for (CoolingPort port : CoolingPort.values()) {
+            BlockPos portAt = survey.ports().get(port);
+            if (portAt != null
+                    && level.getBlockEntity(portAt) instanceof CoolingPortBlockEntity cell) {
+                clog[port.ordinal()] = cell.clog();
+                if (cell.latched()) {
+                    latched++;
+                }
+            }
+        }
+        boolean plumbed = survey.buildFault() == null && survey.loopFault(level) == null;
+        int loop = plumbed ? Math.max(0, 100 - 25 * latched) : 0;
+
+        int rodBlocks = survey.fuelRodBlocks();
+        double capacity = (double) UraniumStorageBlockEntity.UNITS_PER_ITEM * Math.max(1, rodBlocks);
+        int fuelPercent = (int) Math.round(100.0D * state.fuel / capacity);
+
+        int[] history = new int[ReactorSyncPayload.TRACE];
+        for (int i = 0; i < history.length; i++) {
+            history[i] = state.history[i];
+        }
+
+        CitiesInLifeNetwork.sendTo(player, new ReactorSyncPayload(
+                true, plant.name(),
+                (int) Math.round(state.temperature),
+                (int) Math.round(Math.min(9999.0D, state.targetTemperature)),
+                (int) Math.round(state.pressure),
+                Math.max(0, Math.min(100, fuelPercent)),
+                minutesOfFuel(state, rodBlocks),
+                state.output, dial,
+                ReactorLeverBlock.positionAt(level, survey.levers().get(ReactorLever.COOLER)) > 0,
+                ReactorLeverBlock.positionAt(level, survey.levers().get(ReactorLever.HEAT)) > 0,
+                ReactorLeverBlock.positionAt(level, survey.levers().get(ReactorLever.PRESSURE)) > 0,
+                state.insertion, loop,
+                survey.turbines().size(), survey.columnHeight(), rodBlocks,
+                state.melting(), state.fault, state.faultCount, clog, history));
+    }
+
+    /** Ask the client to open the control room, then fill it in. */
+    public static void openMonitor(ServerPlayer player, BlockPos monitor) {
+        CitiesInLifeNetwork.sendTo(player, new OpenMonitorPayload(monitor));
+        sendReactor(player, new RequestReactorPayload(monitor));
+    }
+
+    /**
+     * Roughly how long the fuel lasts at the rate it is currently going.
+     *
+     * <p>Derived from this step's burn rather than from a nominal figure, so easing off the dial
+     * visibly buys time on the same screen that told you the fuel was low.
+     */
+    private static int minutesOfFuel(ReactorState state, int rodBlocks) {
+        if (rodBlocks <= 0 || state.fuel <= 0.0D) {
+            return 0;
+        }
+        double burnPerStep = 0.75D * rodBlocks * Math.max(0.02D, state.decay);
+        double steps = state.fuel / burnPerStep;
+        return (int) Math.round(steps * CitySimulation.INTERVAL_TICKS / 20.0D / 60.0D);
     }
 
     // --------------------------------------------------------------- upgrades
