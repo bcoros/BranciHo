@@ -28,6 +28,7 @@ import com.branciho.citiesinlife.block.TouristAirplaneBlock;
 import com.branciho.citiesinlife.block.TransitStationBlock;
 import com.branciho.citiesinlife.block.TransportAirplaneBlock;
 import com.branciho.citiesinlife.block.TurbineBlock;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.material.MapColor;
@@ -55,6 +56,28 @@ public final class ModBlocks {
                     .sound(SoundType.WOOD)
                     .forceSolidOn()
                     .noOcclusion()));
+
+    /**
+     * Uranium ore, in the two flavours every ore needs.
+     *
+     * <p>Two blocks rather than one because minecraft:stone_ore_replaceables genuinely does not
+     * include deepslate or tuff — a single-target ore generates down to y=0 and then stops dead in
+     * the deepslate layer, which looks exactly like the worldgen being broken.
+     */
+    public static final DeferredBlock<Block> URANIUM_ORE = BLOCKS.register("uranium_ore",
+            () -> new Block(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.STONE)
+                    .strength(3.0F, 3.0F)
+                    .requiresCorrectToolForDrops()
+                    .sound(SoundType.STONE)));
+
+    public static final DeferredBlock<Block> DEEPSLATE_URANIUM_ORE =
+            BLOCKS.register("deepslate_uranium_ore",
+                    () -> new Block(BlockBehaviour.Properties.of()
+                            .mapColor(MapColor.DEEPSLATE)
+                            .strength(4.5F, 3.0F)
+                            .requiresCorrectToolForDrops()
+                            .sound(SoundType.DEEPSLATE)));
 
     /**
      * The steel lattice pylon. Metal, tougher than the wooden mast, and mined with a pickaxe rather

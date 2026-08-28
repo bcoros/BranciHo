@@ -124,6 +124,25 @@ public final class ModItems {
     public static final DeferredItem<BlockItem> END_PIPE =
             ITEMS.registerSimpleBlockItem("end_pipe", ModBlocks.END_PIPE);
 
+    public static final DeferredItem<BlockItem> URANIUM_ORE =
+            ITEMS.registerSimpleBlockItem("uranium_ore", ModBlocks.URANIUM_ORE);
+
+    public static final DeferredItem<BlockItem> DEEPSLATE_URANIUM_ORE =
+            ITEMS.registerSimpleBlockItem("deepslate_uranium_ore", ModBlocks.DEEPSLATE_URANIUM_ORE);
+
+    /** What the ore drops. Smelts into the refined article the reactor actually eats. */
+    public static final DeferredItem<Item> RAW_URANIUM = ITEMS.register("raw_uranium",
+            () -> new Item(new Item.Properties()));
+
+    /**
+     * Reactor fuel. One of these is exactly one fuel rod block's worth.
+     *
+     * <p>That equivalence is deliberate and it is the whole of the supply chain: a player can count
+     * the blocks in their core and know how many they need, without a wiki.
+     */
+    public static final DeferredItem<Item> URANIUM = ITEMS.register("uranium",
+            () -> new Item(new Item.Properties()));
+
     public static final DeferredItem<BlockItem> SEWAGE_COLLECTOR =
             ITEMS.registerSimpleBlockItem("sewage_collector", ModBlocks.SEWAGE_COLLECTOR);
 

@@ -24,6 +24,8 @@
     "citiesinlife:tourist_airplane",
     "citiesinlife:transport_airplane",
     "citiesinlife:grid_pylon",
-    "citiesinlife:sewage_collector"
+    "citiesinlife:sewage_collector",
+    "citiesinlife:uranium_ore",
+    "citiesinlife:deepslate_uranium_ore"
   ]
 }

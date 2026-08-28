@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:blasting",
+  "category": "misc",
+  "ingredient": {
+    "item": "citiesinlife:raw_uranium"
+  },
+  "result": {
+    "id": "citiesinlife:uranium"
+  },
+  "experience": 0.7,
+  "cookingtime": 100
+}
