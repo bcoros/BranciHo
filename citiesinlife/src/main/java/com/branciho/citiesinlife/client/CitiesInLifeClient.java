@@ -7,6 +7,8 @@ import com.branciho.citiesinlife.client.render.CitizenModel;
 import com.branciho.citiesinlife.client.render.CitizenRenderer;
 import com.branciho.citiesinlife.client.render.ServiceModel;
 import com.branciho.citiesinlife.client.render.ServiceRenderer;
+import com.branciho.citiesinlife.client.render.LeverArmModel;
+import com.branciho.citiesinlife.client.render.LeverRenderer;
 import com.branciho.citiesinlife.client.render.TouristModel;
 import com.branciho.citiesinlife.client.render.TouristRenderer;
 import com.branciho.citiesinlife.client.render.TurbineModel;
@@ -66,6 +68,7 @@ public final class CitiesInLifeClient {
         event.registerLayerDefinition(CitizenModel.LAYER, CitizenModel::createBodyLayer);
         event.registerLayerDefinition(ServiceModel.LAYER, ServiceModel::createBodyLayer);
         event.registerLayerDefinition(TouristModel.LAYER, TouristModel::createBodyLayer);
+        event.registerLayerDefinition(LeverArmModel.LAYER, LeverArmModel::create);
     }
 
     @SubscribeEvent
@@ -74,6 +77,10 @@ public final class CitiesInLifeClient {
         // model. All of it is drawn here.
         event.registerBlockEntityRenderer(ModBlockEntities.TURBINE.get(), TurbineRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.WINDMILL.get(), WindmillRenderer::new);
+        // Only the moving half of a lever is drawn here. Five baked poses would be five
+        // positions it jumps between, and the swing is what makes it feel like a switch.
+        event.registerBlockEntityRenderer(ModBlockEntities.REACTOR_LEVER.get(),
+                LeverRenderer::new);
         event.registerEntityRenderer(ModEntities.CITIZEN.get(), CitizenRenderer::new);
         event.registerEntityRenderer(ModEntities.SERVICE.get(), ServiceRenderer::new);
         event.registerEntityRenderer(ModEntities.CAR.get(), CarRenderer::new);
