@@ -31,6 +31,8 @@ import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
+import com.branciho.citiesinlife.client.render.FireTruckModel;
+import com.branciho.citiesinlife.client.render.AmbulanceModel;
 
 /**
  * Client-side setup.
@@ -68,6 +70,8 @@ public final class CitiesInLifeClient {
         event.registerLayerDefinition(NuclearTurbineModel.LAYER,
                 NuclearTurbineModel::create);
         event.registerLayerDefinition(CarModel.LAYER, CarModel::create);
+        event.registerLayerDefinition(FireTruckModel.LAYER, FireTruckModel::create);
+        event.registerLayerDefinition(AmbulanceModel.LAYER, AmbulanceModel::create);
         event.registerLayerDefinition(WindmillModel.LAYER, WindmillModel::create);
         event.registerLayerDefinition(CitizenModel.LAYER, CitizenModel::createBodyLayer);
         event.registerLayerDefinition(ServiceModel.LAYER, ServiceModel::createBodyLayer);

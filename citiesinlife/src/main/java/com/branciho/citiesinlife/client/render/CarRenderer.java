@@ -14,90 +14,105 @@ import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.ResourceLocation;
 
 /**
- * Draws the car and turns its wheels.
+ * Draws whichever vehicle this is, and turns its wheels.
  *
  * <p>A plain {@link EntityRenderer} rather than a MobRenderer, the way vanilla draws a boat. A
  * MobRenderer applies its own translate for a standing creature's feet, and a car is not standing
  * on anything.
  *
+ * <p>Three meshes behind four liveries. A police car genuinely <em>is</em> a saloon with a light
+ * bar on it, so it shares the car's mesh; a fire appliance and an ambulance are not, and painting
+ * them onto a hatchback made them a red car and a white car. What makes those two recognisable
+ * from across a city is the silhouette — long and square-shouldered, or a tall box on a short
+ * cab — and none of that is a texture.
+ *
  * <p>The wheels are turned by distance covered rather than by time, so a car stopped at a junction
- * has stopped wheels. A wheel of radius three model units rolls its circumference in one revolution,
- * which is where the constant below comes from.
+ * has stopped wheels.
  */
 public class CarRenderer extends EntityRenderer<CarEntity> {
 
     /**
-     * One texture per livery, resolved once at class load.
+     * How much bigger a vehicle is drawn than it is authored.
      *
-     * <p>Keyed by the enum's own ordinal so adding a livery is adding one enum constant and one
-     * PNG. Resolving the path per frame would be building a ResourceLocation sixty times a second
-     * per car to arrive at the same four answers.
+     * <p>The saloon's mesh describes a car two blocks long, which sounded right on paper and turned
+     * out to look like a toy parked next to a person who is nearly two blocks tall on their own. At
+     * this scale it is about three and a half blocks long and a little taller than the player.
+     *
+     * <p>One scale for all three, because the meshes already carry the size difference: the truck
+     * is authored longer and taller than the car rather than being the car drawn bigger.
+     *
+     * <p>Scaling here rather than re-authoring, because the models are scaled about the origin and
+     * every wheel already sits with its bottom on it — so a vehicle grows upward and stays on the
+     * road.
      */
-    private static final ResourceLocation[] TEXTURES = textures();
-
-    private static ResourceLocation[] textures() {
-        CarEntity.Livery[] liveries = CarEntity.Livery.values();
-        ResourceLocation[] paths = new ResourceLocation[liveries.length];
-        for (int i = 0; i < liveries.length; i++) {
-            paths[i] = CitiesInLife.id("textures/entity/car/" + liveries[i].texture() + ".png");
-        }
-        return paths;
-    }
+    private static final float SCALE = 1.75F;
 
     /**
      * How long each lamp holds before the other takes over.
      *
      * <p>Eight ticks, which is the same period the siren swaps tone on. That is not a coincidence
-     * worth leaving to chance - a light bar flashing out of step with its own siren looks like two
+     * worth leaving to chance — a light bar flashing out of step with its own siren looks like two
      * separate faults.
      */
     private static final int FLASH_TICKS = 8;
 
     /**
-     * How much bigger the car is drawn than it is authored.
+     * One baked vehicle: its parts, and how fast its wheels turn for the ground it covers.
      *
-     * <p>The mesh describes a car two blocks long, which sounded right on paper and turned out to
-     * look like a toy parked next to a person who is nearly two blocks tall on their own. At this
-     * scale it is about three and a half blocks long and a little taller than the player, which is
-     * roughly the proportion a real car has to a real driver.
-     *
-     * <p>Scaling here rather than re-authoring the mesh, because the model is scaled about the
-     * origin and the wheels already sit with their bottoms on it - so the car grows upward and
-     * stays on the road. Re-authoring would also have meant redrawing every UV.
+     * <p>A wheel of radius r blocks rolls its circumference in one revolution, so the radians per
+     * block travelled is 1/r. Getting that from the mesh rather than hard-coding it is what stops
+     * the truck's bigger wheels spinning at the car's rate, which reads as the whole thing sliding.
      */
-    private static final float SCALE = 1.75F;
+    private record Vehicle(ModelPart root, ModelPart[] wheels, ModelPart lightLeft,
+                           ModelPart lightRight, float rollPerBlock, ResourceLocation texture) {
+    }
 
-    /**
-     * Radians of wheel rotation per block travelled: one turn per 2*pi*r.
-     *
-     * <p>r is 3/16 of a block as authored, so the drawn wheel is that much larger again - and a
-     * bigger wheel turns more slowly over the same ground. Forgetting that is how a car ends up
-     * driving with its wheels visibly spinning too fast for the speed it is doing.
-     */
-    private static final float ROLL_PER_BLOCK = 1.0F / (3.0F / 16.0F * SCALE);
-
-    private final ModelPart root;
-    private final ModelPart[] wheels;
-    private final ModelPart lightLeft;
-    private final ModelPart lightRight;
+    private final Vehicle[] vehicles;
 
     public CarRenderer(EntityRendererProvider.Context context) {
         super(context);
-        this.root = context.bakeLayer(CarModel.LAYER);
-        this.wheels = new ModelPart[]{
-                root.getChild(CarModel.WHEEL_FRONT_LEFT),
-                root.getChild(CarModel.WHEEL_FRONT_RIGHT),
-                root.getChild(CarModel.WHEEL_REAR_LEFT),
-                root.getChild(CarModel.WHEEL_REAR_RIGHT)};
-        this.lightLeft = root.getChild(CarModel.LIGHT_LEFT);
-        this.lightRight = root.getChild(CarModel.LIGHT_RIGHT);
+        // The saloon mesh serves both the citizens' car and the police car; only the paint and the
+        // light bar differ, which is also true of the real thing.
+        Vehicle saloon = bake(context, CarModel.LAYER, CarModel.WHEELS, 3.0F, "car");
+        this.vehicles = new Vehicle[]{
+                saloon,
+                bake(context, CarModel.LAYER, CarModel.WHEELS, 3.0F, "police_car"),
+                bake(context, FireTruckModel.LAYER, FireTruckModel.WHEELS, 4.0F, "fire_truck"),
+                bake(context, AmbulanceModel.LAYER, AmbulanceModel.WHEELS, 4.0F, "ambulance")};
         this.shadowRadius = 1.0F * SCALE;
+    }
+
+    private static Vehicle bake(EntityRendererProvider.Context context,
+                                net.minecraft.client.model.geom.ModelLayerLocation layer,
+                                String[] wheelNames, float wheelRadius, String texture) {
+        ModelPart root = context.bakeLayer(layer);
+        ModelPart[] wheels = new ModelPart[wheelNames.length];
+        for (int i = 0; i < wheelNames.length; i++) {
+            wheels[i] = root.getChild(wheelNames[i]);
+        }
+        return new Vehicle(root, wheels,
+                root.getChild(CarModel.LIGHT_LEFT), root.getChild(CarModel.LIGHT_RIGHT),
+                1.0F / (wheelRadius / 16.0F * SCALE),
+                CitiesInLife.id("textures/entity/car/" + texture + ".png"));
+    }
+
+    /**
+     * Which mesh to draw.
+     *
+     * <p>Clamped rather than indexed straight off the ordinal: the livery arrives over the network
+     * as a byte, and a malformed or future value should be a saloon rather than an exception thrown
+     * once per frame.
+     */
+    private Vehicle vehicleFor(CarEntity car) {
+        int index = car.livery().ordinal();
+        return index >= 0 && index < vehicles.length ? vehicles[index] : vehicles[0];
     }
 
     @Override
     public void render(CarEntity car, float entityYaw, float partialTick, PoseStack poseStack,
                        MultiBufferSource buffer, int packedLight) {
         super.render(car, entityYaw, partialTick, poseStack, buffer, packedLight);
+        Vehicle vehicle = vehicleFor(car);
 
         poseStack.pushPose();
         poseStack.mulPose(Axis.YP.rotationDegrees(-entityYaw));
@@ -105,8 +120,8 @@ public class CarRenderer extends EntityRenderer<CarEntity> {
         // translate here - that is a block-entity correction and would slide the car sideways.
         poseStack.scale(SCALE, -SCALE, -SCALE);
 
-        float roll = car.travelled(partialTick) * ROLL_PER_BLOCK;
-        for (ModelPart wheel : wheels) {
+        float roll = car.travelled(partialTick) * vehicle.rollPerBlock();
+        for (ModelPart wheel : vehicle.wheels()) {
             wheel.xRot = roll;
         }
 
@@ -114,17 +129,16 @@ public class CarRenderer extends EntityRenderer<CarEntity> {
         // a coloured box bolted to the roof. A saloon shows neither.
         boolean emergency = car.livery().emergency();
         boolean left = (car.tickCount / FLASH_TICKS) % 2 == 0;
-        lightLeft.visible = emergency && left;
-        lightRight.visible = emergency && !left;
+        vehicle.lightLeft().visible = emergency && left;
+        vehicle.lightRight().visible = emergency && !left;
 
-        VertexConsumer consumer = buffer.getBuffer(
-                RenderType.entityCutoutNoCull(getTextureLocation(car)));
-        root.render(poseStack, consumer, packedLight, OverlayTexture.NO_OVERLAY);
+        VertexConsumer consumer = buffer.getBuffer(RenderType.entityCutoutNoCull(vehicle.texture()));
+        vehicle.root().render(poseStack, consumer, packedLight, OverlayTexture.NO_OVERLAY);
         poseStack.popPose();
     }
 
     @Override
     public ResourceLocation getTextureLocation(CarEntity entity) {
-        return TEXTURES[entity.livery().ordinal()];
+        return vehicleFor(entity).texture();
     }
 }

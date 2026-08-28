@@ -34,6 +34,7 @@ import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
+import com.branciho.citiesinlife.entity.ai.GoHomeGoal;
 
 /**
  * Somebody in a uniform.
@@ -51,7 +52,7 @@ import java.util.UUID;
  * a service a cap rather than a headcount: a High police station with a quiet week has nobody
  * standing outside it.
  */
-public class ServiceEntity extends PathfinderMob implements CityMember, Motorist {
+public class ServiceEntity extends PathfinderMob implements CityMember, Motorist, Homebound {
 
     private static final EntityDataAccessor<Byte> DATA_ROLE =
             SynchedEntityData.defineId(ServiceEntity.class, EntityDataSerializers.BYTE);
@@ -106,24 +107,28 @@ public class ServiceEntity extends PathfinderMob implements CityMember, Motorist
     @Override
     protected void registerGoals() {
         goalSelector.addGoal(0, new FloatGoal(this));
+        // Above everything but drowning. Somebody who has been stood down is off the roll already;
+        // letting them start a fight or a bin round on the way back to the station would be a
+        // person the city no longer employs still doing the job.
+        goalSelector.addGoal(1, new GoHomeGoal<>(this, 1.0D));
         // Shooting outranks swinging, so an armed soldier holds their distance instead of charging
         // into a knife fight they did not need to be in.
-        goalSelector.addGoal(1, new RifleGoal(this));
-        goalSelector.addGoal(2, new MeleeAttackGoal(this, 1.2D, true));
+        goalSelector.addGoal(2, new RifleGoal(this));
+        goalSelector.addGoal(3, new MeleeAttackGoal(this, 1.2D, true));
         // These two hold no movement flags: they only decide who to fight, and have to keep
         // deciding while the goals above are already running.
-        goalSelector.addGoal(3, new PoliceGoal(this));
-        goalSelector.addGoal(3, new SoldierTargetGoal(this));
-        goalSelector.addGoal(4, new FireDutyGoal(this));
-        goalSelector.addGoal(4, new MedicGoal(this));
-        goalSelector.addGoal(4, new RefuseGoal(this));
-        goalSelector.addGoal(4, new SoldierGoal(this));
+        goalSelector.addGoal(4, new PoliceGoal(this));
+        goalSelector.addGoal(4, new SoldierTargetGoal(this));
+        goalSelector.addGoal(5, new FireDutyGoal(this));
+        goalSelector.addGoal(5, new MedicGoal(this));
+        goalSelector.addGoal(5, new RefuseGoal(this));
+        goalSelector.addGoal(5, new SoldierGoal(this));
         // The other half of a war. Mutually exclusive with the one above by their own checks:
         // you are either advancing on their ground or dug into yours, never both.
-        goalSelector.addGoal(4, new TrenchGoal(this));
-        goalSelector.addGoal(6, new WaterAvoidingRandomStrollGoal(this, 0.9D));
-        goalSelector.addGoal(7, new LookAtPlayerGoal(this, Player.class, 8.0F));
-        goalSelector.addGoal(8, new RandomLookAroundGoal(this));
+        goalSelector.addGoal(5, new TrenchGoal(this));
+        goalSelector.addGoal(7, new WaterAvoidingRandomStrollGoal(this, 0.9D));
+        goalSelector.addGoal(8, new LookAtPlayerGoal(this, Player.class, 8.0F));
+        goalSelector.addGoal(9, new RandomLookAroundGoal(this));
     }
 
     // --------------------------------------------------------------- identity
@@ -234,6 +239,33 @@ public class ServiceEntity extends PathfinderMob implements CityMember, Motorist
         return !role().permanent() && idleTicks >= IDLE_TICKS_BEFORE_LEAVING;
     }
 
+    // -------------------------------------------------------------- going home
+
+    /** Whether this one has been stood down and is walking back to the station. */
+    private boolean leaving;
+
+    /**
+     * The station that hired them, which is already stored and already saved.
+     *
+     * <p>They walk back to the block itself rather than to the doorway they came out of. The
+     * doorway is worked out fresh each time the station deploys somebody and is not worth
+     * remembering; the station has not moved.
+     */
+    @Override
+    public @Nullable BlockPos homeBlock() {
+        return station;
+    }
+
+    @Override
+    public boolean leaving() {
+        return leaving;
+    }
+
+    @Override
+    public void startLeaving() {
+        leaving = true;
+    }
+
     // ---------------------------------------------------------------- combat
 
     /**
@@ -265,7 +297,14 @@ public class ServiceEntity extends PathfinderMob implements CityMember, Motorist
         if (level().isClientSide) {
             return;
         }
-        idleTicks++;
+        // Not while they are in a vehicle. The clock is "how long since this one had anything to
+        // do", and a crew halfway across the city in an ambulance is the single busiest they ever
+        // get - but the clock ran anyway, so a long drive made them overstay, the station stood
+        // them down mid-journey, and the car they were sitting in deleted itself out from under
+        // them. Being on the way to a job counts as having one.
+        if (carId == null) {
+            idleTicks++;
+        }
 
         // The city they work for may have been razed, or the station they came out of knocked down.
         // Either way they are on somebody else's street in a uniform nobody recognises.
@@ -294,6 +333,7 @@ public class ServiceEntity extends PathfinderMob implements CityMember, Motorist
     public void addAdditionalSaveData(CompoundTag tag) {
         super.addAdditionalSaveData(tag);
         tag.putString("role", role().id());
+        tag.putBoolean("leaving", leaving);
         tag.putInt("training", training());
         if (cityId != null) {
             tag.putUUID("city", cityId);
@@ -310,6 +350,7 @@ public class ServiceEntity extends PathfinderMob implements CityMember, Motorist
     public void readAdditionalSaveData(CompoundTag tag) {
         super.readAdditionalSaveData(tag);
         setRole(ServiceType.byId(tag.getString("role"), ServiceType.POLICE));
+        leaving = tag.getBoolean("leaving");
         setTraining(tag.getInt("training"));
         cityId = tag.hasUUID("city") ? tag.getUUID("city") : null;
         station = tag.contains("station") ? BlockPos.of(tag.getLong("station")) : null;

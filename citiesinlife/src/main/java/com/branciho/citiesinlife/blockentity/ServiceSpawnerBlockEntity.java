@@ -134,7 +134,13 @@ public class ServiceSpawnerBlockEntity extends BlockEntity {
             return;
         }
 
-        int wanted = Math.min(staffing.headcount(), needFor(serverLevel, service, city));
+        // The floor is the change. needFor() is pure demand, and demand for a police officer in a
+        // city where nobody has done anything is zero - which was correct, defensible, and meant
+        // three fully built and fully paid-for stations put nobody outside for hours at a time.
+        // A station that is staffed keeps somebody on, the way a real one does, and everything
+        // downstream of "is anybody on duty" starts working: patrols, call-outs, vehicles.
+        int wanted = Math.min(staffing.headcount(),
+                Math.max(onCall(service), needFor(serverLevel, service, city)));
         if (onDuty.size() > wanted) {
             standDown(serverLevel, onDuty.size() - wanted);
         } else if (onDuty.size() < wanted) {
@@ -144,6 +150,17 @@ public class ServiceSpawnerBlockEntity extends BlockEntity {
         // After the staffing, and given whoever is actually out there: a station cannot send a
         // patrol it has not yet hired.
         ServicePatrol.consider(serverLevel, city, service, worldPosition, onDuty);
+    }
+
+    /**
+     * How many this station keeps on whether or not anything is happening.
+     *
+     * <p>Only the three that drive. A bin round genuinely is demand-driven - there is nothing for
+     * a refuse crew to do in a city with no refuse - but a fire station with nobody in it is not a
+     * quiet fire station, it is a closed one.
+     */
+    private static int onCall(ServiceType service) {
+        return service.drives() ? 1 : 0;
     }
 
     /**
@@ -282,6 +299,18 @@ public class ServiceSpawnerBlockEntity extends BlockEntity {
         return new ItemStack(item);
     }
 
+    /**
+     * Send somebody in.
+     *
+     * <p>They come off the roll here and now — the station's count is right on the same tick it
+     * decided — but the body walks back rather than evaporating on the spot. That distinction is
+     * the whole change: a person the player was watching used to simply stop existing in the middle
+     * of the street, which is correct bookkeeping and indistinguishable from a bug.
+     *
+     * <p>Off the roll and still walking means they are nobody's responsibility any more, which is
+     * exactly right: {@link com.branciho.citiesinlife.entity.ai.GoHomeGoal} owns them from here,
+     * gives them ninety seconds to reach the door, and removes them either way.
+     */
     private void standDown(ServerLevel serverLevel, int howMany) {
         for (Iterator<UUID> iterator = onDuty.iterator(); iterator.hasNext() && howMany > 0; ) {
             UUID id = iterator.next();
@@ -292,7 +321,13 @@ public class ServiceSpawnerBlockEntity extends BlockEntity {
                 if (!worker.overstayed()) {
                     continue;
                 }
-                worker.discard();
+                // Nobody is stood down out of a moving vehicle. Their idle clock is stopped while
+                // they drive so this should not arise, but a crew halfway across the city with a
+                // car around them is the worst possible moment to be told to walk home.
+                if (worker.carId() != null) {
+                    continue;
+                }
+                worker.startLeaving();
             }
             iterator.remove();
             howMany--;

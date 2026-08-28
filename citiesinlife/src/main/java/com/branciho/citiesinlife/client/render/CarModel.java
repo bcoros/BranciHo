@@ -28,6 +28,10 @@ public final class CarModel {
     public static final String WHEEL_REAR_LEFT = "wheel_rear_left";
     public static final String WHEEL_REAR_RIGHT = "wheel_rear_right";
 
+    /** Every wheel, so the renderer can turn them without knowing how many a vehicle has. */
+    public static final String[] WHEELS = {
+            WHEEL_FRONT_LEFT, WHEEL_FRONT_RIGHT, WHEEL_REAR_LEFT, WHEEL_REAR_RIGHT};
+
     /**
      * The two lamps on the roof of an emergency vehicle.
      *

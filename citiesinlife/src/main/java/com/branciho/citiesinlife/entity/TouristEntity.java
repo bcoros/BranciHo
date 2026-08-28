@@ -21,6 +21,7 @@ import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
+import com.branciho.citiesinlife.entity.ai.GoHomeGoal;
 
 /**
  * Somebody visiting, off a plane that does not exist.
@@ -36,7 +37,7 @@ import java.util.UUID;
  * up anything the airport loses track of is what stops that being a slow leak, and this mod's
  * standing rule is that cost scales with the number of buildings, never with the number of people.
  */
-public class TouristEntity extends PathfinderMob implements CityMember {
+public class TouristEntity extends PathfinderMob implements CityMember, Homebound {
 
     private static final EntityDataAccessor<Integer> DATA_SKIN =
             SynchedEntityData.defineId(TouristEntity.class, EntityDataSerializers.INT);
@@ -47,6 +48,14 @@ public class TouristEntity extends PathfinderMob implements CityMember {
     private @Nullable UUID cityId;
     private @Nullable BlockPos airfield;
     private int lifeTicks;
+
+    /**
+     * Whether their visit is over and they are walking back to the plane.
+     *
+     * <p>Saved, because the walk can easily outlive a chunk unload and a tourist who forgot they
+     * were leaving would go back to strolling around a city they have already checked out of.
+     */
+    private boolean leaving;
 
     public TouristEntity(EntityType<? extends TouristEntity> type, Level level) {
         super(type, level);
@@ -68,11 +77,13 @@ public class TouristEntity extends PathfinderMob implements CityMember {
     @Override
     protected void registerGoals() {
         goalSelector.addGoal(0, new FloatGoal(this));
+        // Above the strolling, so somebody whose flight is called stops sightseeing.
+        goalSelector.addGoal(1, new GoHomeGoal<>(this, 1.0D));
         // No StrollOnPathGoal: it is typed to CitizenEntity, and a visitor has no reason to know
         // where the city's pavements are anyway.
-        goalSelector.addGoal(1, new WaterAvoidingRandomStrollGoal(this, 0.8D));
-        goalSelector.addGoal(2, new LookAtPlayerGoal(this, Player.class, 8.0F));
-        goalSelector.addGoal(3, new RandomLookAroundGoal(this));
+        goalSelector.addGoal(2, new WaterAvoidingRandomStrollGoal(this, 0.8D));
+        goalSelector.addGoal(3, new LookAtPlayerGoal(this, Player.class, 8.0F));
+        goalSelector.addGoal(4, new RandomLookAroundGoal(this));
     }
 
     @Override
@@ -85,12 +96,60 @@ public class TouristEntity extends PathfinderMob implements CityMember {
         if (tickCount % 200 != 0 || !(level() instanceof ServerLevel serverLevel)) {
             return;
         }
-        // Time up, or the airport they arrived at has been knocked down while they were here.
-        if (lifeTicks >= LIFETIME_TICKS
-                || (airfield != null && serverLevel.isLoaded(airfield)
-                        && !(serverLevel.getBlockState(airfield).getBlock() instanceof AirfieldBlock))) {
+        // The airport they arrived at has been knocked down while they were here. There is
+        // nowhere to walk back to, so this is the one case that still ends on the spot.
+        if (airfield != null && serverLevel.isLoaded(airfield)
+                && !(serverLevel.getBlockState(airfield).getBlock() instanceof AirfieldBlock)) {
             discard();
+            return;
         }
+        // Time up. They do not vanish out of the street any more - they walk back to the plane
+        // they came in on, and GoHomeGoal sees them through the door.
+        if (lifeTicks >= LIFETIME_TICKS) {
+            startLeaving();
+        }
+    }
+
+    // -------------------------------------------------------------- going home
+
+    /**
+     * The airfield they arrived at.
+     *
+     * <p>Already stored and already saved, because the visit was always tied to one airport - it
+     * simply had nothing to do with it beyond noticing when it was demolished. Now it is where
+     * they walk back to.
+     */
+    @Override
+    public @Nullable BlockPos homeBlock() {
+        return airfield;
+    }
+
+    @Override
+    public boolean leaving() {
+        return leaving;
+    }
+
+    @Override
+    public void startLeaving() {
+        leaving = true;
+    }
+
+    /**
+     * Despawnable, right up until they set off for the airport.
+     *
+     * <p>The first half is deliberate and is explained on the class: a tourist only ages while its
+     * chunk ticks, so one that wandered off and got unloaded would never reach the end of its stay,
+     * and letting vanilla clean those up is what stops a slow leak.
+     *
+     * <p>The second half is what makes the walk home mean anything. A visitor two hundred blocks
+     * out, finally heading back to the plane, is exactly the one vanilla would pick off — and being
+     * deleted on the way home is the bug this was all meant to fix, just further down the street.
+     * The ninety-second patience in {@link com.branciho.citiesinlife.entity.ai.GoHomeGoal} is what
+     * keeps that from becoming a licence to exist forever.
+     */
+    @Override
+    public boolean removeWhenFarAway(double distance) {
+        return !leaving;
     }
 
     @Override
@@ -128,6 +187,7 @@ public class TouristEntity extends PathfinderMob implements CityMember {
             tag.putLong("airfield", airfield.asLong());
         }
         tag.putInt("lifeTicks", lifeTicks);
+        tag.putBoolean("leaving", leaving);
         tag.putInt("skin", skin());
     }
 
@@ -137,6 +197,7 @@ public class TouristEntity extends PathfinderMob implements CityMember {
         cityId = tag.hasUUID("city") ? tag.getUUID("city") : null;
         airfield = tag.contains("airfield") ? BlockPos.of(tag.getLong("airfield")) : null;
         lifeTicks = tag.getInt("lifeTicks");
+        leaving = tag.getBoolean("leaving");
         setSkin(tag.getInt("skin"));
     }
 }
