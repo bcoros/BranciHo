@@ -9,6 +9,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.AABB;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -113,7 +114,10 @@ public final class Meeting {
         MeetingInvitePayload invite =
                 new MeetingInvitePayload(city.id(), session.hostName, session.cityName);
         for (ServerPlayer everyone : server.getPlayerList().getPlayers()) {
-            if (!everyone.getUUID().equals(host.getUUID())) {
+            // Anybody already running a meeting of their own is not asked. Accepting would strand
+            // their own guests: only a host standing in their own city hall can dismiss a meeting,
+            // and a host who has been teleported into somebody else's cannot get back to do it.
+            if (!everyone.getUUID().equals(host.getUUID()) && !hosting(everyone.getUUID())) {
                 CitiesInLifeNetwork.sendTo(everyone, invite);
             }
         }
@@ -137,7 +141,7 @@ public final class Meeting {
         if (session.host.equals(player.getUUID()) || session.guests.containsKey(player.getUUID())) {
             return "message.citiesinlife.meeting_here";
         }
-        if (ATTENDING.containsKey(player.getUUID())) {
+        if (ATTENDING.containsKey(player.getUUID()) || hosting(player.getUUID())) {
             return "message.citiesinlife.meeting_busy";
         }
         if (session.guests.size() >= MAX_ATTENDEES) {
@@ -242,6 +246,22 @@ public final class Meeting {
         ATTENDING.clear();
     }
 
+    /**
+     * Whether this player is already running a meeting somewhere.
+     *
+     * <p>A host is deliberately NOT in {@link #ATTENDING} — they never went anywhere, so they are
+     * not owed a return trip — which means the guest check alone would happily let them accept an
+     * invitation and abandon a room full of people nobody can now dismiss.
+     */
+    private static boolean hosting(UUID playerId) {
+        for (Session session : SESSIONS.values()) {
+            if (session.host.equals(playerId)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public static boolean running(UUID cityId) {
         return SESSIONS.containsKey(cityId);
     }
@@ -291,20 +311,37 @@ public final class Meeting {
      * because their seat happened to be there is worse.
      */
     private static BlockPos seatFor(ServerLevel level, BlockPos around, int index) {
-        double step = Math.PI * 2.0D / 8.0D;
-        for (int attempt = 0; attempt < 8; attempt++) {
+        // One slot per attendee, not per compass point. Dividing the circle by eight while admitting
+        // sixteen guests gave the ninth arrival the ninth's angle modulo a full turn - which is the
+        // first arrival's seat - and dropped them inside somebody who was already sitting there.
+        double step = Math.PI * 2.0D / MAX_ATTENDEES;
+        for (int attempt = 0; attempt < MAX_ATTENDEES; attempt++) {
             double angle = (index + attempt) * step;
+            // The ring grows as it fills, so sixteen people are not shoulder to shoulder on a circle
+            // sized for four.
+            double radius = SEAT_RADIUS + (index + attempt) / 8;
             BlockPos candidate = around.offset(
-                    (int) Math.round(Math.cos(angle) * SEAT_RADIUS), 0,
-                    (int) Math.round(Math.sin(angle) * SEAT_RADIUS));
-            if (roomToStand(level, candidate)) {
+                    (int) Math.round(Math.cos(angle) * radius), 0,
+                    (int) Math.round(Math.sin(angle) * radius));
+            if (freeToStand(level, candidate)) {
                 return candidate;
             }
-            if (roomToStand(level, candidate.above())) {
+            if (freeToStand(level, candidate.above())) {
                 return candidate.above();
             }
         }
         return around;
+    }
+
+    /**
+     * Room to stand, and nobody standing in it.
+     *
+     * <p>Block collision alone is not enough: two guests can perfectly well be given the same empty
+     * block, and arriving inside another player is exactly the pile the ring exists to avoid.
+     */
+    private static boolean freeToStand(ServerLevel level, BlockPos pos) {
+        return roomToStand(level, pos)
+                && level.getEntitiesOfClass(ServerPlayer.class, new AABB(pos)).isEmpty();
     }
 
     private static boolean roomToStand(ServerLevel level, BlockPos pos) {

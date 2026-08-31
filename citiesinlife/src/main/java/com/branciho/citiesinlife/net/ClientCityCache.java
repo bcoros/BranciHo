@@ -207,6 +207,14 @@ public final class ClientCityCache {
     }
 
     public static void accept(CityHallPayload payload) {
+        // Only counted as a change when something ACTUALLY changed. The city hall screen rebuilds
+        // its widgets whenever this number moves, and rebuilding re-runs its init, which asks the
+        // server again - so bumping on every packet made the screen and the server chase each other
+        // round a loop as fast as the connection allowed, and tore the half-typed announcement out
+        // of the text box several times a second.
+        if (payload.equals(cityHall)) {
+            return;
+        }
         cityHall = payload;
         cityHallRevision++;
     }

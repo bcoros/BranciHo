@@ -2,6 +2,7 @@ package com.branciho.citiesinlife.block;
 
 import com.branciho.citiesinlife.city.City;
 import com.branciho.citiesinlife.city.Diplomacy;
+import com.branciho.citiesinlife.missile.MissileDirector;
 import com.branciho.citiesinlife.sound.MachineSounds;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
@@ -69,14 +70,16 @@ public class SirenBlock extends Block {
     }
 
     /**
-     * A siren raised into a city that is already on alert starts up, not silent.
+     * A siren raised into a city whose sirens are already up starts up, not silent.
      *
-     * <p>The missile director only repaints a city's sirens when that city's answer changes, which
-     * is the right thing for a warhead — it is one switch at the start of an attack and one at the
-     * end rather than a walk over every pole every tick. The cost is that a pole planted in the
-     * middle of a standing alert would never be visited, and would stand there mute while every
-     * other siren in the city wailed. Asking once, here, is cheaper than making the director sweep
-     * for the sake of a block that is placed by hand a handful of times in a save.
+     * <p>The missile director switches a city's sirens on the tick its answer changes, which is the
+     * right thing for a warhead — one switch at the start of an attack and one at the end, rather
+     * than a walk over every pole every tick. A pole planted between those two moments is part of
+     * neither, so it asks once, here, at the only instant that matters to it.
+     *
+     * <p>The director does also sweep the cities that ought to be sounding every ten seconds, which
+     * would eventually catch this. Ten seconds is a long time to stand beside a silent siren during
+     * an air raid, and that sweep is there for chunks that were unloaded rather than for this.
      */
     @Override
     public @Nullable BlockState getStateForPlacement(BlockPlaceContext context) {
@@ -85,9 +88,15 @@ public class SirenBlock extends Block {
             return placed;
         }
         City city = Diplomacy.owner(level.getServer(), level.dimension(), context.getClickedPos());
-        return city != null && city.alertLevel().rousing()
-                ? placed.setValue(WAILING, true)
-                : placed;
+        if (city == null) {
+            return placed;
+        }
+        // Two reasons a city's sirens are up, and a pole planted into either of them should join in:
+        // a declared alert, and a warhead actually in the air. The second one matters more and is
+        // the easier of the two to miss - an attack is exactly when somebody runs out and puts up
+        // another siren.
+        boolean up = city.alertLevel().rousing() || MissileDirector.wailing(city.id());
+        return up ? placed.setValue(WAILING, true) : placed;
     }
 
     /**

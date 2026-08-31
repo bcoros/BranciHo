@@ -70,6 +70,14 @@ public final class MissileDirector {
     /** How often the sky is swept for things that are coming. */
     private static final int SCAN_INTERVAL = 10;
 
+    /**
+     * How often a city that should be wailing has its sirens re-checked.
+     *
+     * <p>Ten seconds. Slow enough that the structure walk is irrelevant, fast enough that a chunk
+     * loading back in does not leave a mute pole standing in a city under attack.
+     */
+    private static final int REPAINT_INTERVAL = 200;
+
     /** The chance an interceptor that reaches its quarry actually stops it. */
     private static final float INTERCEPT_CHANCE = 0.5F;
 
@@ -191,6 +199,21 @@ public final class MissileDirector {
         }
         if (server.getTickCount() % SCAN_INTERVAL == 0) {
             watchTheSky(server);
+        }
+        // Sirens are normally switched once, on the tick a city's answer changes. That is cheap and
+        // it is wrong in one case: a structure whose chunk happened to be unloaded on that exact
+        // tick is skipped and never revisited, so it comes back silent while the rest of the city
+        // wails. Re-painting the cities that SHOULD be sounding, occasionally, catches those up -
+        // and costs nothing at all in the normal case, because the set is empty unless a city is
+        // under attack or has deliberately declared an alert.
+        if (!WAILING.isEmpty() && server.getTickCount() % REPAINT_INTERVAL == 0) {
+            CityData data = CityData.get(server);
+            for (UUID cityId : List.copyOf(WAILING)) {
+                City city = data.city(cityId);
+                if (city != null) {
+                    paintSirens(server, data, city, true);
+                }
+            }
         }
         resolveShots(server);
     }
@@ -515,6 +538,11 @@ public final class MissileDirector {
     }
 
     /** Whether this silo is currently opening, firing or closing. */
+    /** Whether this city's sirens are currently up, for anything that needs to match them. */
+    public static boolean wailing(UUID cityId) {
+        return WAILING.contains(cityId);
+    }
+
     public static boolean busy(UUID siloId) {
         return LAUNCHING.containsKey(siloId);
     }

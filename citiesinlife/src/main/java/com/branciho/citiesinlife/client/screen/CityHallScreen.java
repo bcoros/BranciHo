@@ -51,6 +51,15 @@ public class CityHallScreen extends Screen {
     private int sinceAsked;
     private EditBox addressBox;
 
+    /**
+     * What the player has typed so far.
+     *
+     * <p>Held outside the widget because a rebuild throws the {@link EditBox} away and makes a new
+     * empty one. A meeting filling up while you are composing an announcement is exactly when a
+     * rebuild happens, and losing the sentence to it would be maddening.
+     */
+    private String draft = "";
+
     public CityHallScreen() {
         super(Component.translatable("screen.citiesinlife.city_hall"));
     }
@@ -108,12 +117,15 @@ public class CityHallScreen extends Screen {
                 Component.translatable("screen.citiesinlife.address_hint"));
         addressBox.setMaxLength(CityHallActionPayload.MAX_DETAIL);
         addressBox.setEditable(open);
+        addressBox.setValue(draft);
+        addressBox.setResponder(typed -> draft = typed);
         addRenderableWidget(addressBox);
 
         Button announce = Button.builder(
                         Component.translatable("screen.citiesinlife.address_send"),
                         press -> {
                             send("address", addressBox.getValue());
+                            draft = "";
                             addressBox.setValue("");
                         })
                 .bounds(left + PANEL_WIDTH - 12 - third, y, third, 20)
@@ -190,8 +202,14 @@ public class CityHallScreen extends Screen {
             graphics.drawString(this.font,
                     Component.translatable("screen.citiesinlife.meeting_room", roll.size()),
                     left + 12, y, CityScreen.COLOUR_GOOD, false);
-            graphics.drawString(this.font, Component.literal(String.join(", ", roll)),
-                    left + 12, y + 11, CityScreen.COLOUR_DIM, false);
+            // Sixteen names do not fit on a 320px panel, and an unwrapped line would simply run off
+            // both sides of it. One wrapped line's worth, with the rest implied by the count above.
+            List<net.minecraft.util.FormattedCharSequence> names =
+                    this.font.split(Component.literal(String.join(", ", roll)), PANEL_WIDTH - 24);
+            if (!names.isEmpty()) {
+                graphics.drawString(this.font, names.get(0), left + 12, y + 11,
+                        CityScreen.COLOUR_DIM, false);
+            }
         }
 
         y = top + HEADER + BUTTON_ROWS * ROW + ROLL_HEIGHT;
