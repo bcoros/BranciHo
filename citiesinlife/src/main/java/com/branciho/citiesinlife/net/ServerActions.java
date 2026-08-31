@@ -1,13 +1,19 @@
 package com.branciho.citiesinlife.net;
 
+import com.branciho.citiesinlife.city.AlertLevel;
 import com.branciho.citiesinlife.config.CitiesInLifeConfig;
 import com.branciho.citiesinlife.city.City;
+import com.branciho.citiesinlife.city.Meeting;
 import com.branciho.citiesinlife.city.CityData;
 import com.branciho.citiesinlife.city.Diplomacy;
 import com.branciho.citiesinlife.city.Pact;
 import com.branciho.citiesinlife.city.Relation;
 import com.branciho.citiesinlife.city.Warfare;
 import com.branciho.citiesinlife.net.payload.CallToArmsPayload;
+import com.branciho.citiesinlife.net.payload.CityHallActionPayload;
+import com.branciho.citiesinlife.net.payload.CityHallPayload;
+import com.branciho.citiesinlife.net.payload.LaunchAllPayload;
+import com.branciho.citiesinlife.net.payload.MeetingReplyPayload;
 import com.branciho.citiesinlife.net.payload.ModSettingsPayload;
 import com.branciho.citiesinlife.net.payload.PeaceOfferPayload;
 import com.branciho.citiesinlife.net.payload.SetSettingsPayload;
@@ -359,6 +365,7 @@ public final class ServerActions {
                 data.claimChunk(city, ChunkPos.asLong(x, z));
             }
         }
+        city.note(level.getGameTime(), "founded", "");
         player.sendSystemMessage(Component.translatable("message.citiesinlife.founded", name));
         return city;
     }
@@ -1527,6 +1534,7 @@ public final class ServerActions {
         lastPathChunk.remove(player.getUUID());
         lastRoadChunk.remove(player.getUUID());
         pendingAirplaneLink.remove(player.getUUID());
+        Meeting.forget(player.getUUID());
     }
 
     // ------------------------------------------------------------- diplomacy
@@ -1693,6 +1701,10 @@ public final class ServerActions {
                 own.revoke(target.id());
                 target.revoke(own.id());
                 if (own.declareWar(target.id(), server.overworld().getGameTime())) {
+                    long declaredAt = server.overworld().getGameTime();
+                    own.note(declaredAt, "war_declared", target.name());
+                    target.note(declaredAt, "war_declared", own.name());
+                    CityData.get(server).setDirty();
                     own.withdraw(WAR_COST);
                     tell(server, target, "message.citiesinlife.war_declared_on_you", own.name());
                     player.sendSystemMessage(Component.translatable(
@@ -1810,6 +1822,10 @@ public final class ServerActions {
                 own.revoke(target.id());
                 target.revoke(own.id());
                 if (own.declareWar(target.id(), server.overworld().getGameTime())) {
+                    long declaredAt = server.overworld().getGameTime();
+                    own.note(declaredAt, "war_declared", target.name());
+                    target.note(declaredAt, "war_declared", own.name());
+                    CityData.get(server).setDirty();
                     tell(server, target, "message.citiesinlife.war_declared_on_you", own.name());
                     player.sendSystemMessage(Component.translatable(
                             "message.citiesinlife.war_declared", target.name()));
@@ -1875,6 +1891,14 @@ public final class ServerActions {
         }
         own.withdrawPeaceOffer(target.id());
         target.withdrawPeaceOffer(own.id());
+        long agreedAt = server.overworld().getGameTime();
+        own.note(agreedAt, "war_ended", target.name());
+        target.note(agreedAt, "war_ended", own.name());
+        // Neither the declaration nor the treaty marked the save dirty before this: the city
+        // simulation flips the flag every ten seconds anyway, so it only ever lost a war that was
+        // declared in the last few seconds before a quit. Now that the ledger writes here too,
+        // say so explicitly rather than relying on that.
+        CityData.get(server).setDirty();
         tell(server, target, "message.citiesinlife.peace_agreed", own.name());
         player.sendSystemMessage(Component.translatable(
                 "message.citiesinlife.peace_agreed", target.name()));
@@ -2506,9 +2530,228 @@ public final class ServerActions {
             player.sendSystemMessage(Component.translatable(refusal));
             return;
         }
+        City firing = CityData.get(server).cityOf(player.getUUID(),
+                player.serverLevel().dimension());
+        if (firing != null) {
+            firing.note(player.level().getGameTime(), "missile_away",
+                    payload.chunkX() * 16 + ", " + payload.chunkZ() * 16);
+            CityData.get(server).setDirty();
+        }
         player.sendSystemMessage(Component.translatable("message.citiesinlife.missile_away",
                 kind.displayName()));
         syncMissileMap(player);
+    }
+
+    /**
+     * Empty every silo the city owns onto one chunk.
+     *
+     * <p>Each silo is put through exactly the same {@code launch} as the single-missile button, one
+     * at a time, and the refusals are collected rather than aborting the volley. That is the whole
+     * design: a city with four armed silos, one empty and one already opening should send four
+     * missiles and be told why the other two stayed shut — not refuse the lot because one of them
+     * was busy. Every war rule, every ownership check and every cost is enforced per silo by the
+     * director, so this button cannot fire anything the player could not have fired by hand.
+     */
+    public static void launchAll(ServerPlayer player, LaunchAllPayload payload) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        CityData data = CityData.get(server);
+        City own = data.cityOf(player.getUUID(), player.serverLevel().dimension());
+        if (own == null) {
+            reject(player, "no_city");
+            return;
+        }
+        if (!inCityHall(data, player, own)) {
+            reject(player, "not_in_city_hall");
+            return;
+        }
+
+        MissileKind kind = MissileKind.byId(payload.kindId(), MissileKind.BALLISTIC);
+        int away = 0;
+        int held = 0;
+        String firstRefusal = null;
+        for (Structure silo : data.structuresOf(own)) {
+            if (silo.type() != StructureType.MISSILE_SILO) {
+                continue;
+            }
+            String refusal = MissileDirector.launch(server, player, silo.id(),
+                    payload.chunkX(), payload.chunkZ(), kind);
+            if (refusal == null) {
+                away++;
+            } else {
+                held++;
+                if (firstRefusal == null) {
+                    firstRefusal = refusal;
+                }
+            }
+        }
+
+        if (away == 0) {
+            // Nothing flew. The single most useful thing to say is WHY the first silo said no,
+            // rather than a count of nothing happening.
+            player.sendSystemMessage(Component.translatable(
+                    firstRefusal == null ? "message.citiesinlife.no_silos" : firstRefusal));
+            return;
+        }
+        // One line for the whole volley, not one per rocket: eight identical entries would push
+        // everything else the city has ever done off the end of a forty-line ledger.
+        own.note(player.level().getGameTime(), "missile_away",
+                payload.chunkX() * 16 + ", " + payload.chunkZ() * 16);
+        data.setDirty();
+        player.sendSystemMessage(Component.translatable(
+                "message.citiesinlife.volley_away", away, kind.displayName(), held));
+        syncMissileMap(player);
+    }
+
+    /** Push what the City Hall panel shows: the gate, the alert, the room and the history. */
+    public static void syncCityHall(ServerPlayer player) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        CityData data = CityData.get(server);
+        City own = data.cityOf(player.getUUID(), player.serverLevel().dimension());
+        if (own == null) {
+            CitiesInLifeNetwork.sendTo(player, CityHallPayload.none());
+            return;
+        }
+        CitiesInLifeNetwork.sendTo(player, new CityHallPayload(
+                true,
+                inCityHall(data, player, own),
+                own.alertLevel().id(),
+                Meeting.running(own.id()),
+                Meeting.roll(own.id()),
+                own.ledger()));
+    }
+
+    /**
+     * Every button on the City Hall panel, behind one gate.
+     *
+     * <p>The gate is here and not on the client. The panel greys its own buttons out when it is
+     * told it is not in the hall, but that is a courtesy to the player, not a security measure —
+     * this check is the one that counts, and it is re-asked on every press because a player can
+     * walk out of the building with the screen still open.
+     */
+    public static void cityHallAction(ServerPlayer player, CityHallActionPayload payload) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        CityData data = CityData.get(server);
+        City own = data.cityOf(player.getUUID(), player.serverLevel().dimension());
+        if (own == null) {
+            reject(player, "no_city");
+            return;
+        }
+        if (!inCityHall(data, player, own)) {
+            reject(player, "not_in_city_hall");
+            return;
+        }
+
+        switch (payload.action()) {
+            case "alert" -> declareAlert(player, data, own, payload.detail());
+            case "meeting_start" -> openMeeting(server, player, own);
+            case "meeting_end" -> shutMeeting(server, player, own);
+            case "address" -> address(server, player, data, own, payload.detail());
+            default -> reject(player, "city_hall_unknown");
+        }
+        syncCityHall(player);
+    }
+
+    /** Yes or no to a meeting invitation. Not gated on the city hall — guests are anywhere. */
+    public static void meetingReply(ServerPlayer player, MeetingReplyPayload payload) {
+        MinecraftServer server = player.getServer();
+        if (server == null || !payload.joining()) {
+            return;
+        }
+        String refusal = Meeting.join(server, player, payload.cityId());
+        if (refusal != null) {
+            player.sendSystemMessage(Component.translatable(refusal));
+        }
+    }
+
+    /**
+     * Whether the player is standing inside their own city hall.
+     *
+     * <p>Both halves matter: it has to be a city core, and it has to be one of theirs. Standing in
+     * somebody else's city hall is a fine thing to do — you may well have been invited to a meeting
+     * in it — and must not hand you their buttons.
+     */
+    private static boolean inCityHall(CityData data, ServerPlayer player, City own) {
+        Structure here = data.structureAt(player.level().dimension(), player.blockPosition());
+        return here != null
+                && here.type() == StructureType.CITY_CORE
+                && own.structures().contains(here.id());
+    }
+
+    private static void declareAlert(ServerPlayer player, CityData data, City own, String levelId) {
+        AlertLevel level = AlertLevel.byId(levelId, AlertLevel.PEACE);
+        if (!own.setAlertLevel(level)) {
+            return;
+        }
+        data.setDirty();
+        own.note(player.level().getGameTime(), "alert_" + level.id(), "");
+        player.sendSystemMessage(Component.translatable(
+                "message.citiesinlife.alert_set", own.name(), level.displayName()));
+    }
+
+    private static void openMeeting(MinecraftServer server, ServerPlayer player, City own) {
+        String refusal = Meeting.open(server, player, own);
+        if (refusal != null) {
+            player.sendSystemMessage(Component.translatable(refusal));
+            return;
+        }
+        player.sendSystemMessage(Component.translatable(
+                "message.citiesinlife.meeting_opened", own.name()));
+    }
+
+    private static void shutMeeting(MinecraftServer server, ServerPlayer player, City own) {
+        if (!Meeting.close(server, own.id(), "message.citiesinlife.meeting_closed")) {
+            reject(player, "meeting_none");
+        }
+    }
+
+    /**
+     * Say something to everyone standing on your ground.
+     *
+     * <p>Sent twice on purpose: once over the hotbar where it cannot be missed, and once into chat
+     * where it can be read again. The overlay line is the one that gets noticed and the only one
+     * the mod has — it is wiped by the next overlay message a tick later — so the chat copy is what
+     * makes a public address survive long enough to act on.
+     */
+    private static void address(MinecraftServer server, ServerPlayer player, CityData data,
+                                City own, String message) {
+        String said = message.strip();
+        if (said.isEmpty()) {
+            reject(player, "address_empty");
+            return;
+        }
+        Component line = Component.translatable("message.citiesinlife.address", own.name(), said)
+                .withStyle(ChatFormatting.YELLOW);
+        int heard = 0;
+        for (ServerPlayer everyone : server.getPlayerList().getPlayers()) {
+            if (!onOurGround(data, everyone, own)) {
+                continue;
+            }
+            everyone.displayClientMessage(line, true);
+            everyone.sendSystemMessage(line);
+            heard++;
+        }
+        own.note(player.level().getGameTime(), "address", said);
+        data.setDirty();
+        player.sendSystemMessage(Component.translatable(
+                "message.citiesinlife.address_sent", heard));
+    }
+
+    /** Whether this player is standing on a chunk the given city has claimed. */
+    private static boolean onOurGround(CityData data, ServerPlayer who, City own) {
+        if (!who.level().dimension().equals(own.dimension())) {
+            return false;
+        }
+        City here = data.cityAtChunk(who.level().dimension(), who.chunkPosition().toLong());
+        return here != null && here.id().equals(own.id());
     }
 
     private static void reject(ServerPlayer player, String key) {

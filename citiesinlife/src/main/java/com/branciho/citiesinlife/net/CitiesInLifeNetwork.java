@@ -2,12 +2,18 @@ package com.branciho.citiesinlife.net;
 
 import com.branciho.citiesinlife.CitiesInLife;
 import com.branciho.citiesinlife.net.payload.ArmySyncPayload;
+import com.branciho.citiesinlife.net.payload.CityHallActionPayload;
+import com.branciho.citiesinlife.net.payload.CityHallPayload;
 import com.branciho.citiesinlife.net.payload.ClaimChunkPayload;
 import com.branciho.citiesinlife.net.payload.CitySyncPayload;
 import com.branciho.citiesinlife.net.payload.CallToArmsPayload;
+import com.branciho.citiesinlife.net.payload.LaunchAllPayload;
+import com.branciho.citiesinlife.net.payload.MeetingInvitePayload;
+import com.branciho.citiesinlife.net.payload.MeetingReplyPayload;
 import com.branciho.citiesinlife.net.payload.ModSettingsPayload;
 import com.branciho.citiesinlife.net.payload.PeaceOfferPayload;
 import com.branciho.citiesinlife.net.payload.RadiationPayload;
+import com.branciho.citiesinlife.net.payload.RequestCityHallPayload;
 import com.branciho.citiesinlife.net.payload.SetSettingsPayload;
 import com.branciho.citiesinlife.net.payload.SetFlagPayload;
 import com.branciho.citiesinlife.net.payload.ConfirmDeleteCityPayload;
@@ -143,6 +149,22 @@ public final class CitiesInLifeNetwork {
                 (payload, context) -> context.enqueueWork(
                         () -> onServer(context, player -> ServerActions.launchMissile(player, payload))));
 
+        registrar.playToServer(LaunchAllPayload.TYPE, LaunchAllPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(
+                        () -> onServer(context, player -> ServerActions.launchAll(player, payload))));
+
+        registrar.playToServer(RequestCityHallPayload.TYPE, RequestCityHallPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(
+                        () -> onServer(context, ServerActions::syncCityHall)));
+
+        registrar.playToServer(CityHallActionPayload.TYPE, CityHallActionPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(
+                        () -> onServer(context, player -> ServerActions.cityHallAction(player, payload))));
+
+        registrar.playToServer(MeetingReplyPayload.TYPE, MeetingReplyPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(
+                        () -> onServer(context, player -> ServerActions.meetingReply(player, payload))));
+
         registrar.playToClient(CitySyncPayload.TYPE, CitySyncPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(() -> ClientCityCache.accept(payload)));
 
@@ -196,6 +218,14 @@ public final class CitiesInLifeNetwork {
                 (payload, context) -> context.enqueueWork(() -> ClientCityCache.accept(payload)));
 
         registrar.playToClient(MissileMapPayload.TYPE, MissileMapPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(
+                        () -> ClientCityCache.accept(payload)));
+
+        registrar.playToClient(CityHallPayload.TYPE, CityHallPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(
+                        () -> ClientCityCache.accept(payload)));
+
+        registrar.playToClient(MeetingInvitePayload.TYPE, MeetingInvitePayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(
                         () -> ClientCityCache.accept(payload)));
 

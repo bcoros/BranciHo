@@ -3,6 +3,7 @@ package com.branciho.citiesinlife.client.screen;
 import com.branciho.citiesinlife.missile.MissileKind;
 import com.branciho.citiesinlife.net.CitiesInLifeNetwork;
 import com.branciho.citiesinlife.net.ClientCityCache;
+import com.branciho.citiesinlife.net.payload.LaunchAllPayload;
 import com.branciho.citiesinlife.net.payload.LaunchMissilePayload;
 import com.branciho.citiesinlife.net.payload.MissileMapPayload;
 import com.branciho.citiesinlife.net.payload.RequestMissileMapPayload;
@@ -108,8 +109,25 @@ public class MissileMapScreen extends Screen {
     private int untilRefresh;
     private @Nullable Component status;
 
+    /**
+     * Whether this map is picking a target for EVERY silo the city owns rather than for one.
+     *
+     * <p>The same map either way. A separate screen would mean two copies of the terrain sampling,
+     * the grid arithmetic and the territory colouring, which is how the two of them end up drifting
+     * apart; the only differences are which silos are drawn as chosen and which payload the click
+     * sends.
+     */
+    private final boolean allSilos;
+
     public MissileMapScreen() {
-        super(Component.translatable("screen.citiesinlife.missile_map"));
+        this(false);
+    }
+
+    public MissileMapScreen(boolean allSilos) {
+        super(Component.translatable(allSilos
+                ? "screen.citiesinlife.launch_all"
+                : "screen.citiesinlife.missile_map"));
+        this.allSilos = allSilos;
         terrainCache.defaultReturnValue(0);
         territory.defaultReturnValue((byte) -1);
     }
@@ -241,7 +259,7 @@ public class MissileMapScreen extends Screen {
         }
         for (int i = 0; i < map.silos().size(); i++) {
             MissileMapPayload.Silo silo = map.silos().get(i);
-            boolean chosen = i == selectedSilo;
+            boolean chosen = allSilos || i == selectedSilo;
             if (chosen) {
                 graphics.fill(x - 2, y - 2, x + sidebar - 2, y + 20, 0x33FFFFFF);
             }
@@ -300,7 +318,7 @@ public class MissileMapScreen extends Screen {
         for (int i = 0; i < map.silos().size(); i++) {
             MissileMapPayload.Silo silo = map.silos().get(i);
             mark(graphics, silo.blockX() >> 4, silo.blockZ() >> 4,
-                    i == selectedSilo ? COLOUR_SELECTED : COLOUR_SILO);
+                    allSilos || i == selectedSilo ? COLOUR_SELECTED : COLOUR_SILO);
         }
         // And whatever is in the air, from where it left to where it is going.
         for (MissileMapPayload.Track track : map.tracks()) {
@@ -455,8 +473,12 @@ public class MissileMapScreen extends Screen {
                 || column >= grid || row >= grid) {
             return false;
         }
-        if (selectedSilo < 0 || selectedSilo >= map.silos().size()) {
+        if (!allSilos && (selectedSilo < 0 || selectedSilo >= map.silos().size())) {
             status = Component.translatable("screen.citiesinlife.pick_a_silo");
+            return true;
+        }
+        if (allSilos && map.silos().isEmpty()) {
+            status = Component.translatable("screen.citiesinlife.no_silos");
             return true;
         }
         int chunkX = centreX - radius + column;
@@ -472,8 +494,12 @@ public class MissileMapScreen extends Screen {
             status = Component.translatable("message.citiesinlife.missile_not_at_war");
             return true;
         }
-        CitiesInLifeNetwork.sendToServer(new LaunchMissilePayload(
-                map.silos().get(selectedSilo).id(), chunkX, chunkZ, kind.id()));
+        if (allSilos) {
+            CitiesInLifeNetwork.sendToServer(new LaunchAllPayload(chunkX, chunkZ, kind.id()));
+        } else {
+            CitiesInLifeNetwork.sendToServer(new LaunchMissilePayload(
+                    map.silos().get(selectedSilo).id(), chunkX, chunkZ, kind.id()));
+        }
         status = null;
         return true;
     }

@@ -112,7 +112,10 @@ public final class MissileDirector {
     /** Incoming missiles a defender has already thrown something at. One try each. */
     private static final Set<UUID> ANSWERED = new HashSet<>();
 
-    /** Cities whose sirens are currently up, so they are only switched when they change. */
+    /**
+     * Cities whose sirens are currently up for any reason - an incoming warhead or a declared
+     * alert - so they are only switched when the answer changes.
+     */
     private static final Set<UUID> WAILING = new HashSet<>();
 
     private MissileDirector() {
@@ -313,8 +316,16 @@ public final class MissileDirector {
 
         // Sirens, switched only where the answer changed. A city under attack keeps its sirens up
         // for the whole flight; everybody else's go quiet the moment the sky is clear.
+        //
+        // A city hall that has declared an alert is the second reason a siren goes up, and it is
+        // OR-ed in here rather than painted from the button. Painting from the button would put two
+        // writers on the same blockstate: this loop only calls paintSirens when a city's answer
+        // CHANGES, so an out-of-band press would be silently stomped the next time an unrelated
+        // missile flipped that city - and never reasserted for a city with no missile activity at
+        // all. Folded in here there is one answer and one writer, and standing the city down still
+        // cannot silence a siren that a live warhead is keeping up.
         for (City city : data.cities()) {
-            boolean wail = threatened.contains(city.id());
+            boolean wail = threatened.contains(city.id()) || city.alertLevel().rousing();
             if (wail == WAILING.contains(city.id())) {
                 continue;
             }

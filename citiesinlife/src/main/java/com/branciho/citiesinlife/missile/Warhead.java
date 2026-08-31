@@ -485,6 +485,10 @@ public final class Warhead {
                         : "message.citiesinlife.missile_landed",
                 kind.displayName(), attacker,
                 struck == null ? "" : struck.name()).withStyle(ChatFormatting.RED);
+        if (struck != null) {
+            struck.note(level.getGameTime(), "struck", at.getX() + ", " + at.getZ());
+            data.setDirty();
+        }
         for (ServerPlayer everyone : server.getPlayerList().getPlayers()) {
             everyone.sendSystemMessage(line);
         }

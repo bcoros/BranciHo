@@ -4,6 +4,7 @@ import com.branciho.citiesinlife.CitiesInLife;
 import com.branciho.citiesinlife.client.ClientRadiation;
 import com.branciho.citiesinlife.client.screen.CallToArmsScreen;
 import com.branciho.citiesinlife.client.screen.GuideScreen;
+import com.branciho.citiesinlife.client.screen.MeetingInviteScreen;
 import com.branciho.citiesinlife.client.screen.PeaceOfferScreen;
 import com.branciho.citiesinlife.client.screen.CityScreen;
 import com.branciho.citiesinlife.client.screen.ConfirmDeleteCityScreen;
@@ -15,6 +16,7 @@ import com.branciho.citiesinlife.net.CitiesInLifeNetwork;
 import com.branciho.citiesinlife.net.ClientArmyCache;
 import com.branciho.citiesinlife.net.ClientCityCache;
 import com.branciho.citiesinlife.net.payload.CallToArmsPayload;
+import com.branciho.citiesinlife.net.payload.MeetingInvitePayload;
 import com.branciho.citiesinlife.net.payload.PeaceOfferPayload;
 import com.branciho.citiesinlife.net.payload.ConfirmDeleteCityPayload;
 import com.branciho.citiesinlife.net.payload.DeleteAreaPayload;
@@ -177,6 +179,13 @@ public final class ClientEvents {
         CallToArmsPayload call = ClientCityCache.takeCallToArms();
         if (call != null) {
             minecraft.setScreen(new CallToArmsScreen(call));
+        }
+
+        // A meeting somewhere, arriving as a question. Same consume-once hand-off as the call to
+        // arms: the cache holds one, this takes it, and the screen asks.
+        MeetingInvitePayload invite = ClientCityCache.takeMeetingInvite();
+        if (invite != null) {
+            minecraft.setScreen(new MeetingInviteScreen(invite));
         }
 
         // The control room, opened at the server's request. A block's use handler runs server-side

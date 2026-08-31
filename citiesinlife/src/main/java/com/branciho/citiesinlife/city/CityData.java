@@ -50,8 +50,12 @@ public final class CityData extends SavedData {
      * older save, but leaving the number alone after a shape change is the exact habit that caused
      * the problem at 2. 4 marks the creative treasury and who has turned it off. 5 marks the
      * airfields and who placed each one, which is what the twenty-per-player cap is counted from.
+     * 6 marks a city's alert level and its ledger. Both read back tolerantly from an older save -
+     * a missing level falls through to peace and a missing ledger loads empty - but the number is
+     * bumped anyway, because leaving it alone after a shape change is precisely the habit that made
+     * version 2 load old worlds wrong.
      */
-    private static final int DATA_VERSION = 5;
+    private static final int DATA_VERSION = 6;
 
     /**
      * How many airfields one player may have standing at once.

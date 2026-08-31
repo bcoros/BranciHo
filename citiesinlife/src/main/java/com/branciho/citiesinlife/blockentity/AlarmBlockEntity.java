@@ -1,7 +1,9 @@
 package com.branciho.citiesinlife.blockentity;
 
 import com.branciho.citiesinlife.block.AlarmBlock;
+import com.branciho.citiesinlife.city.City;
 import com.branciho.citiesinlife.city.CityData;
+import com.branciho.citiesinlife.city.Diplomacy;
 import com.branciho.citiesinlife.nuclear.NuclearSimulation;
 import com.branciho.citiesinlife.nuclear.ReactorData;
 import com.branciho.citiesinlife.nuclear.ReactorState;
@@ -71,6 +73,14 @@ public class AlarmBlockEntity extends BlockEntity {
     private boolean insideSilo;
     private boolean siloLaunching;
 
+    /**
+     * Whether the city hall standing over this alarm has declared an alert.
+     *
+     * <p>Cached from the survey like everything else here, so it costs one territory lookup twice a
+     * second rather than one per tick, and catches up within half a second of the button.
+     */
+    private boolean cityRoused;
+
     public AlarmBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.ALARM.get(), pos, state);
     }
@@ -119,6 +129,15 @@ public class AlarmBlockEntity extends BlockEntity {
         reactorLevel = AlarmBlock.Trouble.NONE;
         insideReactor = false;
         insideSilo = false;
+        cityRoused = false;
+
+        // Asked before any of the early returns below, because an alarm answers to the city it is
+        // standing in whether or not it is also wired to a plant. A lamp in a warehouse is still
+        // one of "all the alarms" when the city hall raises them.
+        if (level instanceof ServerLevel roused) {
+            City around = Diplomacy.owner(roused.getServer(), roused.dimension(), pos);
+            cityRoused = around != null && around.alertLevel().rousing();
+        }
 
         if (level instanceof ServerLevel serverLevel) {
             Structure plant = CityData.get(serverLevel.getServer())
@@ -159,7 +178,25 @@ public class AlarmBlockEntity extends BlockEntity {
         }
     }
 
+    /**
+     * What this lamp shows: whichever is worse, what it can see or what the city has declared.
+     *
+     * <p>A declared alert raises every alarm to amber and no further. Red is left to mean what a
+     * player has already learned it means — this particular building is in trouble, go to it — so
+     * that during a citywide alert the one plant that is actually on fire is still the red lamp
+     * among the amber ones. It also gives the stand-down its promised behaviour for free: dropping
+     * the alert removes only the amber term, and anything genuinely wrong keeps its own light until
+     * the thing causing it is fixed.
+     */
     private AlarmBlock.Trouble trouble() {
+        AlarmBlock.Trouble seen = genuineTrouble();
+        if (!cityRoused || seen.ordinal() >= AlarmBlock.Trouble.FOULED.ordinal()) {
+            return seen;
+        }
+        return AlarmBlock.Trouble.FOULED;
+    }
+
+    private AlarmBlock.Trouble genuineTrouble() {
         if (insideSilo) {
             return siloLaunching ? AlarmBlock.Trouble.FIRE : AlarmBlock.Trouble.NONE;
         }
@@ -208,14 +245,20 @@ public class AlarmBlockEntity extends BlockEntity {
 
     /** One line saying what it can see, so a silent alarm can be told from an unwired one. */
     public Component report() {
-        if (!insidePlant) {
-            return Component.translatable("message.citiesinlife.alarm_no_plant");
-        }
         if (howManyBurning > 0) {
             return Component.translatable("message.citiesinlife.alarm_fire", howManyBurning);
         }
         if (howManyClogged > 0) {
             return Component.translatable("message.citiesinlife.alarm_fouled", howManyClogged);
+        }
+        // Asked before the no-plant answer. Under a citywide alert every lamp in the city goes
+        // amber, and a player who taps one to ask why deserves to be told it is the city hall and
+        // not a fouled turbine - otherwise they go looking for a clog that was never there.
+        if (cityRoused) {
+            return Component.translatable("message.citiesinlife.alarm_city_alert");
+        }
+        if (!insidePlant) {
+            return Component.translatable("message.citiesinlife.alarm_no_plant");
         }
         return Component.translatable("message.citiesinlife.alarm_clear");
     }

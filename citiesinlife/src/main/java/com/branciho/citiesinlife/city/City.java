@@ -175,6 +175,25 @@ public final class City {
     private int refuse;
     private int parkArea;
 
+    /**
+     * What the city hall has declared, and what the city remembers happening to it.
+     *
+     * <p>The alert level is the only state behind "raise every alarm": see {@link AlertLevel} for
+     * why there is no second flag beside it. The ledger is a bounded, oldest-first history — bounded
+     * inside this class rather than at the screen, because the whole list goes into the save file
+     * and every future caller has to be held to the same limit.
+     */
+    private AlertLevel alertLevel = AlertLevel.PEACE;
+    private final List<LedgerEntry> ledger = new ArrayList<>();
+
+    /**
+     * How far back the city remembers.
+     *
+     * <p>Forty lines is a couple of in-game weeks of anything worth writing down, fits a scrolling
+     * panel without paging, and keeps the cost of trimming from the front irrelevant.
+     */
+    public static final int MAX_LEDGER = 40;
+
     public City(UUID id, String name, UUID owner, ResourceKey<Level> dimension) {
         this.id = id;
         this.name = name;
@@ -362,6 +381,46 @@ public final class City {
 
     public void setFlag(byte[] cells) {
         this.flag = CityFlag.sanitise(cells);
+    }
+
+    public AlertLevel alertLevel() {
+        return alertLevel;
+    }
+
+    /**
+     * Declare an alert level.
+     *
+     * @return whether this actually changed anything, so the caller can skip repainting every siren
+     *         in the city when somebody presses the button they were already on
+     */
+    public boolean setAlertLevel(AlertLevel level) {
+        if (alertLevel == level) {
+            return false;
+        }
+        alertLevel = level;
+        return true;
+    }
+
+    /**
+     * The live ledger, oldest first — the same convention as {@link #structures()} and
+     * {@link #army()}. Copy it before iterating if the loop might write to it.
+     */
+    public List<LedgerEntry> ledger() {
+        return ledger;
+    }
+
+    /**
+     * Write one line into the city's history, trimming the oldest away if it is full.
+     *
+     * <p>Bounded here rather than at the caller: there are already half a dozen places that will
+     * want to write a line, and one of them forgetting the cap would grow the save file without
+     * limit.
+     */
+    public void note(long at, String key, String detail) {
+        ledger.add(new LedgerEntry(at, key, detail));
+        while (ledger.size() > MAX_LEDGER) {
+            ledger.remove(0);
+        }
     }
 
     public int powerImported() {
@@ -663,6 +722,17 @@ public final class City {
         }
         tag.put("dealings", deals);
         tag.putByteArray("flag", flag);
+
+        tag.putString("alertLevel", alertLevel.id());
+        ListTag ledgerList = new ListTag();
+        for (LedgerEntry entry : ledger) {
+            CompoundTag row = new CompoundTag();
+            row.putLong("at", entry.at());
+            row.putString("key", entry.key());
+            row.putString("detail", entry.detail());
+            ledgerList.add(row);
+        }
+        tag.put("ledger", ledgerList);
         return tag;
     }
 
@@ -812,6 +882,20 @@ public final class City {
             held.powerPrice = row.contains("powerPrice") ? row.getInt("powerPrice") : 1;
             held.waterPrice = row.contains("waterPrice") ? row.getInt("waterPrice") : 1;
             city.dealings.put(row.getUUID("id"), held);
+        }
+
+        // Absent on any city saved before alert levels existed. getString returns "" for a missing
+        // key, so byId falls straight through to PEACE - which is the right answer for a city
+        // nobody has ever put on alert, and avoids a null level reaching paintSirens.
+        city.alertLevel = AlertLevel.byId(tag.getString("alertLevel"), AlertLevel.PEACE);
+
+        // Capped on the way in as well as on the way out. A save hand-edited to hold ten thousand
+        // ledger rows would otherwise be loaded in full and then written back out in full forever.
+        ListTag ledgerList = tag.getList("ledger", Tag.TAG_COMPOUND);
+        for (int i = 0; i < ledgerList.size() && city.ledger.size() < MAX_LEDGER; i++) {
+            CompoundTag row = ledgerList.getCompound(i);
+            city.ledger.add(new LedgerEntry(
+                    row.getLong("at"), row.getString("key"), row.getString("detail")));
         }
         return city;
     }

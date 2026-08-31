@@ -23,7 +23,14 @@ public class CityScreen extends Screen {
     static final int COLOUR_GOOD = 0xFF66E576;
     static final int COLOUR_BAD = 0xFFFF6B6B;
 
-    private static final int PANEL_WIDTH = 300;
+    // Widened again for a SIXTH button, by exactly one button-and-gap (56px), the same way it went
+    // from four to five. Keeping the width at 300 and dividing it six ways would give 42px buttons -
+    // a fifth narrower than the 52 that was chosen to fit "Neighbours" without crowding - and, worse,
+    // 256 does not divide by six, so the left-anchored offsets and the right-anchored Done button
+    // would land 4px apart and the row would come out visibly lopsided. At 356 the arithmetic is
+    // exact again, and on the narrowest GUI the mod supports (480 wide) the panel still clears 62px
+    // on each side.
+    private static final int PANEL_WIDTH = 356;
     // Two more rows than it started with: power gained a water twin, and both need room for the
     // line that appears underneath when they fall short. Refuse added a third of the same shape.
     private static final int PANEL_HEIGHT = 276;
@@ -40,10 +47,11 @@ public class CityScreen extends Screen {
         left = (this.width - PANEL_WIDTH) / 2;
         top = (this.height - PANEL_HEIGHT) / 2;
 
-        // Five across the bottom now, and the panel widened to fit them at the width they already
-        // were rather than squeezing five into four's worth of room. The four-pixel gaps are baked
-        // into the x offsets below, so any change to the count means re-deriving all of them.
-        int buttonWidth = (PANEL_WIDTH - 24 - 16) / 5;
+        // Six across the bottom now. The four-pixel gaps are baked into the x offsets below, so any
+        // change to the count means re-deriving all of them - and checking that the last one still
+        // agrees with the right-anchored Done button, which it only does when the width divides
+        // evenly. At 356 and six buttons it comes to 52 each with nothing left over.
+        int buttonWidth = (PANEL_WIDTH - 24 - 20) / 6;
         addRenderableWidget(Button.builder(
                         Component.translatable("screen.citiesinlife.settings"),
                         button -> this.minecraft.setScreen(new SettingsScreen(new CityScreen())))
@@ -76,6 +84,12 @@ public class CityScreen extends Screen {
                         Component.translatable("screen.citiesinlife.missiles"),
                         button -> this.minecraft.setScreen(new MissileMapScreen()))
                 .bounds(left + 24 + buttonWidth * 3, top + PANEL_HEIGHT - 30, buttonWidth, 20)
+                .build());
+
+        addRenderableWidget(Button.builder(
+                        Component.translatable("screen.citiesinlife.city_hall"),
+                        button -> this.minecraft.setScreen(new CityHallScreen()))
+                .bounds(left + 28 + buttonWidth * 4, top + PANEL_HEIGHT - 30, buttonWidth, 20)
                 .build());
 
         addRenderableWidget(Button.builder(

@@ -1,9 +1,13 @@
 package com.branciho.citiesinlife.block;
 
+import com.branciho.citiesinlife.city.City;
+import com.branciho.citiesinlife.city.Diplomacy;
 import com.branciho.citiesinlife.sound.MachineSounds;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
@@ -12,6 +16,7 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * An air-raid siren: the only warning a city gets.
@@ -61,6 +66,28 @@ public class SirenBlock extends Block {
 
     public static boolean wailing(BlockState state) {
         return state.hasProperty(WAILING) && state.getValue(WAILING);
+    }
+
+    /**
+     * A siren raised into a city that is already on alert starts up, not silent.
+     *
+     * <p>The missile director only repaints a city's sirens when that city's answer changes, which
+     * is the right thing for a warhead — it is one switch at the start of an attack and one at the
+     * end rather than a walk over every pole every tick. The cost is that a pole planted in the
+     * middle of a standing alert would never be visited, and would stand there mute while every
+     * other siren in the city wailed. Asking once, here, is cheaper than making the director sweep
+     * for the sake of a block that is placed by hand a handful of times in a save.
+     */
+    @Override
+    public @Nullable BlockState getStateForPlacement(BlockPlaceContext context) {
+        BlockState placed = super.getStateForPlacement(context);
+        if (placed == null || !(context.getLevel() instanceof ServerLevel level)) {
+            return placed;
+        }
+        City city = Diplomacy.owner(level.getServer(), level.dimension(), context.getClickedPos());
+        return city != null && city.alertLevel().rousing()
+                ? placed.setValue(WAILING, true)
+                : placed;
     }
 
     /**

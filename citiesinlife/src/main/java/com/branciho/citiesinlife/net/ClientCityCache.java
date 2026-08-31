@@ -1,7 +1,9 @@
 package com.branciho.citiesinlife.net;
 
 import net.minecraft.core.BlockPos;
+import com.branciho.citiesinlife.net.payload.CityHallPayload;
 import com.branciho.citiesinlife.net.payload.CitySyncPayload;
+import com.branciho.citiesinlife.net.payload.MeetingInvitePayload;
 import com.branciho.citiesinlife.net.payload.ReactorSyncPayload;
 import com.branciho.citiesinlife.net.payload.CallToArmsPayload;
 import com.branciho.citiesinlife.net.payload.ModSettingsPayload;
@@ -61,6 +63,19 @@ public final class ClientCityCache {
      * of cities and almost never a missile in the air.
      */
     private static @Nullable MissileMapPayload missileMap;
+
+    /**
+     * The city hall panel's state, and a counter bumped on every packet.
+     *
+     * <p>The counter is what lets an open panel notice that a meeting filled up or that the player
+     * walked out of the hall: the screen compares it each tick and rebuilds its buttons when it
+     * moves, the same way the military screen already tracks its army.
+     */
+    private static CityHallPayload cityHall = CityHallPayload.none();
+    private static int cityHallRevision;
+
+    /** A meeting invitation, waiting to be turned into a question on screen. */
+    private static @Nullable MeetingInvitePayload pendingMeetingInvite;
 
     private ClientCityCache() {
     }
@@ -191,6 +206,30 @@ public final class ClientCityCache {
         return missileMap;
     }
 
+    public static void accept(CityHallPayload payload) {
+        cityHall = payload;
+        cityHallRevision++;
+    }
+
+    public static CityHallPayload cityHall() {
+        return cityHall;
+    }
+
+    public static int cityHallRevision() {
+        return cityHallRevision;
+    }
+
+    /** A meeting somewhere, arriving as a question. Same hand-off as the call to arms. */
+    public static void accept(MeetingInvitePayload payload) {
+        pendingMeetingInvite = payload;
+    }
+
+    public static @Nullable MeetingInvitePayload takeMeetingInvite() {
+        MeetingInvitePayload pending = pendingMeetingInvite;
+        pendingMeetingInvite = null;
+        return pending;
+    }
+
     public static int radiation() {
         return radiation;
     }
@@ -285,5 +324,8 @@ public final class ClientCityCache {
         settings = null;
         radiation = 0;
         missileMap = null;
+        cityHall = CityHallPayload.none();
+        cityHallRevision++;
+        pendingMeetingInvite = null;
     }
 }
