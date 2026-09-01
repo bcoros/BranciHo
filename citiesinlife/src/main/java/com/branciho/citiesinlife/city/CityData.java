@@ -54,8 +54,11 @@ public final class CityData extends SavedData {
      * a missing level falls through to peace and a missing ledger loads empty - but the number is
      * bumped anyway, because leaving it alone after a shape change is precisely the habit that made
      * version 2 load old worlds wrong.
+     *
+     * <p>7 marks the master mute and the bodyguard roll. Same story: a missing mute reads as false
+     * and a missing roll loads empty, and the number moves anyway.
      */
-    private static final int DATA_VERSION = 6;
+    private static final int DATA_VERSION = 7;
 
     /**
      * How many airfields one player may have standing at once.

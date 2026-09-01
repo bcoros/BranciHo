@@ -13,6 +13,7 @@ import com.branciho.citiesinlife.net.payload.CallToArmsPayload;
 import com.branciho.citiesinlife.net.payload.CityHallActionPayload;
 import com.branciho.citiesinlife.net.payload.CityHallPayload;
 import com.branciho.citiesinlife.net.payload.HologramPayload;
+import com.branciho.citiesinlife.net.payload.OpenHologramPayload;
 import com.branciho.citiesinlife.net.payload.LaunchAllPayload;
 import com.branciho.citiesinlife.net.payload.MeetingReplyPayload;
 import com.branciho.citiesinlife.net.payload.ModSettingsPayload;
@@ -2640,6 +2641,12 @@ public final class ServerActions {
      * <p>Same gate as the rest of the hall: your city, and you standing inside it. A hologram table
      * on somebody's front lawn shows nothing.
      */
+    /** Somebody clicked the table: tell their client to open it, then fill it in. */
+    public static void openHologram(ServerPlayer player) {
+        CitiesInLifeNetwork.sendTo(player, OpenHologramPayload.INSTANCE);
+        syncHologram(player);
+    }
+
     public static void syncHologram(ServerPlayer player) {
         MinecraftServer server = player.getServer();
         if (server == null) {

@@ -4,7 +4,6 @@ import com.branciho.citiesinlife.net.CitiesInLifeNetwork;
 import com.branciho.citiesinlife.net.ClientCityCache;
 import com.branciho.citiesinlife.net.payload.HologramPayload;
 import com.branciho.citiesinlife.net.payload.RequestHologramPayload;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
@@ -42,11 +41,6 @@ public class HologramScreen extends Screen {
 
     public HologramScreen() {
         super(Component.translatable("screen.citiesinlife.hologram"));
-    }
-
-    /** Opened from the block, which has no business knowing what a Screen is beyond this. */
-    public static void open() {
-        Minecraft.getInstance().setScreen(new HologramScreen());
     }
 
     private static int panelHeight() {

@@ -4,6 +4,7 @@ import com.branciho.citiesinlife.CitiesInLife;
 import com.branciho.citiesinlife.client.ClientRadiation;
 import com.branciho.citiesinlife.client.screen.CallToArmsScreen;
 import com.branciho.citiesinlife.client.screen.GuideScreen;
+import com.branciho.citiesinlife.client.screen.HologramScreen;
 import com.branciho.citiesinlife.client.screen.MeetingInviteScreen;
 import com.branciho.citiesinlife.client.screen.PeaceOfferScreen;
 import com.branciho.citiesinlife.client.screen.CityScreen;
@@ -193,6 +194,11 @@ public final class ClientEvents {
         BlockPos monitor = ClientCityCache.takeMonitor();
         if (monitor != null) {
             minecraft.setScreen(new ReactorScreen(monitor));
+        }
+
+        // The projection table, opened the same way and for the same reason.
+        if (ClientCityCache.takeHologram()) {
+            minecraft.setScreen(new HologramScreen());
         }
 
         while (KeyBindings.OPEN_CITY.consumeClick()) {

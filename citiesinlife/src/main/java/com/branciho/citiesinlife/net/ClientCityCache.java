@@ -103,6 +103,19 @@ public final class ClientCityCache {
         return reactor;
     }
 
+    /** Consume-once, like the monitor's: the client tick picks it up and opens the panel. */
+    private static boolean hologramWanted;
+
+    public static void openHologram() {
+        hologramWanted = true;
+    }
+
+    public static boolean takeHologram() {
+        boolean wanted = hologramWanted;
+        hologramWanted = false;
+        return wanted;
+    }
+
     public static void openMonitor(BlockPos at) {
         pendingMonitor = at;
     }

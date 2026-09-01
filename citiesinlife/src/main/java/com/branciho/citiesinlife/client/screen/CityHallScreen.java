@@ -39,8 +39,16 @@ public class CityHallScreen extends Screen {
     private static final int ROLL_HEIGHT = 24;
     private static final int LEDGER_LABEL = 14;
 
-    /** How many lines of history are on screen at once. The rest is a wheel away. */
-    private static final int LEDGER_ROWS = 8;
+    /**
+     * How many lines of history are on screen at once, and the bounds on that.
+     *
+     * <p>Worked out from the actual window rather than fixed, because this panel has grown a row
+     * of buttons in every update it has ever had and a fixed height ran off the bottom of the
+     * screen at GUI scale 4 — where 1080p leaves only 270 pixels to draw in. The ledger is the one
+     * part of the panel that can honestly be shorter: it scrolls.
+     */
+    private static final int MIN_LEDGER_ROWS = 3;
+    private static final int MAX_LEDGER_ROWS = 8;
     private static final int LEDGER_ROW_HEIGHT = 11;
     private static final int FOOTER = 30;
 
@@ -77,9 +85,18 @@ public class CityHallScreen extends Screen {
         super(Component.translatable("screen.citiesinlife.city_hall"));
     }
 
-    private static int panelHeight() {
-        return HEADER + BUTTON_ROWS * ROW + ROLL_HEIGHT + LEDGER_LABEL
-                + LEDGER_ROWS * LEDGER_ROW_HEIGHT + FOOTER;
+    /** Everything on the panel that is not history. */
+    private static int fixedHeight() {
+        return HEADER + BUTTON_ROWS * ROW + ROLL_HEIGHT + LEDGER_LABEL + FOOTER;
+    }
+
+    private int ledgerRows() {
+        int room = (this.height - 8 - fixedHeight()) / LEDGER_ROW_HEIGHT;
+        return Mth.clamp(room, MIN_LEDGER_ROWS, MAX_LEDGER_ROWS);
+    }
+
+    private int panelHeight() {
+        return fixedHeight() + ledgerRows() * LEDGER_ROW_HEIGHT;
     }
 
     @Override
@@ -286,8 +303,9 @@ public class CityHallScreen extends Screen {
         // Clamped here rather than where the wheel is read, because the list this is an offset into
         // arrives from the server and can shrink between one frame and the next.
         scrollBack = Mth.clamp(scrollBack, 0, hiddenRows(ledger.size()));
+        int rows = ledgerRows();
         int last = ledger.size() - scrollBack;
-        int from = Math.max(0, last - LEDGER_ROWS);
+        int from = Math.max(0, last - rows);
         for (int i = from; i < last; i++) {
             graphics.drawString(this.font, ledger.get(i).describe(), left + 12, y,
                     CityScreen.COLOUR_DIM, false);
@@ -297,8 +315,8 @@ public class CityHallScreen extends Screen {
     }
 
     /** How many rows of history do not fit on screen, and so have to be scrolled to. */
-    private static int hiddenRows(int entries) {
-        return Math.max(0, entries - LEDGER_ROWS);
+    private int hiddenRows(int entries) {
+        return Math.max(0, entries - ledgerRows());
     }
 
     /**
@@ -313,10 +331,11 @@ public class CityHallScreen extends Screen {
             return;
         }
         int top = ledgerTop();
-        int height = LEDGER_ROWS * LEDGER_ROW_HEIGHT;
+        int rows = ledgerRows();
+        int height = rows * LEDGER_ROW_HEIGHT;
         int x = left + PANEL_WIDTH - 16;
         graphics.fill(x, top, x + 3, top + height, CityScreen.COLOUR_ACCENT & 0x40FFFFFF);
-        int grip = Math.max(8, height * LEDGER_ROWS / entries);
+        int grip = Math.max(8, height * rows / entries);
         int travel = height - grip;
         int at = top + (travel * from) / hidden;
         graphics.fill(x, at, x + 3, at + grip, CityScreen.COLOUR_ACCENT);

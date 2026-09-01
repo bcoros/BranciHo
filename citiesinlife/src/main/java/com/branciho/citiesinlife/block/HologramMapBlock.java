@@ -3,7 +3,9 @@ package com.branciho.citiesinlife.block;
 import com.branciho.citiesinlife.blockentity.HologramMapBlockEntity;
 import com.branciho.citiesinlife.registry.ModBlockEntities;
 import com.mojang.serialization.MapCodec;
+import com.branciho.citiesinlife.net.ServerActions;
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.BlockGetter;
@@ -85,12 +87,22 @@ public class HologramMapBlock extends BaseEntityBlock {
                 : null;
     }
 
+    /**
+     * Open the projection.
+     *
+     * <p>Asked for from the server rather than opened here, because a block's use handler runs
+     * server-side and this class must never so much as name a screen: the first dedicated server to
+     * load it would take the client class with it and fall over.
+     */
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos,
                                                Player player, BlockHitResult hit) {
         if (level.isClientSide) {
-            com.branciho.citiesinlife.client.screen.HologramScreen.open();
+            return InteractionResult.SUCCESS;
         }
-        return InteractionResult.sidedSuccess(level.isClientSide);
+        if (player instanceof ServerPlayer viewer) {
+            ServerActions.openHologram(viewer);
+        }
+        return InteractionResult.CONSUME;
     }
 }
