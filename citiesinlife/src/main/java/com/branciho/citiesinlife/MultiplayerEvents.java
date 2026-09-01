@@ -33,6 +33,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.UUID;
 import com.branciho.citiesinlife.nuclear.Radiation;
 import net.minecraft.world.damagesource.DamageTypes;
+import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.level.Explosion;
 import net.minecraft.world.entity.LivingEntity;
 import com.branciho.citiesinlife.city.Demolition;
@@ -183,10 +184,20 @@ public final class MultiplayerEvents {
      * <p>Warheads and meltdowns are not here at all. Both carve their crater by hand rather than
      * through an explosion's block list, so neither was ever on this path: a crater is still a
      * crater, and the mushroom does not politely go round your houses.
+     *
+     * <p>Judged on the DIRECT source only, and that is not a detail. Vanilla's indirect source walks
+     * back through a primed charge to whoever lit it, so a player-lit stick of TNT reports a living
+     * entity — the player — exactly like a creeper does. Asking that question would have switched
+     * the shield off for the one case the whole feature exists for, which is somebody deliberately
+     * shelling a building.
+     *
+     * <p>So: the thing that actually went off. A creeper IS the explosion and is living. A ghast's
+     * fireball and a wither's skull are projectiles. A primed charge, an end crystal and a bed are
+     * none of those, and are the player's doing however they were set off.
      */
     private static boolean shielded(Explosion explosion) {
-        return explosion.getIndirectSourceEntity() == null
-                && !(explosion.getDirectSourceEntity() instanceof LivingEntity);
+        Entity source = explosion.getDirectSourceEntity();
+        return !(source instanceof LivingEntity) && !(source instanceof Projectile);
     }
 
     /**
