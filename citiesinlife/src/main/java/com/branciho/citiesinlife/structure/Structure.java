@@ -6,6 +6,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.util.Mth;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
@@ -27,6 +28,18 @@ public final class Structure {
     private final UUID id;
     private final UUID cityId;
     private final String name;
+    /** The least health any registered building has, however little it is made of. */
+    public static final int MIN_HEALTH = 40;
+
+    /**
+     * Material assumed per cell of floor for a building registered before health existed.
+     *
+     * <p>Two: a room is mostly air, and its walls, floor and ceiling are roughly this much material
+     * per cell of the space they enclose. Only ever used once per old building, and replaced by a
+     * real count the first time anything re-measures it.
+     */
+    private static final int ASSUMED_MASS_PER_CELL = 2;
+
     private final StructureType type;
     private final ResourceKey<Level> dimension;
     private final BlockPos min;
@@ -40,6 +53,25 @@ public final class Structure {
      * change a city's population every time somebody opened a door.
      */
     private int usableCells;
+
+    /**
+     * How many blocks this building is made of, and how much of that is still standing.
+     *
+     * <p>Mass is the material: every non-air, non-liquid block inside the box when it was last
+     * measured. It is what a building's health is worth, because how much punishment a thing can
+     * absorb is a question about what it is built out of and not about how much room is inside it.
+     * A glass box and a bunker of the same size enclose the same floor space and are not remotely
+     * the same building.
+     *
+     * <p>Health is what is left of that. It starts full, comes off when blasts take blocks out of
+     * the box, and comes back slowly while the city is left in peace. At nought the registration is
+     * gone: the box is rubble, and for a city hall that takes the city with it.
+     *
+     * <p>Both are saved. Damage that a restart forgave was the old behaviour and it was wrong -
+     * somebody who spent a night shelling a tower would come back to find it untouched.
+     */
+    private int blockMass;
+    private int health;
 
     public Structure(UUID id, UUID cityId, String name, StructureType type,
                      ResourceKey<Level> dimension, BlockPos min, BlockPos max) {
@@ -97,6 +129,72 @@ public final class Structure {
         return usableCells;
     }
 
+    /** How much material the last measurement found. */
+    public int blockMass() {
+        return blockMass;
+    }
+
+    /**
+     * The most punishment this building can take.
+     *
+     * <p>One point per block it is built out of, with a floor under it so a hut is not one creeper
+     * from nothing and a marker with no blocks in it is not born dead.
+     */
+    public int maxHealth() {
+        return Math.max(MIN_HEALTH, blockMass);
+    }
+
+    public int health() {
+        return health;
+    }
+
+    /**
+     * Set the mass, and bring health with it.
+     *
+     * <p>Health is carried across in proportion rather than reset, so re-measuring a building that
+     * was already half wrecked does not quietly repair it — and extending one you have built onto
+     * raises the ceiling without handing you the difference for free.
+     */
+    public void setMass(int mass) {
+        int wasMax = maxHealth();
+        int had = health;
+        blockMass = Math.max(0, mass);
+        int nowMax = maxHealth();
+        health = wasMax <= 0
+                ? nowMax
+                : Mth.clamp((int) ((long) had * nowMax / wasMax), 0, nowMax);
+    }
+
+    /** Fill it up. Used when a building is first registered, and when one is rebuilt from scratch. */
+    public void restore() {
+        health = maxHealth();
+    }
+
+    /**
+     * Take damage.
+     *
+     * <p>Saturating on the way in. A levelled region reports its damage as {@link Integer#MAX_VALUE}
+     * and a plain subtraction would wrap straight past zero into a large positive number, which
+     * reads as a building that survived being at the centre of a crater.
+     *
+     * @return whether that finished it
+     */
+    public boolean damage(int amount) {
+        if (amount <= 0) {
+            return health <= 0;
+        }
+        health = (int) Math.max(0L, (long) health - amount);
+        return health <= 0;
+    }
+
+    /** Repairs itself, slowly, while nobody is knocking it down. */
+    public void heal(int amount) {
+        if (amount <= 0 || health >= maxHealth()) {
+            return;
+        }
+        health = Math.min(maxHealth(), health + amount);
+    }
+
     public int residents() {
         return type.residentsFor(usableCells());
     }
@@ -151,6 +249,8 @@ public final class Structure {
         tag.putString("type", type.id());
         tag.putString("dimension", dimension.location().toString());
         tag.putInt("cells", usableCells);
+        tag.putInt("mass", blockMass);
+        tag.putInt("health", health);
         tag.putInt("minX", min.getX());
         tag.putInt("minY", min.getY());
         tag.putInt("minZ", min.getZ());
@@ -185,6 +285,14 @@ public final class Structure {
             }
             structure.usableCells = total;
         }
+        // Absent on every building registered before health existed. Mass of nought would make
+        // maxHealth the floor and put a cathedral on the same footing as a shed, so an unmeasured
+        // building is given a mass derived from the space inside it - a rough stand-in until the
+        // next blast re-measures it properly - and is loaded undamaged.
+        structure.blockMass = tag.contains("mass")
+                ? tag.getInt("mass")
+                : structure.usableCells * ASSUMED_MASS_PER_CELL;
+        structure.health = tag.contains("health") ? tag.getInt("health") : structure.maxHealth();
         return structure;
     }
 }

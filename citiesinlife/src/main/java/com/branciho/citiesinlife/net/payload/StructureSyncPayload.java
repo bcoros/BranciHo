@@ -28,7 +28,9 @@ public record StructureSyncPayload(List<Entry> structures) implements CustomPack
             int maxX, int maxY, int maxZ,
             int usableCells,
             int residents,
-            int jobs
+            int jobs,
+            int health,
+            int maxHealth
     ) {
     }
 
@@ -55,6 +57,8 @@ public record StructureSyncPayload(List<Entry> structures) implements CustomPack
             buf.writeVarInt(entry.usableCells());
             buf.writeVarInt(entry.residents());
             buf.writeVarInt(entry.jobs());
+            buf.writeVarInt(Math.max(0, entry.health()));
+            buf.writeVarInt(Math.max(1, entry.maxHealth()));
         }
     }
 
@@ -69,7 +73,8 @@ public record StructureSyncPayload(List<Entry> structures) implements CustomPack
                     buf.readUUID(), buf.readUtf(48), buf.readUtf(32),
                     buf.readVarInt(), buf.readVarInt(), buf.readVarInt(),
                     buf.readVarInt(), buf.readVarInt(), buf.readVarInt(),
-                    buf.readVarInt(), buf.readVarInt(), buf.readVarInt()));
+                    buf.readVarInt(), buf.readVarInt(), buf.readVarInt(),
+                    buf.readVarInt(), buf.readVarInt()));
         }
         return new StructureSyncPayload(entries);
     }

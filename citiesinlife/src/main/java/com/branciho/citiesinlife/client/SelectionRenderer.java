@@ -9,6 +9,12 @@ import com.branciho.citiesinlife.structure.StructureType;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.renderer.LightTexture;
+import net.minecraft.network.chat.Component;
+import net.minecraft.util.Mth;
+import org.joml.Matrix4f;
+import org.joml.Quaternionf;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
@@ -33,6 +39,24 @@ public final class SelectionRenderer {
     private static final double CORNER_SIZE = 0.12D;
 
     private static final double MAX_STRUCTURE_DISTANCE_SQR = 180.0D * 180.0D;
+
+    /**
+     * How far a health bar is legible from.
+     *
+     * <p>Much shorter than the outlines. An outline at a hundred and eighty blocks is a useful hint
+     * that something is registered over there; two lines of text at that range are a smear, and a
+     * hundred of them are a smear that costs a draw call each.
+     */
+    private static final double MAX_LABEL_DISTANCE_SQR = 64.0D * 64.0D;
+
+    /** How far above the top of the box the label floats. */
+    private static final double LABEL_LIFT = 0.7D;
+
+    /** Vanilla's nameplate scale: one text pixel to this many blocks. */
+    private static final float LABEL_SCALE = 0.025F;
+
+    private static final float BAR_WIDTH = 60.0F;
+    private static final float BAR_HEIGHT = 5.0F;
     private static final double MAX_LINE_DISTANCE_SQR = 260.0D * 260.0D;
 
     /** Segments per wire. Enough for the sag to read as a curve rather than a kink. */
@@ -116,6 +140,15 @@ public final class SelectionRenderer {
 
         poseStack.popPose();
         buffers.endBatch(RenderType.lines());
+
+        // After the line batch, and inside its own translate: text and quads are different render
+        // types, and drawing them in the middle of the lines would flush that batch per building.
+        if (StructureMode.active()) {
+            poseStack.pushPose();
+            poseStack.translate(-camera.x, -camera.y, -camera.z);
+            drawStructureHealth(poseStack, buffers, minecraft, minecraft.player.position());
+            poseStack.popPose();
+        }
     }
 
     // -------------------------------------------------------------- selection
@@ -274,6 +307,88 @@ public final class SelectionRenderer {
             float[] rgb = unpack(StructureType.byId(entry.typeId(), StructureType.RESIDENTIAL).colour());
             LevelRenderer.renderLineBox(poseStack, consumer, box, rgb[0], rgb[1], rgb[2], 0.75F);
         }
+    }
+
+    /**
+     * The health bars, and the names over them.
+     *
+     * <p>Drawn in a pass of their own rather than beside the outlines, because text and quads are
+     * different render types and interleaving them with the line batch would flush it once per
+     * building. Only in structure mode, which is the whole rule: a city with a hundred buildings
+     * would be unreadable with a hundred labels floating over it all the time, and the moment you
+     * want to know how much punishment something has taken is the moment you are already looking at
+     * the registrations.
+     */
+    private static void drawStructureHealth(PoseStack poseStack, MultiBufferSource.BufferSource buffers,
+                                            Minecraft minecraft, Vec3 eye) {
+        Font font = minecraft.font;
+        Quaternionf facing = minecraft.getEntityRenderDispatcher().cameraOrientation();
+        for (StructureSyncPayload.Entry entry : ClientCityCache.structures()) {
+            AABB box = StructureMode.boundsOf(entry);
+            Vec3 centre = box.getCenter();
+            if (centre.distanceToSqr(eye) > MAX_LABEL_DISTANCE_SQR) {
+                continue;
+            }
+
+            poseStack.pushPose();
+            poseStack.translate(centre.x, box.maxY + LABEL_LIFT, centre.z);
+            poseStack.mulPose(facing);
+            // Nameplate scale, negated on Y because text is drawn downwards in screen space.
+            poseStack.scale(-LABEL_SCALE, -LABEL_SCALE, LABEL_SCALE);
+
+            int health = Math.max(0, entry.health());
+            int max = Math.max(1, entry.maxHealth());
+            float share = Mth.clamp(health / (float) max, 0.0F, 1.0F);
+
+            healthBar(poseStack, buffers, share);
+
+            Component name = Component.literal(entry.name());
+            Component numbers = Component.translatable("hud.citiesinlife.structure_health",
+                    health, max);
+            font.drawInBatch(name, -font.width(name) / 2.0F, -BAR_HEIGHT - 22.0F,
+                    0xFFFFFFFF, false, poseStack.last().pose(), buffers,
+                    Font.DisplayMode.SEE_THROUGH, 0x40000000, LightTexture.FULL_BRIGHT);
+            font.drawInBatch(numbers, -font.width(numbers) / 2.0F, -BAR_HEIGHT - 11.0F,
+                    barColour(share), false, poseStack.last().pose(), buffers,
+                    Font.DisplayMode.SEE_THROUGH, 0x40000000, LightTexture.FULL_BRIGHT);
+
+            poseStack.popPose();
+        }
+        buffers.endBatch();
+    }
+
+    /** A trough and the part of it that is left, in the same billboard space as the text. */
+    private static void healthBar(PoseStack poseStack, MultiBufferSource buffers, float share) {
+        VertexConsumer quads = buffers.getBuffer(RenderType.debugQuads());
+        float half = BAR_WIDTH / 2.0F;
+        // The trough first, dark and full width, so a bar with almost nothing left is still
+        // visible as a bar rather than as a stray pixel.
+        quad(poseStack, quads, -half - 1.0F, -BAR_HEIGHT - 1.0F, half + 1.0F, 1.0F,
+                0.0F, 0.0F, 0.0F, 0.55F);
+        if (share <= 0.0F) {
+            return;
+        }
+        float[] rgb = unpack(barColour(share));
+        quad(poseStack, quads, -half, -BAR_HEIGHT, -half + BAR_WIDTH * share, 0.0F,
+                rgb[0], rgb[1], rgb[2], 0.95F);
+    }
+
+    private static void quad(PoseStack poseStack, VertexConsumer quads,
+                             float x0, float y0, float x1, float y1,
+                             float r, float g, float b, float a) {
+        Matrix4f pose = poseStack.last().pose();
+        quads.addVertex(pose, x0, y1, 0.0F).setColor(r, g, b, a);
+        quads.addVertex(pose, x1, y1, 0.0F).setColor(r, g, b, a);
+        quads.addVertex(pose, x1, y0, 0.0F).setColor(r, g, b, a);
+        quads.addVertex(pose, x0, y0, 0.0F).setColor(r, g, b, a);
+    }
+
+    /** Green down to amber down to red, so the state reads before the numbers do. */
+    private static int barColour(float share) {
+        if (share > 0.6F) {
+            return 0xFF66E576;
+        }
+        return share > 0.3F ? 0xFFFFD859 : 0xFFFF6B6B;
     }
 
     // ------------------------------------------------------------ power lines

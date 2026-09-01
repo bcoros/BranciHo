@@ -70,8 +70,15 @@ public final class StructureScanner {
      */
     private static final int EDGE_REACH = 2;
 
-    /** What measuring a selection produced, in floor-equivalent cells. */
-    public record Measurement(int usableCells) {
+    /**
+     * What measuring a selection produced.
+     *
+     * <p>Two numbers about the same box, answering two different questions. {@code usableCells} is
+     * the space <em>inside</em> it, which is what decides how many people it holds. {@code
+     * blockMass} is what it is <em>made of</em>, which is what decides how much punishment it can
+     * take: a glass box and a bunker enclose the same room and are not the same building.
+     */
+    public record Measurement(int usableCells, int blockMass) {
     }
 
     private StructureScanner() {
@@ -115,7 +122,9 @@ public final class StructureScanner {
      * never be moved off-thread without snapshotting first.
      */
     public static Measurement measure(Level level, BlockPos min, BlockPos max) {
-        return new Measurement(enclosedCells(level, min, max));
+        int[] tally = new int[1];
+        int cells = enclosedCells(level, min, max, tally);
+        return new Measurement(cells, tally[0]);
     }
 
     /**
@@ -125,7 +134,7 @@ public final class StructureScanner {
      * inside the selection. That is a crude definition and deliberately so — it is meant to give a
      * sensible number for a shape the storey detector cannot read, not to be precise.
      */
-    private static int enclosedCells(Level level, BlockPos min, BlockPos max) {
+    private static int enclosedCells(Level level, BlockPos min, BlockPos max, int[] mass) {
         final int height = max.getY() - min.getY() + 1;
         final boolean[] passable = new boolean[height];
         final boolean[] solid = new boolean[height];
@@ -143,6 +152,13 @@ public final class StructureScanner {
                     BlockState state = level.getBlockState(cursor);
                     solid[i] = state.blocksMotion();
                     passable[i] = state.getFluidState().isEmpty() && (state.isAir() || !solid[i]);
+                    // Counted on the same pass that is already reading every block in the box.
+                    // Anything that is not air and not a liquid is material somebody placed: a
+                    // fence, a pane and a slab are all part of what the building is made of, even
+                    // though none of them stops you walking through.
+                    if (!state.isAir() && state.getFluidState().isEmpty()) {
+                        mass[0]++;
+                    }
                 }
 
                 // "Something solid below and something solid above" is exactly "between the lowest

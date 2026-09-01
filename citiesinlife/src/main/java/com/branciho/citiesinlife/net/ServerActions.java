@@ -292,6 +292,8 @@ public final class ServerActions {
         String name = defaultName(type, data.structuresOf(city).size() + 1);
         Structure structure = Structure.create(city.id(), name, type, level.dimension(), min, max);
         structure.setMeasurement(measured.usableCells());
+        structure.setMass(measured.blockMass());
+        structure.restore();
         data.addStructure(city, structure);
 
         // Bring the totals up to date now rather than at the next growth tick, so opening the city
@@ -1307,6 +1309,10 @@ public final class ServerActions {
         Structure taken = Structure.create(
                 city.id(), name, type, level.dimension(), target.min(), target.max());
         taken.setMeasurement(measured.usableCells());
+        taken.setMass(measured.blockMass());
+        // A building you have just taken off somebody by force is not handed to you in mint
+        // condition, but it is a fresh registration and has no damage of its own to inherit.
+        taken.restore();
         data.addStructure(city, taken);
 
         CitySimulation.refresh(data, city);
@@ -2181,7 +2187,9 @@ public final class ServerActions {
                             structure.max().getX(), structure.max().getY(), structure.max().getZ(),
                             structure.usableCells(),
                             structure.residents(),
-                            structure.jobs()));
+                            structure.jobs(),
+                            structure.health(),
+                            structure.maxHealth()));
                 }
             }
         }

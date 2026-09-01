@@ -178,6 +178,7 @@ public final class CitySimulation {
         for (City city : data.cities()) {
             makeRubbish(city);
             grow(city);
+            repair(data, city);
             collectTaxes(city);
         }
         data.setDirty();
@@ -360,6 +361,31 @@ public final class CitySimulation {
      */
     private static void makeRubbish(City city) {
         city.addRefuse(REFUSE_BASE + city.population() / RESIDENTS_PER_REFUSE);
+    }
+
+    /**
+     * How much of a building comes back per growth step.
+     *
+     * <p>A two-hundredth of what it is worth, so any building — hut or tower — takes about half an
+     * hour of peace to come back from nothing. Slow enough that repairing by hand is still the fast
+     * way, fast enough that a chip from a stray creeper is not permanent.
+     */
+    private static final int REPAIR_SHARE = 200;
+
+    /**
+     * Buildings mend themselves while nobody is knocking them down.
+     *
+     * <p>Not free healing so much as the alternative to bookkeeping: without it, damage is
+     * permanent until the box is deleted and redrawn, and a city that has ever been shelled carries
+     * the scars for the rest of the save with no way to clear them.
+     */
+    private static void repair(CityData data, City city) {
+        for (Structure structure : data.structuresOf(city)) {
+            if (structure.health() < structure.maxHealth()) {
+                structure.heal(Math.max(1, structure.maxHealth() / REPAIR_SHARE));
+                data.setDirty();
+            }
+        }
     }
 
     /** Recompute what the city's buildings offer. Pure capacity, no growth. */

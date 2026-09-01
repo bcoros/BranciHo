@@ -46,33 +46,14 @@ public final class Demolition {
     private static final int PER_TICK = 4;
 
     /**
-     * The least damage that condemns a building outright, whatever it still measures.
+     * Health taken off per block a blast removes from inside the box.
      *
-     * <p>Buildings the mod does not measure — parks, plants, a military base — have no capacity to
-     * lose, so "measures nothing now" cannot be the test for them. This is: enough of it is gone
-     * that it is a ruin. Proportional to the footprint so it is the same judgement on a cottage and
-     * on a power station, with a floor under it so a small hut is not condemned by a creeper.
+     * <p>Four, so a building is finished when roughly a quarter of what it is made of has been
+     * taken out of it. A building is not a solid lump — most of a house is the air inside it — so
+     * demanding every block would mean nothing short of a nuclear warhead ever finished anything,
+     * which was the previous behaviour and is why TNT left registrations standing over rubble.
      */
-    private static final int MIN_RUIN = 16;
-
-    /**
-     * How much of a building has to be gone before it stops being one, as a fraction of footprint.
-     *
-     * <p>An eighth rather than a half. Half a building's footprint is somewhere between one and
-     * several hundred blocks, which no ordinary explosion reaches — so in practice nothing short of
-     * a warhead ever condemned anything, and blowing a house apart with TNT left the registration
-     * standing over the rubble. An eighth is about one good charge on a small house and several on
-     * a tower, which is the shape it should have had.
-     */
-    private static final int RUIN_SHARE = 8;
-
-    /**
-     * How much of its capacity a building may lose before it is written off.
-     *
-     * <p>The old test was "does it still hold anybody at all", which a big building passes with
-     * one wall left. Sixty per cent gone is a wreck by any reading.
-     */
-    private static final int SURVIVING_PERCENT = 40;
+    private static final int DAMAGE_PER_BLOCK = 4;
 
     /** One damaged building, and how much of it went. */
     private record Wound(UUID structureId, int blocks) {
@@ -81,17 +62,15 @@ public final class Demolition {
     private static final Map<UUID, Integer> PENDING = new HashMap<>();
 
     /**
-     * Damage each building has taken and not yet been written off for.
+     * Cap a block count so it can be multiplied without wrapping.
      *
-     * <p>Separate from the queue, and it is the difference between a building that can be
-     * demolished and one that cannot. The queue is emptied every time it is assessed, so without
-     * this a building blown apart by ten charges was ten separate small explosions, each judged on
-     * its own and each forgiven — and ten charges never added up to anything.
-     *
-     * <p>In memory, so a restart forgives the damage. That is deliberate: a building nobody has
-     * finished demolishing should not quietly die a month later because a creeper chipped it.
+     * <p>A levelled region reports {@link Integer#MAX_VALUE} destroyed blocks, and four times that
+     * is a large negative number — which reads as healing, and is how a building would survive
+     * being at the centre of a crater.
      */
-    private static final Map<UUID, Integer> DAMAGE = new HashMap<>();
+    private static int saturate(int blocks) {
+        return Math.min(blocks, Integer.MAX_VALUE / DAMAGE_PER_BLOCK);
+    }
 
     private Demolition() {
     }
@@ -217,30 +196,21 @@ public final class Demolition {
             return;
         }
 
-        // Everything this one has taken, not just this blast. Saturating, because a levelled
-        // region reports Integer.MAX_VALUE and a plain sum would wrap it straight to negative -
-        // which reads as "undamaged" and is how a building survives being at the centre of a
-        // crater.
-        int total = DAMAGE.merge(structure.id(), wound.blocks(),
-                (a, b) -> (int) Math.min(Integer.MAX_VALUE, (long) a + b));
-        boolean ruined = total >= threshold(structure);
+        // Health is the whole of it now, and it is a number the player can watch fall: structure
+        // mode draws it over the box. There is no second, invisible rule that can condemn a
+        // building whose bar still says it is standing.
+        boolean ruined = structure.damage(saturate(wound.blocks()) * DAMAGE_PER_BLOCK);
+        data.setDirty();
 
         City city = data.city(structure.cityId());
 
-        // The honest test: it held people, and now it holds far fewer. Conditioned on it having
-        // held them, because a box that was already below the bar would otherwise be condemned by
-        // the first creeper to walk past - it would fail the test before the explosion as easily
-        // as after.
-        if (!ruined && structure.type().measured()
-                && structure.usableCells() >= StructureType.MIN_USABLE_CELLS) {
+        // Standing, but with a hole in it. The city should feel that immediately rather than going
+        // on housing people in a room that is now open to the sky - and the re-measure is also what
+        // keeps the health bar honest, since the mass it is scaled against has just changed.
+        if (!ruined && structure.type().measured()) {
             StructureScanner.Measurement now = StructureScanner.measure(
                     level, structure.min(), structure.max());
-            int before = structure.usableCells();
-            ruined = now.usableCells() < StructureType.MIN_USABLE_CELLS
-                    || now.usableCells() * 100 < before * SURVIVING_PERCENT;
-            if (!ruined && now.usableCells() < before) {
-                // Standing, but with a hole in it. The city should feel that immediately rather
-                // than going on housing people in a room that is now open to the sky.
+            if (now.usableCells() != structure.usableCells()) {
                 structure.setMeasurement(now.usableCells());
                 if (city != null) {
                     CitySimulation.refresh(data, city);
@@ -251,7 +221,6 @@ public final class Demolition {
             return;
         }
 
-        DAMAGE.remove(structure.id());
         data.removeStructure(structure.id());
         if (city == null) {
             return;
@@ -285,11 +254,9 @@ public final class Demolition {
      */
     private static void razed(MinecraftServer server, CityData data, City city, ServerPlayer owner) {
         // Its other buildings are about to stop existing, so anything still queued against them is
-        // an assessment of a structure that will not be there. Harmless but pointless work, and the
-        // damage tally would otherwise sit in memory for the rest of the session.
+        // an assessment of a structure that will not be there. Harmless but pointless work.
         for (UUID structureId : city.structures()) {
             PENDING.remove(structureId);
-            DAMAGE.remove(structureId);
         }
 
         int removed = data.deleteCity(city);
@@ -307,21 +274,8 @@ public final class Demolition {
         }
     }
 
-    /**
-     * How much of this one has to go before it is a ruin.
-     *
-     * <p>An eighth of the footprint, and never less than {@link #MIN_RUIN}. A single creeper takes
-     * around thirty blocks in total and rarely half that many inside one box, so an accident still
-     * does not condemn a house — but somebody who sets out to demolish one now can, and a warhead
-     * takes the district.
-     */
-    private static int threshold(Structure structure) {
-        return Math.max(MIN_RUIN, structure.footprint() / RUIN_SHARE);
-    }
-
     /** Dropped with the world, so a new one does not inherit the last one's rubble. */
     public static void clear() {
         PENDING.clear();
-        DAMAGE.clear();
     }
 }
