@@ -727,7 +727,7 @@
   "service.citiesinlife.bodyguard": "Bodyguard",
   "screen.citiesinlife.hire_guard": "Hire Bodyguard (%s)",
   "screen.citiesinlife.dismiss_guard": "Dismiss One",
-  "screen.citiesinlife.guards_on": "Bodyguards: %s / %s",
+  "screen.citiesinlife.guards_on": "%s / %s",
   "message.citiesinlife.guard_hired": "%s joins your detail. %s of %s.",
   "message.citiesinlife.guard_dismissed": "%s is off your detail.",
   "message.citiesinlife.guards_full": "Your detail is full.",

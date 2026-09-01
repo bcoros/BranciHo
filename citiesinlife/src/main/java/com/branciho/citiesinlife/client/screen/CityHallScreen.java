@@ -262,6 +262,8 @@ public class CityHallScreen extends Screen {
                     CityScreen.COLOUR_BAD, false);
         }
 
+        // Numbers only. The two buttons either side of it leave sixty-six pixels between them,
+        // and a full sentence would be drawn straight over both of them.
         Component detail = Component.translatable("screen.citiesinlife.guards_on",
                 hall.guards(), City.MAX_GUARDS);
         graphics.drawCenteredString(this.font, detail, left + PANEL_WIDTH / 2,

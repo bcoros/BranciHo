@@ -81,8 +81,6 @@ public class BodyguardFollowGoal extends Goal {
         if (boss == null) {
             return;
         }
-        guard.getLookControl().setLookAt(boss, 10.0F, guard.getMaxHeadXRot());
-
         Vec3 station = station(boss);
         double away = guard.position().distanceToSqr(station);
 
@@ -96,12 +94,19 @@ public class BodyguardFollowGoal extends Goal {
         }
         if (away < SETTLED * SETTLED) {
             guard.getNavigation().stop();
-            // On station: face the same way the boss is, which is what turns four people standing
-            // near somebody into a formation.
+            // On station: face the same way the boss faces, which is what turns four people
+            // standing near somebody into a formation.
+            //
+            // Deliberately not looking AT them. A guard stationed behind their employer who is
+            // also told to watch them has its head turned a hundred and eighty degrees against a
+            // body the look control is dragging round after it, and the two fight every tick.
             guard.setYRot(boss.getYRot());
             guard.setYBodyRot(boss.getYRot());
+            guard.setYHeadRot(boss.getYRot());
             return;
         }
+        // Moving: look where they are going, which the navigation is already steering towards.
+        guard.getLookControl().setLookAt(station.x, station.y + boss.getEyeHeight(), station.z);
         if (--untilRepath > 0) {
             return;
         }
@@ -113,9 +118,9 @@ public class BodyguardFollowGoal extends Goal {
     /**
      * Where in the wedge this guard belongs.
      *
-     * <p>Slots go 0, 1, 2, 3 as centre-right, centre-left, wide-right, wide-left, and the rank
-     * steps back every two, so a four-strong detail is two ranks of two rather than a line four
-     * wide that cannot get through a door.
+     * <p>Slots alternate side and step back a rank every two, so a four-strong detail is two ranks
+     * of two rather than a line four wide that cannot get through a door. All four stations are
+     * distinct by construction: two ranks, two sides, and the outer rank stands wider.
      */
     private Vec3 station(Player boss) {
         int slot = Math.max(0, guard.formationSlot());
@@ -125,15 +130,16 @@ public class BodyguardFollowGoal extends Goal {
         float yaw = (float) Math.toRadians(boss.getYRot());
         double forwardX = -Math.sin(yaw);
         double forwardZ = Math.cos(yaw);
-        // Right of the direction of travel, which on Minecraft's axes is the forward vector turned
-        // ninety degrees.
-        double rightX = forwardZ;
-        double rightZ = -forwardX;
+        // Across the direction of travel: the forward vector turned a quarter turn. Which of the
+        // two sides this lands on does not matter, because the slots alternate either way and the
+        // wedge is symmetrical.
+        double acrossX = forwardZ;
+        double acrossZ = -forwardX;
 
         return new Vec3(
-                boss.getX() - forwardX * RANK * rank + rightX * side,
+                boss.getX() - forwardX * RANK * rank + acrossX * side,
                 boss.getY(),
-                boss.getZ() - forwardZ * RANK * rank + rightZ * side);
+                boss.getZ() - forwardZ * RANK * rank + acrossZ * side);
     }
 
     private @org.jetbrains.annotations.Nullable Player employer() {
