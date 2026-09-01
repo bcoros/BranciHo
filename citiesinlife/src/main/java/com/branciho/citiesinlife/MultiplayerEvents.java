@@ -33,6 +33,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.UUID;
 import com.branciho.citiesinlife.nuclear.Radiation;
 import net.minecraft.world.damagesource.DamageTypes;
+import net.minecraft.world.level.Explosion;
 import net.minecraft.world.entity.LivingEntity;
 import com.branciho.citiesinlife.city.Demolition;
 import net.neoforged.bus.api.EventPriority;
@@ -161,8 +162,31 @@ public final class MultiplayerEvents {
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void onExplosionAftermath(ExplosionEvent.Detonate event) {
         if (event.getLevel() instanceof ServerLevel level) {
-            Demolition.blast(level, event.getAffectedBlocks(), event.getExplosion().radius());
+            Demolition.blast(level, event.getAffectedBlocks(), event.getExplosion().radius(),
+                    shielded(event.getExplosion()));
         }
+    }
+
+    /**
+     * Whether a registered building should take this blast on the chin instead of losing blocks.
+     *
+     * <p>The rule is war, not monsters. A charge somebody set is what the health system is for: it
+     * comes off the building's registration and leaves the walls standing, so a siege is a siege
+     * rather than a demolition, and you knock a city out of the game without leaving a moonscape
+     * where it stood.
+     *
+     * <p>A creeper is not a siege. Explosions that came out of a living thing — a creeper, a ghast,
+     * a wither — go through the shield and take the blocks with them, exactly as they always have.
+     * A building nothing in the world could scratch is a building nobody has to maintain, and a
+     * city that cannot be damaged by living in it is scenery.
+     *
+     * <p>Warheads and meltdowns are not here at all. Both carve their crater by hand rather than
+     * through an explosion's block list, so neither was ever on this path: a crater is still a
+     * crater, and the mushroom does not politely go round your houses.
+     */
+    private static boolean shielded(Explosion explosion) {
+        return explosion.getIndirectSourceEntity() == null
+                && !(explosion.getDirectSourceEntity() instanceof LivingEntity);
     }
 
     /**

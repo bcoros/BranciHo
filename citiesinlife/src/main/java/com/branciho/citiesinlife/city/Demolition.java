@@ -114,17 +114,64 @@ public final class Demolition {
      * its own blast resistance — or that the border rules took back out of the list — does not
      * take a road with it.
      */
-    public static void blast(ServerLevel level, Collection<BlockPos> destroyed, float radius) {
+    public static void blast(ServerLevel level, Collection<BlockPos> destroyed, float radius,
+                             boolean shielded) {
         if (destroyed.isEmpty()) {
             return;
         }
+        // Markings first, and over the WHOLE list, before anything is shielded out of it. Roads and
+        // pavement have no health and never get any: a tile is a flag on a coordinate, it is hit
+        // once and it is gone. A registered building standing over a road does not protect the road.
         RoadNetwork roads = RoadNetwork.get(level.getServer());
         PathNetwork paths = PathNetwork.get(level.getServer());
         for (BlockPos pos : destroyed) {
             roads.mark(level.dimension(), pos, pos, 0, true);
             paths.mark(level.dimension(), pos, pos, true);
         }
-        wound(level, destroyed, force(radius));
+
+        List<Structure> nearby = structuresNear(level, destroyed);
+        wound(nearby, destroyed, force(radius));
+
+        // And now the shield. The damage above was counted from the blast the explosion WANTED to
+        // do; taking those positions back out of its list is what stops it actually doing it.
+        if (shielded && !nearby.isEmpty()) {
+            destroyed.removeIf(pos -> covered(nearby, pos));
+        }
+    }
+
+    /**
+     * Whether a registered building is standing over this block and taking the hit for it.
+     *
+     * <p>Anybody's building, not only your own — that is the whole of the war mechanic. An enemy
+     * city's walls absorb your charges until you have ground its registration down to nothing, and
+     * yours absorb theirs.
+     */
+    private static boolean covered(List<Structure> nearby, BlockPos pos) {
+        for (Structure structure : nearby) {
+            if (structure.contains(pos)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Every registered building in a chunk this blast touched, looked up once rather than per block. */
+    private static List<Structure> structuresNear(ServerLevel level, Collection<BlockPos> destroyed) {
+        CityData data = CityData.get(level.getServer());
+        Set<Long> chunks = new HashSet<>();
+        for (BlockPos pos : destroyed) {
+            chunks.add(ChunkPos.asLong(pos.getX() >> 4, pos.getZ() >> 4));
+        }
+        List<Structure> nearby = new ArrayList<>();
+        Set<UUID> seen = new HashSet<>();
+        for (long chunkKey : chunks) {
+            for (Structure structure : data.structuresInChunk(level.dimension(), chunkKey)) {
+                if (seen.add(structure.id())) {
+                    nearby.add(structure);
+                }
+            }
+        }
+        return nearby;
     }
 
     /**
@@ -161,21 +208,7 @@ public final class Demolition {
      * {@code structureAt} walks a chunk's structure list every time it is called, so asking it once
      * per victim would be the same handful of buildings looked up three hundred times.
      */
-    private static void wound(ServerLevel level, Collection<BlockPos> destroyed, float force) {
-        CityData data = CityData.get(level.getServer());
-        Set<Long> chunks = new HashSet<>();
-        for (BlockPos pos : destroyed) {
-            chunks.add(ChunkPos.asLong(pos.getX() >> 4, pos.getZ() >> 4));
-        }
-        List<Structure> nearby = new ArrayList<>();
-        Set<UUID> seen = new HashSet<>();
-        for (long chunkKey : chunks) {
-            for (Structure structure : data.structuresInChunk(level.dimension(), chunkKey)) {
-                if (seen.add(structure.id())) {
-                    nearby.add(structure);
-                }
-            }
-        }
+    private static void wound(List<Structure> nearby, Collection<BlockPos> destroyed, float force) {
         if (nearby.isEmpty()) {
             return;
         }
