@@ -31,15 +31,6 @@ public final class Structure {
     /** The least health any registered building has, however little it is made of. */
     public static final int MIN_HEALTH = 40;
 
-    /**
-     * Material assumed per cell of floor for a building registered before health existed.
-     *
-     * <p>Two: a room is mostly air, and its walls, floor and ceiling are roughly this much material
-     * per cell of the space they enclose. Only ever used once per old building, and replaced by a
-     * real count the first time anything re-measures it.
-     */
-    private static final int ASSUMED_MASS_PER_CELL = 2;
-
     private final StructureType type;
     private final ResourceKey<Level> dimension;
     private final BlockPos min;
@@ -132,6 +123,18 @@ public final class Structure {
     /** How much material the last measurement found. */
     public int blockMass() {
         return blockMass;
+    }
+
+    /**
+     * Whether anybody has actually counted what this is built out of.
+     *
+     * <p>False for every building registered before health existed. Until it is true the building
+     * has no honest health, so nothing is allowed to damage it: the first blast against an
+     * uncounted building counts it first, and a background pass counts the rest while the city
+     * ticks over.
+     */
+    public boolean massKnown() {
+        return blockMass > 0;
     }
 
     /**
@@ -285,13 +288,12 @@ public final class Structure {
             }
             structure.usableCells = total;
         }
-        // Absent on every building registered before health existed. Mass of nought would make
-        // maxHealth the floor and put a cathedral on the same footing as a shed, so an unmeasured
-        // building is given a mass derived from the space inside it - a rough stand-in until the
-        // next blast re-measures it properly - and is loaded undamaged.
-        structure.blockMass = tag.contains("mass")
-                ? tag.getInt("mass")
-                : structure.usableCells * ASSUMED_MASS_PER_CELL;
+        // Absent on every building registered before health existed, and NOT guessed at. A guess
+        // was tried - material assumed from the space inside - and it was badly wrong in both
+        // directions: it put a solid hut on the same footing as a shed, near enough the floor that
+        // one charge finished it, and it made big and small buildings read almost alike. Nought
+        // means "nobody has counted this yet", and something will go and count it.
+        structure.blockMass = tag.getInt("mass");
         structure.health = tag.contains("health") ? tag.getInt("health") : structure.maxHealth();
         return structure;
     }

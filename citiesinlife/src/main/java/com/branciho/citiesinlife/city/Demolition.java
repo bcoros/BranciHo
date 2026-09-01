@@ -60,12 +60,16 @@ public final class Demolition {
     /**
      * Health taken off per block a blast removes from inside the box.
      *
-     * <p>Four, so a building is finished when roughly a quarter of what it is made of has been
-     * taken out of it. A building is not a solid lump — most of a house is the air inside it — so
-     * demanding every block would mean nothing short of a nuclear warhead ever finished anything,
-     * which was the previous behaviour and is why TNT left registrations standing over rubble.
+     * <p>One. It was four, on the theory that a building is mostly air and a quarter of its
+     * material gone is a wreck — and four turned out to mean one stick of TNT in the middle of a
+     * room did about a hundred and sixty damage, which is most of a small house in a single charge.
+     * The point of health is that you can watch it come down, and a bar that empties in one hit is
+     * not a bar.
+     *
+     * <p>At one, a charge takes forty-odd points. A hut is four or five charges, a two-storey house
+     * fifteen, a castle fifty — which is the spread the whole system exists to produce.
      */
-    private static final int DAMAGE_PER_BLOCK = 4;
+    private static final int DAMAGE_PER_BLOCK = 1;
 
     /** One damaged building, and the health this owes it. */
     private record Wound(UUID structureId, int damage) {
@@ -265,6 +269,13 @@ public final class Demolition {
             return;
         }
 
+        // A building nobody has counted has no honest health, and hurting it against a placeholder
+        // is how one charge used to finish a solid house. Count it first, here, where the level is
+        // already loaded and a scan is about to happen anyway.
+        if (!structure.massKnown()) {
+            recount(level, structure);
+        }
+
         // Health is the whole of it now, and it is a number the player can watch fall: structure
         // mode draws it over the box. There is no second, invisible rule that can condemn a
         // building whose bar still says it is standing.
@@ -273,17 +284,14 @@ public final class Demolition {
 
         City city = data.city(structure.cityId());
 
-        // Standing, but with a hole in it. The city should feel that immediately rather than going
-        // on housing people in a room that is now open to the sky - and the re-measure is also what
-        // keeps the health bar honest, since the mass it is scaled against has just changed.
+        // Standing, but with a hole in it. Only worth re-reading when blocks actually went: a
+        // shielded charge changes nothing inside the box, and a creeper changes both the space and
+        // the material.
         if (!ruined && structure.type().measured()) {
-            StructureScanner.Measurement now = StructureScanner.measure(
-                    level, structure.min(), structure.max());
-            if (now.usableCells() != structure.usableCells()) {
-                structure.setMeasurement(now.usableCells());
-                if (city != null) {
-                    CitySimulation.refresh(data, city);
-                }
+            int cellsBefore = structure.usableCells();
+            recount(level, structure);
+            if (structure.usableCells() != cellsBefore && city != null) {
+                CitySimulation.refresh(data, city);
             }
         }
         if (!ruined) {
@@ -340,6 +348,28 @@ public final class Demolition {
             if (owner == null || !other.getUUID().equals(owner.getUUID())) {
                 ServerActions.syncNeighbours(other);
             }
+        }
+    }
+
+    /**
+     * Go and look at what a building is actually made of.
+     *
+     * <p>Both numbers at once, because they come off the same walk: the space inside decides how
+     * many people it holds, the material decides how much punishment it takes. Health rides along
+     * with the mass in proportion, so counting a building for the first time does not hand a
+     * damaged one a free repair, and re-counting a holed one does not either.
+     */
+    public static void recount(ServerLevel level, Structure structure) {
+        StructureScanner.Measurement now = StructureScanner.measure(
+                level, structure.min(), structure.max());
+        boolean first = !structure.massKnown();
+        structure.setMeasurement(now.usableCells());
+        structure.setMass(now.blockMass());
+        if (first) {
+            // Nobody has ever counted this one, so it has no damage history worth keeping: an
+            // existing building meets the health system undamaged rather than at whatever fraction
+            // the placeholder happened to imply.
+            structure.restore();
         }
     }
 

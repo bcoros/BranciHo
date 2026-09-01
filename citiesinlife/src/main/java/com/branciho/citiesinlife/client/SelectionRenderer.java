@@ -55,8 +55,11 @@ public final class SelectionRenderer {
     /** Vanilla's nameplate scale: one text pixel to this many blocks. */
     private static final float LABEL_SCALE = 0.025F;
 
-    private static final float BAR_WIDTH = 60.0F;
-    private static final float BAR_HEIGHT = 5.0F;
+    private static final float BAR_WIDTH = 72.0F;
+    private static final float BAR_HEIGHT = 7.0F;
+
+    /** How much larger the health figure is drawn than the name under it. */
+    private static final float NUMBER_SCALE = 1.5F;
     private static final double MAX_LINE_DISTANCE_SQR = 260.0D * 260.0D;
 
     /** Segments per wire. Enough for the sag to read as a curve rather than a kink. */
@@ -342,14 +345,23 @@ public final class SelectionRenderer {
 
             healthBar(poseStack, buffers, share);
 
-            Component name = Component.literal(entry.name());
+            // The number sits directly on top of the bar and is drawn at half again the size of
+            // the name below it, because it is the thing you climbed a hill to read. The name is
+            // context; the health is the answer.
             Component numbers = Component.translatable("hud.citiesinlife.structure_health",
                     health, max);
-            font.drawInBatch(name, -font.width(name) / 2.0F, -BAR_HEIGHT - 22.0F,
-                    0xFFFFFFFF, false, poseStack.last().pose(), buffers,
-                    Font.DisplayMode.SEE_THROUGH, 0x40000000, LightTexture.FULL_BRIGHT);
-            font.drawInBatch(numbers, -font.width(numbers) / 2.0F, -BAR_HEIGHT - 11.0F,
+            poseStack.pushPose();
+            poseStack.translate(0.0F, -BAR_HEIGHT - 4.0F, 0.0F);
+            poseStack.scale(NUMBER_SCALE, NUMBER_SCALE, 1.0F);
+            font.drawInBatch(numbers, -font.width(numbers) / 2.0F, -font.lineHeight,
                     barColour(share), false, poseStack.last().pose(), buffers,
+                    Font.DisplayMode.SEE_THROUGH, 0x66000000, LightTexture.FULL_BRIGHT);
+            poseStack.popPose();
+
+            Component name = Component.literal(entry.name());
+            font.drawInBatch(name, -font.width(name) / 2.0F,
+                    -BAR_HEIGHT - 6.0F - font.lineHeight * NUMBER_SCALE - font.lineHeight,
+                    0xFFFFFFFF, false, poseStack.last().pose(), buffers,
                     Font.DisplayMode.SEE_THROUGH, 0x40000000, LightTexture.FULL_BRIGHT);
 
             poseStack.popPose();
@@ -383,12 +395,19 @@ public final class SelectionRenderer {
         quads.addVertex(pose, x0, y0, 0.0F).setColor(r, g, b, a);
     }
 
-    /** Green down to amber down to red, so the state reads before the numbers do. */
+    /**
+     * Green down to amber down to red, so the state reads before the numbers do.
+     *
+     * <p>Green for most of the bar's life on purpose. A bar that starts changing colour the moment
+     * it is scratched trains you to ignore it; this one stays green until a building has genuinely
+     * lost a third of itself, goes amber while it is in trouble, and is red only when the next
+     * charge or two will finish it.
+     */
     private static int barColour(float share) {
-        if (share > 0.6F) {
+        if (share > 0.66F) {
             return 0xFF66E576;
         }
-        return share > 0.3F ? 0xFFFFD859 : 0xFFFF6B6B;
+        return share > 0.33F ? 0xFFFFD859 : 0xFFFF6B6B;
     }
 
     // ------------------------------------------------------------ power lines

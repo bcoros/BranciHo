@@ -1,6 +1,7 @@
 package com.branciho.citiesinlife.sim;
 
 import com.branciho.citiesinlife.city.City;
+import com.branciho.citiesinlife.city.Demolition;
 import com.branciho.citiesinlife.city.CityData;
 import com.branciho.citiesinlife.blockentity.SewageCollectorBlockEntity;
 import com.branciho.citiesinlife.blockentity.WaterStorageBlockEntity;
@@ -178,7 +179,7 @@ public final class CitySimulation {
         for (City city : data.cities()) {
             makeRubbish(city);
             grow(city);
-            repair(data, city);
+            upkeep(server, data, city);
             collectTaxes(city);
         }
         data.setDirty();
@@ -366,21 +367,46 @@ public final class CitySimulation {
     /**
      * How much of a building comes back per growth step.
      *
-     * <p>A two-hundredth of what it is worth, so any building — hut or tower — takes about half an
-     * hour of peace to come back from nothing. Slow enough that repairing by hand is still the fast
-     * way, fast enough that a chip from a stray creeper is not permanent.
+     * <p>A fortieth of what it is worth, so any building — hut or tower — comes back from nothing
+     * in about seven minutes of peace. It was a two-hundredth, which worked out at one point every
+     * ten seconds on a small house: technically healing, and completely invisible to anybody
+     * watching the bar, which is the same thing as not healing at all.
      */
-    private static final int REPAIR_SHARE = 200;
+    private static final int REPAIR_SHARE = 40;
 
     /**
-     * Buildings mend themselves while nobody is knocking them down.
+     * How many uncounted buildings are surveyed per city per step.
      *
-     * <p>Not free healing so much as the alternative to bookkeeping: without it, damage is
-     * permanent until the box is deleted and redrawn, and a city that has ever been shelled carries
-     * the scars for the rest of the save with no way to clear them.
+     * <p>Every building registered before health existed has never had its material counted, and
+     * counting one is a walk over its whole box. Two per city per ten seconds gets a mature city
+     * done in a few minutes without ever costing a visible tick.
      */
-    private static void repair(CityData data, City city) {
+    private static final int RECOUNTS_PER_STEP = 2;
+
+    /**
+     * Buildings mend themselves while nobody is knocking them down, and buildings nobody has ever
+     * counted get counted.
+     *
+     * <p>The mending is not free healing so much as the alternative to bookkeeping: without it,
+     * damage is permanent until the box is deleted and redrawn, and a city that has ever been
+     * shelled carries the scars for the rest of the save with no way to clear them.
+     *
+     * <p>The counting is the migration. A building from before this version has no idea what it is
+     * made of, and until it does it has no honest health — so this walks a couple of them per step
+     * until the whole city is accounted for. Only ones whose ground is loaded: a survey of blocks
+     * that are not in memory is a survey of nothing.
+     */
+    private static void upkeep(MinecraftServer server, CityData data, City city) {
+        ServerLevel level = server.getLevel(city.dimension());
+        int budget = RECOUNTS_PER_STEP;
         for (Structure structure : data.structuresOf(city)) {
+            if (budget > 0 && !structure.massKnown() && level != null
+                    && structure.dimension().equals(level.dimension())
+                    && level.isLoaded(structure.min())) {
+                Demolition.recount(level, structure);
+                budget--;
+                data.setDirty();
+            }
             if (structure.health() < structure.maxHealth()) {
                 structure.heal(Math.max(1, structure.maxHealth() / REPAIR_SHARE));
                 data.setDirty();
