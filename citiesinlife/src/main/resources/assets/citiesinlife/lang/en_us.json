@@ -723,7 +723,7 @@
   "block.citiesinlife.hush_button": "Silence Button",
   "message.citiesinlife.button_no_city": "You have no city. This button belongs to one.",
   "message.citiesinlife.button_not_in_hall": "This button only works inside your own city hall.",
-  "service.citiesinlife.clerk": "City Hall",
+  "service.citiesinlife.clerk": "Clerks",
   "service.citiesinlife.bodyguard": "Bodyguard",
   "screen.citiesinlife.hire_guard": "Hire Bodyguard (%s)",
   "screen.citiesinlife.dismiss_guard": "Dismiss One",

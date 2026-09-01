@@ -38,11 +38,10 @@ public class HologramRenderer implements BlockEntityRenderer<HologramMapBlockEnt
         // Model geometry is authored with Y downwards; this puts it the right way up.
         poseStack.scale(1.0F, -1.0F, -1.0F);
 
-        // The plinth is a solid object and is lit like one.
-        globe.visible = false;
+        // Drawn a part at a time rather than from the root, because the two halves want different
+        // render types and different light: the plinth is a solid object and is lit like one.
         base.render(poseStack, buffer.getBuffer(RenderType.entityCutoutNoCull(TEXTURE)),
                 packedLight, packedOverlay);
-        globe.visible = true;
 
         // The globe is light: full brightness, translucent, and turning. The bob is what stops it
         // reading as a solid ornament bolted to the top of the plinth.

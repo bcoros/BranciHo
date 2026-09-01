@@ -2781,6 +2781,9 @@ public final class ServerActions {
      * the hall puts them on their feet on its next pass, the same way the barracks does for the
      * army — the roll is the truth and the body is its shadow.
      */
+    /** What a bodyguard comes with. Better than fists, well short of the army's best. */
+    private static final String GUARD_WEAPON = "minecraft:iron_sword";
+
     private static void hireGuard(ServerPlayer player, CityData data, City own) {
         if (own.guards().size() >= City.MAX_GUARDS) {
             reject(player, "guards_full");
@@ -2792,7 +2795,10 @@ public final class ServerActions {
             return;
         }
         String name = SOLDIER_NAMES[player.level().random.nextInt(SOLDIER_NAMES.length)];
-        own.engage(new City.Soldier(UUID.randomUUID(), name, 0, "", 0L));
+        // Armed on hire, unlike a soldier. A soldier is issued a weapon at the barracks through the
+        // Military Tool, and a bodyguard has no equivalent - hiring one and being handed somebody
+        // who fights with their fists is not what the price implies.
+        own.engage(new City.Soldier(UUID.randomUUID(), name, 0, GUARD_WEAPON, 0L));
         data.setDirty();
         own.note(player.level().getGameTime(), "guard_hired", name);
         player.sendSystemMessage(Component.translatable(
