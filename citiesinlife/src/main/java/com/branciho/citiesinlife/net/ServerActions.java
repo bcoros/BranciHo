@@ -2566,7 +2566,11 @@ public final class ServerActions {
     }
 
     /**
-     * Empty every silo the city owns onto one chunk.
+     * Empty every silo the city owns onto a city you are at war with.
+     *
+     * <p>The target is a <em>country</em>, not a square. Each silo then draws its own chunk out of
+     * that city's claimed ground, so a volley scatters across the whole place instead of dropping
+     * everything you own into one hole.
      *
      * <p>Each silo is put through exactly the same {@code launch} as the single-missile button, one
      * at a time, and the refusals are collected rather than aborting the volley. That is the whole

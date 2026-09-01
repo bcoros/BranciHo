@@ -48,6 +48,18 @@ public class LaunchAllScreen extends Screen {
     /** Who is selected, so the fire button can be a deliberate second click rather than the first. */
     private @org.jetbrains.annotations.Nullable UUID chosen;
 
+    /** Whether the refresh has been asked for. Once per screen, not once per button press. */
+    private boolean asked;
+
+    /**
+     * What the list looked like when the buttons were built.
+     *
+     * <p>The neighbours table is replaced silently by the packet handler — nothing tells an open
+     * screen about it. Without this, a screen opened before the reply lands says you are at war
+     * with nobody and goes on saying it, and a war declared while you are reading never appears.
+     */
+    private String stamp = "";
+
     public LaunchAllScreen() {
         super(Component.translatable("screen.citiesinlife.launch_all"));
     }
@@ -74,9 +86,15 @@ public class LaunchAllScreen extends Screen {
         top = (this.height - panelHeight()) / 2;
         // The neighbours table is the same one the Neighbours tab reads, and a city sync refreshes
         // it. Asking on open means a war declared while this screen was shut is already in the list.
-        CitiesInLifeNetwork.sendToServer(new RequestCityPayload());
+        // Once per screen: init() runs again on every button press, and a packet per click would be
+        // a request storm for a table that has not changed.
+        if (!asked) {
+            asked = true;
+            CitiesInLifeNetwork.sendToServer(new RequestCityPayload());
+        }
 
         List<NeighbourCitiesPayload.Entry> targets = enemies();
+        stamp = stamp(targets);
         scroll = Mth.clamp(scroll, 0, Math.max(0, targets.size() - ROWS));
         if (chosen != null && targets.stream().noneMatch(e -> e.cityId().equals(chosen))) {
             // Peace was made while you were looking at them.
@@ -136,6 +154,29 @@ public class LaunchAllScreen extends Screen {
                         press -> Minecraft.getInstance().setScreen(new CityHallScreen()))
                 .bounds(left + PANEL_WIDTH / 2 - 45, foot + 26, 90, 20)
                 .build());
+    }
+
+    /** A cheap signature of the list, so a change to it can be spotted without diffing. */
+    private static String stamp(List<NeighbourCitiesPayload.Entry> targets) {
+        StringBuilder builder = new StringBuilder();
+        for (NeighbourCitiesPayload.Entry entry : targets) {
+            builder.append(entry.cityId()).append('/').append(entry.name()).append(';');
+        }
+        return builder.toString();
+    }
+
+    /**
+     * Rebuild when the table underneath changes.
+     *
+     * <p>Only when it actually changes: the reply to the refresh usually says the same thing, and
+     * rebuilding on every tick would throw away the target you had just clicked.
+     */
+    @Override
+    public void tick() {
+        List<NeighbourCitiesPayload.Entry> targets = enemies();
+        if (!stamp.equals(stamp(targets))) {
+            rebuildWidgets();
+        }
     }
 
     @Override
