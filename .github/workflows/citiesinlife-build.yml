@@ -1,0 +1,98 @@
+name: Build Cities In Life
+
+on:
+  push:
+    paths:
+      - 'citiesinlife/**'
+      - '.github/workflows/citiesinlife-build.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Compile mod jar
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Cache Gradle and NeoForge artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            citiesinlife/.gradle
+          key: gradle-cil-${{ runner.os }}-${{ hashFiles('citiesinlife/gradle.properties', 'citiesinlife/*.gradle') }}
+          restore-keys: |
+            gradle-cil-${{ runner.os }}-
+
+      - name: Build
+        working-directory: citiesinlife
+        run: |
+          set -o pipefail
+          ./gradlew --no-daemon build 2>&1 | tee "$RUNNER_TEMP/build.log"
+
+      # Two reviewers disagreed on whether 1.21.1 wants data/<ns>/loot_table or loot_tables, and
+      # getting it wrong means blocks silently drop nothing - the exact bug this is fixing. Ask the
+      # real Minecraft jar instead of guessing, and fail loudly if our layout does not match it.
+      - name: Verify data pack layout against Minecraft
+        working-directory: citiesinlife
+        run: |
+          OURS=$(ls src/main/resources/data/citiesinlife | grep '^loot_table' | head -1)
+          echo "we ship: $OURS"
+
+          VANILLA=""
+          SEARCHED=0
+          for JAR in $(find "$HOME/.gradle" build -name '*.jar' 2>/dev/null \
+                       | grep -viE 'sources|javadoc' | head -400); do
+            SEARCHED=$((SEARCHED + 1))
+            HIT=$(unzip -Z1 "$JAR" 'data/minecraft/loot_table*/*' 2>/dev/null | head -1)
+            if [ -n "$HIT" ]; then
+              echo "vanilla loot tables found in: $JAR"
+              echo "vanilla path: $HIT"
+              VANILLA=$(echo "$HIT" | cut -d/ -f3)
+              break
+            fi
+          done
+
+          if [ -z "$VANILLA" ]; then
+            echo "::warning::Searched $SEARCHED jars and found no vanilla loot tables, so the data pack layout is UNVERIFIED. If blocks drop nothing in game, this is the first thing to check."
+            exit 0
+          fi
+
+          echo "Minecraft uses: $VANILLA   |   we ship: $OURS"
+          if [ "$VANILLA" != "$OURS" ]; then
+            echo "::error::Loot table directory mismatch - Minecraft expects '$VANILLA' but we ship '$OURS'. Every block would drop nothing."
+            exit 1
+          fi
+          echo "loot table directory matches"
+
+      # Gradle buries compiler errors under hundreds of lines. Re-print just the
+      # errors at the end of the log so a failure is readable at a glance.
+      - name: Summarise failure
+        if: failure()
+        run: |
+          LOG="$RUNNER_TEMP/build.log"
+          [ -f "$LOG" ] || { echo "no build log produced"; exit 0; }
+          echo "===================== JAVAC ERRORS ====================="
+          grep -E "\.java:[0-9]+: (error|warning):" -A 3 "$LOG" | head -250 || true
+          echo "===================== WHAT WENT WRONG ====================="
+          sed -n '/What went wrong/,/^\* Try:/p' "$LOG" | head -60 || true
+          echo "===================== ERROR LINES ====================="
+          grep -iE "^(FAILURE|Execution failed|Could not resolve|Could not find|error:)" "$LOG" | head -40 || true
+
+      - name: Upload mod jar
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: citiesinlife-jar
+          path: citiesinlife/build/libs/*.jar
+          if-no-files-found: warn

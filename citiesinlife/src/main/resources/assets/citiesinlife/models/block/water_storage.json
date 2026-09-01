@@ -1,0 +1,9 @@
+{
+  "parent": "minecraft:block/cube_bottom_top",
+  "textures": {
+    "particle": "citiesinlife:block/water_storage_side",
+    "side": "citiesinlife:block/water_storage_side",
+    "top": "citiesinlife:block/water_storage_top",
+    "bottom": "citiesinlife:block/water_storage_top"
+  }
+}

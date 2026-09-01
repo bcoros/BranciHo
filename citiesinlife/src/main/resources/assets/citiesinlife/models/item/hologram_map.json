@@ -1,0 +1,305 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "particle": "citiesinlife:block/hologram_map",
+    "metal": "citiesinlife:block/hologram_map",
+    "glow": "citiesinlife:block/hologram_map"
+  },
+  "elements": [
+    {
+      "name": "plinth",
+      "from": [
+        2,
+        0,
+        2
+      ],
+      "to": [
+        14,
+        3,
+        14
+      ],
+      "faces": {
+        "north": {
+          "texture": "#metal",
+          "uv": [
+            0.5,
+            0.5,
+            7.0,
+            7.0
+          ]
+        },
+        "south": {
+          "texture": "#metal",
+          "uv": [
+            0.5,
+            0.5,
+            7.0,
+            7.0
+          ]
+        },
+        "east": {
+          "texture": "#metal",
+          "uv": [
+            0.5,
+            0.5,
+            7.0,
+            7.0
+          ]
+        },
+        "west": {
+          "texture": "#metal",
+          "uv": [
+            0.5,
+            0.5,
+            7.0,
+            7.0
+          ]
+        },
+        "up": {
+          "texture": "#metal",
+          "uv": [
+            0.5,
+            0.5,
+            7.0,
+            7.0
+          ]
+        },
+        "down": {
+          "texture": "#metal",
+          "uv": [
+            0.5,
+            0.5,
+            7.0,
+            7.0
+          ]
+        }
+      }
+    },
+    {
+      "name": "column",
+      "from": [
+        6,
+        3,
+        6
+      ],
+      "to": [
+        10,
+        8,
+        10
+      ],
+      "faces": {
+        "north": {
+          "texture": "#metal",
+          "uv": [
+            0.5,
+            0.5,
+            7.0,
+            7.0
+          ]
+        },
+        "south": {
+          "texture": "#metal",
+          "uv": [
+            0.5,
+            0.5,
+            7.0,
+            7.0
+          ]
+        },
+        "east": {
+          "texture": "#metal",
+          "uv": [
+            0.5,
+            0.5,
+            7.0,
+            7.0
+          ]
+        },
+        "west": {
+          "texture": "#metal",
+          "uv": [
+            0.5,
+            0.5,
+            7.0,
+            7.0
+          ]
+        },
+        "up": {
+          "texture": "#metal",
+          "uv": [
+            0.5,
+            0.5,
+            7.0,
+            7.0
+          ]
+        },
+        "down": {
+          "texture": "#metal",
+          "uv": [
+            0.5,
+            0.5,
+            7.0,
+            7.0
+          ]
+        }
+      }
+    },
+    {
+      "name": "dish",
+      "from": [
+        4,
+        8,
+        4
+      ],
+      "to": [
+        12,
+        10,
+        12
+      ],
+      "faces": {
+        "north": {
+          "texture": "#metal",
+          "uv": [
+            0.5,
+            0.5,
+            7.0,
+            7.0
+          ]
+        },
+        "south": {
+          "texture": "#metal",
+          "uv": [
+            0.5,
+            0.5,
+            7.0,
+            7.0
+          ]
+        },
+        "east": {
+          "texture": "#metal",
+          "uv": [
+            0.5,
+            0.5,
+            7.0,
+            7.0
+          ]
+        },
+        "west": {
+          "texture": "#metal",
+          "uv": [
+            0.5,
+            0.5,
+            7.0,
+            7.0
+          ]
+        },
+        "up": {
+          "texture": "#metal",
+          "uv": [
+            0.5,
+            0.5,
+            7.0,
+            7.0
+          ]
+        },
+        "down": {
+          "texture": "#metal",
+          "uv": [
+            0.5,
+            0.5,
+            7.0,
+            7.0
+          ]
+        }
+      }
+    },
+    {
+      "name": "globe",
+      "from": [
+        5,
+        11,
+        5
+      ],
+      "to": [
+        11,
+        16,
+        11
+      ],
+      "faces": {
+        "north": {
+          "texture": "#glow",
+          "uv": [
+            0.5,
+            9.0,
+            7.0,
+            15.0
+          ]
+        },
+        "south": {
+          "texture": "#glow",
+          "uv": [
+            0.5,
+            9.0,
+            7.0,
+            15.0
+          ]
+        },
+        "east": {
+          "texture": "#glow",
+          "uv": [
+            0.5,
+            9.0,
+            7.0,
+            15.0
+          ]
+        },
+        "west": {
+          "texture": "#glow",
+          "uv": [
+            0.5,
+            9.0,
+            7.0,
+            15.0
+          ]
+        },
+        "up": {
+          "texture": "#glow",
+          "uv": [
+            0.5,
+            9.0,
+            7.0,
+            15.0
+          ]
+        },
+        "down": {
+          "texture": "#glow",
+          "uv": [
+            0.5,
+            9.0,
+            7.0,
+            15.0
+          ]
+        }
+      }
+    }
+  ],
+  "display": {
+    "gui": {
+      "rotation": [
+        24,
+        42,
+        0
+      ],
+      "translation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    }
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "UUU",
+    "UUU",
+    "UUU"
+  ],
+  "key": {
+    "U": {
+      "item": "citiesinlife:uranium"
+    }
+  },
+  "result": {
+    "id": "citiesinlife:uranium_core",
+    "count": 1
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "pattern": [
+    "CDC",
+    "IPI",
+    "CIC"
+  ],
+  "key": {
+    "C": {
+      "item": "minecraft:copper_ingot"
+    },
+    "D": {
+      "item": "minecraft:light_blue_dye"
+    },
+    "I": {
+      "item": "minecraft:iron_ingot"
+    },
+    "P": {
+      "item": "citiesinlife:pipe_connector"
+    }
+  },
+  "result": {
+    "id": "citiesinlife:output_cooled_port",
+    "count": 1
+  }
+}

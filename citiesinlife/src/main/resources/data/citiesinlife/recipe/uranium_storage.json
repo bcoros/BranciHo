@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "pattern": [
+    "III",
+    "GUG",
+    "III"
+  ],
+  "key": {
+    "I": {
+      "item": "minecraft:iron_ingot"
+    },
+    "G": {
+      "item": "minecraft:glass"
+    },
+    "U": {
+      "item": "citiesinlife:uranium"
+    }
+  },
+  "result": {
+    "id": "citiesinlife:uranium_storage",
+    "count": 1
+  }
+}

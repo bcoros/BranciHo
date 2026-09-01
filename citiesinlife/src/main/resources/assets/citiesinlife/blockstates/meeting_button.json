@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "powered=false": {
+      "model": "citiesinlife:block/meeting_button"
+    },
+    "powered=true": {
+      "model": "citiesinlife:block/meeting_button_pressed"
+    }
+  }
+}

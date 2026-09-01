@@ -1,0 +1,19 @@
+.gradle/
+build/
+run/
+runs/
+out/
+repo/
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.eclipse/
+bin/
+.settings/
+.classpath
+.project
+
+# Left behind by tools/syntax-check.sh when javac spills its argument file.
+javac.*.args

@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    "citiesinlife:power_mast",
+    "citiesinlife:factory_output",
+    "citiesinlife:office_space",
+    "citiesinlife:register_counter"
+  ]
+}

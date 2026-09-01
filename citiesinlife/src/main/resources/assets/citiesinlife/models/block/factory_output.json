@@ -1,0 +1,9 @@
+{
+  "parent": "minecraft:block/cube_bottom_top",
+  "textures": {
+    "particle": "citiesinlife:block/factory_output_side",
+    "side": "citiesinlife:block/factory_output_side",
+    "top": "citiesinlife:block/factory_output_top",
+    "bottom": "citiesinlife:block/factory_output_top"
+  }
+}

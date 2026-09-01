@@ -1,0 +1,49 @@
+{
+  "variants": {
+    "segment=0,facing=north": {
+      "model": "citiesinlife:block/power_mast_post"
+    },
+    "segment=0,facing=east": {
+      "model": "citiesinlife:block/power_mast_post",
+      "y": 90
+    },
+    "segment=0,facing=south": {
+      "model": "citiesinlife:block/power_mast_post",
+      "y": 180
+    },
+    "segment=0,facing=west": {
+      "model": "citiesinlife:block/power_mast_post",
+      "y": 270
+    },
+    "segment=1,facing=north": {
+      "model": "citiesinlife:block/power_mast_post"
+    },
+    "segment=1,facing=east": {
+      "model": "citiesinlife:block/power_mast_post",
+      "y": 90
+    },
+    "segment=1,facing=south": {
+      "model": "citiesinlife:block/power_mast_post",
+      "y": 180
+    },
+    "segment=1,facing=west": {
+      "model": "citiesinlife:block/power_mast_post",
+      "y": 270
+    },
+    "segment=2,facing=north": {
+      "model": "citiesinlife:block/power_mast_top"
+    },
+    "segment=2,facing=east": {
+      "model": "citiesinlife:block/power_mast_top",
+      "y": 90
+    },
+    "segment=2,facing=south": {
+      "model": "citiesinlife:block/power_mast_top",
+      "y": 180
+    },
+    "segment=2,facing=west": {
+      "model": "citiesinlife:block/power_mast_top",
+      "y": 270
+    }
+  }
+}
