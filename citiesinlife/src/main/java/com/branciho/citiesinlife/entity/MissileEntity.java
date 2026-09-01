@@ -11,6 +11,8 @@ import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
@@ -227,7 +229,13 @@ public class MissileEntity extends Entity {
                 serverLevel.sendParticles(player, ParticleTypes.EXPLOSION_EMITTER, true,
                         getX(), getY(), getZ(), 8, 3.0D, 3.0D, 3.0D, 0.0D);
             }
-            Warhead.bang(serverLevel, blockPosition(), 4.0F, 0.9F);
+            // Not a warhead going off: a rocket being knocked out of the sky. Loud enough to be
+            // the news it is - somebody's missile just stopped - and pitched up so it never reads
+            // as the thing you were dreading arriving.
+            serverLevel.playSound(null, getX(), getY(), getZ(),
+                    SoundEvents.GENERIC_EXPLODE.value(), SoundSource.BLOCKS, 8.0F, 1.1F);
+            serverLevel.playSound(null, getX(), getY(), getZ(),
+                    SoundEvents.GENERIC_EXPLODE.value(), SoundSource.BLOCKS, 8.0F, 1.5F);
         }
         discard();
     }

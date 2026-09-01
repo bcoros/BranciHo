@@ -164,7 +164,7 @@ public final class Warhead {
                 Level.ExplosionInteraction.NONE);
 
         cloud(level, at, radius, kind.nuclear());
-        bang(level, at, kind.nuclear() ? 8.0F : 4.0F, kind.nuclear() ? 0.28F : 0.42F);
+        bang(level, at, kind.nuclear());
 
         if (kind.nuclear()) {
             // Half a kilometre of fallout for ten minutes. Taking the ground is not the same as
@@ -174,12 +174,49 @@ public final class Warhead {
         announce(level.getServer(), level, at, kind, firedBy);
     }
 
-    /** The noise, and the far-off rumble for everybody outside the blast. */
-    public static void bang(ServerLevel level, BlockPos at, float volume, float pitch) {
-        level.playSound(null, at.getX(), at.getY(), at.getZ(),
-                SoundEvents.GENERIC_EXPLODE.value(), SoundSource.BLOCKS, volume, pitch);
-        level.playSound(null, at.getX(), at.getY(), at.getZ(),
-                SoundEvents.LIGHTNING_BOLT_THUNDER, SoundSource.WEATHER, volume, 0.5F);
+    /**
+     * The noise, and the far-off rumble for everybody outside the blast.
+     *
+     * <p>Built out of LAYERS rather than out of one loud sound, because past a gain of one there is
+     * no such thing as louder: the mixer clamps a single sample there and a bigger volume number
+     * only buys RANGE. A warhead that reported eight was audible from a hundred and twenty blocks
+     * and, standing next to it, no louder than a stick of TNT — which is why it read as barely
+     * there. Three or four samples at different pitches on top of each other are what a big
+     * explosion actually is.
+     *
+     * <p>A nuclear detonation also reaches everybody in the dimension, wherever they are standing.
+     * That is the one weapon in the mod whose whole point is that the entire server knows.
+     */
+    public static void bang(ServerLevel level, BlockPos at, boolean nuclear) {
+        double x = at.getX() + 0.5D;
+        double y = at.getY() + 0.5D;
+        double z = at.getZ() + 0.5D;
+
+        // Range comes off the volume number; loudness comes off the stack.
+        float carry = nuclear ? 24.0F : 8.0F;
+
+        // The crack, then the body, then the roll. Pitched down for the bigger weapon, which is
+        // most of what makes one sound heavier than the other.
+        level.playSound(null, x, y, z, SoundEvents.GENERIC_EXPLODE.value(),
+                SoundSource.BLOCKS, carry, nuclear ? 0.24F : 0.46F);
+        level.playSound(null, x, y, z, SoundEvents.GENERIC_EXPLODE.value(),
+                SoundSource.BLOCKS, carry, nuclear ? 0.38F : 0.68F);
+        level.playSound(null, x, y, z, SoundEvents.LIGHTNING_BOLT_THUNDER,
+                SoundSource.WEATHER, carry, nuclear ? 0.35F : 0.62F);
+        if (nuclear) {
+            level.playSound(null, x, y, z, SoundEvents.GENERIC_EXPLODE.value(),
+                    SoundSource.BLOCKS, carry, 0.12F);
+            level.playSound(null, x, y, z, SoundEvents.WITHER_SPAWN,
+                    SoundSource.BLOCKS, carry, 0.5F);
+
+            // And everybody else, at their own feet, so distance cannot silence it. Sent per
+            // player rather than broadcast from the crater: a broadcast is still a position, and a
+            // position is still something you can be too far from.
+            for (ServerPlayer everyone : level.players()) {
+                everyone.playNotifySound(SoundEvents.LIGHTNING_BOLT_THUNDER,
+                        SoundSource.WEATHER, 1.0F, 0.3F);
+            }
+        }
     }
 
     // ------------------------------------------------------------- the crater

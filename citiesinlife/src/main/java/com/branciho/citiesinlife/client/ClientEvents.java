@@ -5,6 +5,7 @@ import com.branciho.citiesinlife.client.ClientRadiation;
 import com.branciho.citiesinlife.client.screen.CallToArmsScreen;
 import com.branciho.citiesinlife.client.screen.GuideScreen;
 import com.branciho.citiesinlife.client.screen.HologramScreen;
+import com.branciho.citiesinlife.client.screen.LaunchAllScreen;
 import com.branciho.citiesinlife.client.screen.MeetingInviteScreen;
 import com.branciho.citiesinlife.client.screen.PeaceOfferScreen;
 import com.branciho.citiesinlife.client.screen.CityScreen;
@@ -34,7 +35,11 @@ import com.branciho.citiesinlife.net.payload.RequestCityPayload;
 import com.branciho.citiesinlife.net.payload.ToggleCreativeMoneyPayload;
 import com.branciho.citiesinlife.registry.ModItems;
 import com.branciho.citiesinlife.structure.StructureType;
+import com.branciho.citiesinlife.entity.MissileEntity;
 import net.minecraft.client.Minecraft;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.neoforged.neoforge.event.entity.EntityLeaveLevelEvent;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -152,6 +157,26 @@ public final class ClientEvents {
 
     // ------------------------------------------------------------------ ticks
 
+    /**
+     * A rocket that has arrived stops making the noise of a rocket that has not.
+     *
+     * <p>The engine note is a sample well over a second long, started once a second while the
+     * missile is in the air. The last one or two are still playing when the warhead lands, so the
+     * roar went on fading in over the explosion — which sounds exactly like the missile carrying on
+     * past the crater it just made.
+     *
+     * <p>Stopped by sound id and source rather than by instance, which is the only handle the sound
+     * manager offers. Safe to be that broad here: nothing else in the game plays an elytra on
+     * BLOCKS, so a player actually flying one is untouched.
+     */
+    @SubscribeEvent
+    public static void onMissileGone(EntityLeaveLevelEvent event) {
+        if (event.getLevel().isClientSide() && event.getEntity() instanceof MissileEntity) {
+            Minecraft.getInstance().getSoundManager().stop(
+                    SoundEvents.ELYTRA_FLYING.getLocation(), SoundSource.BLOCKS);
+        }
+    }
+
     @SubscribeEvent
     public static void onClientTick(ClientTickEvent.Post event) {
         Minecraft minecraft = Minecraft.getInstance();
@@ -199,6 +224,10 @@ public final class ClientEvents {
         // The projection table, opened the same way and for the same reason.
         if (ClientCityCache.takeHologram()) {
             minecraft.setScreen(new HologramScreen());
+        }
+
+        if (ClientCityCache.takeLaunchAll()) {
+            minecraft.setScreen(new LaunchAllScreen());
         }
 
         while (KeyBindings.OPEN_CITY.consumeClick()) {

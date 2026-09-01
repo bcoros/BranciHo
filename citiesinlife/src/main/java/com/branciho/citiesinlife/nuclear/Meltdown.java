@@ -19,6 +19,7 @@ import net.minecraft.core.particles.SimpleParticleType;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import com.branciho.citiesinlife.missile.Warhead;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
@@ -302,8 +303,9 @@ public final class Meltdown {
             level.explode(null, heart.getX() + 0.5D, heart.getY() + 0.5D, heart.getZ() + 0.5D,
                     POWER_FINAL * scale, true, Level.ExplosionInteraction.NONE);
             mushroom(level, heart, RADIUS_FINAL);
-            level.playSound(null, heart.getX(), heart.getY(), heart.getZ(),
-                    SoundEvents.GENERIC_EXPLODE.value(), SoundSource.BLOCKS, 8.0F, 0.28F);
+            // The same voice a nuclear warhead uses, because it is the same event: a core has
+            // gone, and everybody in the world should know without being told in chat.
+            Warhead.bang(level, heart, true);
             return false;
         }
         if (t < finalAt) {

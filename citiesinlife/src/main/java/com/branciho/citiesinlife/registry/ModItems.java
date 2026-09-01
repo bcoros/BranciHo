@@ -276,6 +276,9 @@ public final class ModItems {
     public static final DeferredItem<BlockItem> HUSH_BUTTON =
             ITEMS.registerSimpleBlockItem("hush_button", ModBlocks.HUSH_BUTTON);
 
+    public static final DeferredItem<BlockItem> LAUNCH_BUTTON =
+            ITEMS.registerSimpleBlockItem("launch_button", ModBlocks.LAUNCH_BUTTON);
+
     public static void register(IEventBus modBus) {
         ITEMS.register(modBus);
     }

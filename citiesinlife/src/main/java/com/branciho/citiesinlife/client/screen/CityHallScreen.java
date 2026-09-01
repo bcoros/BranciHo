@@ -136,7 +136,7 @@ public class CityHallScreen extends Screen {
 
         Button launch = Button.builder(
                         Component.translatable("screen.citiesinlife.launch_all"),
-                        press -> this.minecraft.setScreen(new MissileMapScreen(true)))
+                        press -> this.minecraft.setScreen(new LaunchAllScreen()))
                 .bounds(left + 12 + (third + 4) * 2, y, third, 20)
                 .build();
         launch.active = open;

@@ -25,6 +25,7 @@ import com.branciho.citiesinlife.net.payload.ForeignLandPayload;
 import com.branciho.citiesinlife.net.payload.LinkPowerPayload;
 import com.branciho.citiesinlife.net.payload.LinkOutletPayload;
 import com.branciho.citiesinlife.net.payload.OpenHologramPayload;
+import com.branciho.citiesinlife.net.payload.OpenLaunchAllPayload;
 import com.branciho.citiesinlife.net.payload.OpenMonitorPayload;
 import com.branciho.citiesinlife.net.payload.ReactorSyncPayload;
 import com.branciho.citiesinlife.net.payload.RequestReactorPayload;
@@ -234,6 +235,9 @@ public final class CitiesInLifeNetwork {
 
         registrar.playToClient(OpenHologramPayload.TYPE, OpenHologramPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(ClientCityCache::openHologram));
+
+        registrar.playToClient(OpenLaunchAllPayload.TYPE, OpenLaunchAllPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(ClientCityCache::openLaunchAll));
 
         registrar.playToClient(HologramPayload.TYPE, HologramPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(

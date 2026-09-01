@@ -336,8 +336,12 @@ public final class SelectionRenderer {
             poseStack.pushPose();
             poseStack.translate(centre.x, box.maxY + LABEL_LIFT, centre.z);
             poseStack.mulPose(facing);
-            // Nameplate scale, negated on Y because text is drawn downwards in screen space.
-            poseStack.scale(-LABEL_SCALE, -LABEL_SCALE, LABEL_SCALE);
+            // Nameplate scale. Negated on Y ONLY, because text is drawn downwards in screen space
+            // and nothing else needs flipping: cameraOrientation() already carries the half turn
+            // (Camera builds it as rotationYXZ(PI - yaw, ...)), so negating X as well reflects the
+            // horizontal axis and every glyph comes out as mirror writing. Vanilla's own name tags
+            // scale (0.025, -0.025, 0.025) for exactly this reason.
+            poseStack.scale(LABEL_SCALE, -LABEL_SCALE, LABEL_SCALE);
 
             int health = Math.max(0, entry.health());
             int max = Math.max(1, entry.maxHealth());

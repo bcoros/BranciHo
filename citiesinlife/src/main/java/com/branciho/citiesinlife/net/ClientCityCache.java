@@ -116,6 +116,19 @@ public final class ClientCityCache {
         return wanted;
     }
 
+    /** The same consume-once hand-off for the launch button in the hall. */
+    private static boolean launchAllWanted;
+
+    public static void openLaunchAll() {
+        launchAllWanted = true;
+    }
+
+    public static boolean takeLaunchAll() {
+        boolean wanted = launchAllWanted;
+        launchAllWanted = false;
+        return wanted;
+    }
+
     public static void openMonitor(BlockPos at) {
         pendingMonitor = at;
     }

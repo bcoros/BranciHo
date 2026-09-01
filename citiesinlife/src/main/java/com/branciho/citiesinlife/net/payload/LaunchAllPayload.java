@@ -5,19 +5,24 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 
+import java.util.UUID;
+
 /**
- * Empty every silo in the city onto one chunk.
+ * Empty every silo in the city over an enemy's territory.
  *
- * <p>No silo is named, because the point of the button is that the player is not choosing: the
- * server walks the city's own silos. Sending a list of ids from the client would let a modified one
- * nominate somebody else's silo, and the server would have to check every id against ownership
- * anyway — so it may as well be the one deciding which silos exist.
+ * <p>A city is named rather than a chunk, and that is the whole of the change. Aiming the volley at
+ * one chunk meant every rocket you owned arrived in the same crater, which is a waste of eight
+ * missiles and looks like a bug — so the target is a <em>country</em> now and each silo picks its
+ * own square of it. A strategic strike should land across a city, not on one house in it.
  *
- * @param chunkX the target chunk
- * @param chunkZ the target chunk
+ * <p>No silo is named either, for the reason it never was: the point of the button is that the
+ * player is not choosing, so the server walks the city's own silos. A list of ids from the client
+ * would let a modified one nominate somebody else's.
+ *
+ * @param cityId the city being struck — checked against the war table on arrival
  * @param kindId which missile to send, by string id
  */
-public record LaunchAllPayload(int chunkX, int chunkZ, String kindId) implements CustomPacketPayload {
+public record LaunchAllPayload(UUID cityId, String kindId) implements CustomPacketPayload {
 
     public static final CustomPacketPayload.Type<LaunchAllPayload> TYPE =
             new CustomPacketPayload.Type<>(CitiesInLife.id("launch_all"));
@@ -26,13 +31,12 @@ public record LaunchAllPayload(int chunkX, int chunkZ, String kindId) implements
             StreamCodec.ofMember(LaunchAllPayload::write, LaunchAllPayload::read);
 
     private void write(FriendlyByteBuf buf) {
-        buf.writeVarInt(chunkX);
-        buf.writeVarInt(chunkZ);
+        buf.writeUUID(cityId);
         buf.writeUtf(kindId, 32);
     }
 
     private static LaunchAllPayload read(FriendlyByteBuf buf) {
-        return new LaunchAllPayload(buf.readVarInt(), buf.readVarInt(), buf.readUtf(32));
+        return new LaunchAllPayload(buf.readUUID(), buf.readUtf(32));
     }
 
     @Override

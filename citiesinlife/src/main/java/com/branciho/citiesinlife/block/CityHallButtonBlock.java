@@ -28,10 +28,10 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 /**
  * A big domed button on a pedestal, of the kind everybody already knows what to do with.
  *
- * <p>The City Hall panel can already call a meeting and silence the city, and a panel is the wrong
- * place for either. The moment you actually want them is the moment you have run into the building,
- * and a control you run to and slam is a completely different object from a menu item — which is
- * the whole reason there is a physical one at all.
+ * <p>The City Hall panel can already call a meeting, silence the city and empty the silos, and a
+ * panel is the wrong place for any of them. The moment you actually want them is the moment you have
+ * run into the building, and a control you run to and slam is a completely different object from a
+ * menu item — which is the whole reason there is a physical one at all.
  *
  * <p>Two rules, both of them the hall's own. It has to be standing inside a registered city core,
  * and the city has to be yours. Neither is a courtesy: a button anyone could place on their own
@@ -196,6 +196,43 @@ public abstract class CityHallButtonBlock extends Block {
         @Override
         protected float pitch() {
             return 0.7F;
+        }
+    }
+
+    /**
+     * The one under the glass.
+     *
+     * <p>Unlike the other two this does not <em>do</em> anything on its own — it opens the target
+     * list. Emptying every silo you own is not a decision that should be one slam of a dome away,
+     * and the screen behind it is where the war check and the choice of city live.
+     */
+    public static class LaunchAll extends CityHallButtonBlock {
+
+        public static final com.mojang.serialization.MapCodec<LaunchAll> CODEC =
+                simpleCodec(LaunchAll::new);
+
+        public LaunchAll(Properties properties) {
+            super(properties);
+        }
+
+        @Override
+        protected com.mojang.serialization.MapCodec<? extends Block> codec() {
+            return CODEC;
+        }
+
+        @Override
+        protected void press(ServerLevel level, ServerPlayer player, CityData data, City own) {
+            ServerActions.openLaunchAll(player);
+        }
+
+        @Override
+        protected net.minecraft.sounds.SoundEvent clack() {
+            return SoundEvents.NOTE_BLOCK_BIT.value();
+        }
+
+        @Override
+        protected float pitch() {
+            return 0.5F;
         }
     }
 }

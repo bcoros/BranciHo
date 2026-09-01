@@ -287,7 +287,11 @@ public final class Demolition {
         // Standing, but with a hole in it. Only worth re-reading when blocks actually went: a
         // shielded charge changes nothing inside the box, and a creeper changes both the space and
         // the material.
-        if (!ruined && structure.type().measured()) {
+        if (!ruined) {
+            // Every type, not only the ones whose interior is worth measuring. A power plant or a
+            // silo has no capacity to lose, but it is still made of blocks, and if a creeper has
+            // just taken some of them its health should be scaled against what is left rather than
+            // against what it was built as.
             int cellsBefore = structure.usableCells();
             recount(level, structure);
             if (structure.usableCells() != cellsBefore && city != null) {

@@ -90,6 +90,7 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.HOLOGRAM_MAP.get());
                         output.accept(ModItems.MEETING_BUTTON.get());
                         output.accept(ModItems.HUSH_BUTTON.get());
+                        output.accept(ModItems.LAUNCH_BUTTON.get());
                     })
                     .build());
 

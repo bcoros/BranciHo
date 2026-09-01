@@ -574,10 +574,10 @@ public final class ModBlocks {
                             .noOcclusion()));
 
     /**
-     * The two buttons that live in the city hall.
+     * The three buttons that live in the city hall.
      *
-     * <p>Both are the same object with a different colour of dome and a different wire behind it,
-     * so they read as a pair on the wall and nobody has to remember which is which.
+     * <p>All the same object with a different colour of dome and a different wire behind it, so they
+     * read as a set on the wall and nobody has to remember which is which.
      */
     public static final DeferredBlock<CityHallButtonBlock.Meeting> MEETING_BUTTON =
             BLOCKS.register("meeting_button",
@@ -591,6 +591,14 @@ public final class ModBlocks {
             BLOCKS.register("hush_button",
                     () -> new CityHallButtonBlock.Hush(BlockBehaviour.Properties.of()
                             .mapColor(MapColor.COLOR_BLUE)
+                            .strength(2.0F, 6.0F)
+                            .sound(SoundType.METAL)
+                            .noOcclusion()));
+
+    public static final DeferredBlock<CityHallButtonBlock.LaunchAll> LAUNCH_BUTTON =
+            BLOCKS.register("launch_button",
+                    () -> new CityHallButtonBlock.LaunchAll(BlockBehaviour.Properties.of()
+                            .mapColor(MapColor.COLOR_YELLOW)
                             .strength(2.0F, 6.0F)
                             .sound(SoundType.METAL)
                             .noOcclusion()));

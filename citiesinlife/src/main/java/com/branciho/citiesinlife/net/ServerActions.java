@@ -14,6 +14,7 @@ import com.branciho.citiesinlife.net.payload.CityHallActionPayload;
 import com.branciho.citiesinlife.net.payload.CityHallPayload;
 import com.branciho.citiesinlife.net.payload.HologramPayload;
 import com.branciho.citiesinlife.net.payload.OpenHologramPayload;
+import com.branciho.citiesinlife.net.payload.OpenLaunchAllPayload;
 import com.branciho.citiesinlife.net.payload.LaunchAllPayload;
 import com.branciho.citiesinlife.net.payload.MeetingReplyPayload;
 import com.branciho.citiesinlife.net.payload.ModSettingsPayload;
@@ -91,6 +92,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.Container;
@@ -203,7 +205,7 @@ public final class ServerActions {
         // answer to being invaded is to draw fresh boxes faster than the other side can knock them
         // down - and now that buildings have health, that would be an infinite supply of them.
         // Founding is exempt: you cannot be at war before you have a city.
-        if (city != null && !city.wars().isEmpty()) {
+        if (city != null && atWar(data, city)) {
             reject(player, "at_war_no_building");
             return;
         }
@@ -790,7 +792,7 @@ public final class ServerActions {
         // A city at war buys no land. Whatever it is going to hold at the end of this, it has to
         // take - otherwise the answer to being invaded is to buy a wall of chunks around yourself
         // faster than the other side can walk across them.
-        if (!city.wars().isEmpty()) {
+        if (atWar(data, city)) {
             reject(player, "at_war_no_land");
             return;
         }
@@ -2588,8 +2590,28 @@ public final class ServerActions {
             reject(player, "not_in_city_hall");
             return;
         }
+        City struck = data.city(payload.cityId());
+        if (struck == null || struck.id().equals(own.id())) {
+            reject(player, "launch_all_no_target");
+            return;
+        }
+        // The one rule the whole button hangs off. A single launch checks this per shot; a volley
+        // checks it once, here, because there is no version of this where half of it is legal.
+        if (Diplomacy.stance(struck, own) != Relation.WAR) {
+            reject(player, "missile_not_at_war");
+            return;
+        }
+        List<Long> ground = new ArrayList<>();
+        for (long chunkKey : struck.claimedChunks()) {
+            ground.add(chunkKey);
+        }
+        if (ground.isEmpty()) {
+            reject(player, "launch_all_no_ground");
+            return;
+        }
 
         MissileKind kind = MissileKind.byId(payload.kindId(), MissileKind.BALLISTIC);
+        RandomSource random = player.serverLevel().getRandom();
         int away = 0;
         int held = 0;
         String firstRefusal = null;
@@ -2597,8 +2619,12 @@ public final class ServerActions {
             if (silo.type() != StructureType.MISSILE_SILO) {
                 continue;
             }
+            // Each silo draws its own square. Aiming the whole volley at one chunk put every rocket
+            // you own in the same crater; scattering them is what makes eight missiles worth eight
+            // missiles, and it is what a strategic strike on a city actually looks like.
+            ChunkPos aim = new ChunkPos(ground.get(random.nextInt(ground.size())));
             String refusal = MissileDirector.launch(server, player, silo.id(),
-                    payload.chunkX(), payload.chunkZ(), kind);
+                    aim.x, aim.z, kind);
             if (refusal == null) {
                 away++;
             } else {
@@ -2617,13 +2643,30 @@ public final class ServerActions {
             return;
         }
         // One line for the whole volley, not one per rocket: eight identical entries would push
-        // everything else the city has ever done off the end of a forty-line ledger.
-        own.note(player.level().getGameTime(), "missile_away",
-                payload.chunkX() * 16 + ", " + payload.chunkZ() * 16);
+        // everything else the city has ever done off the end of the ledger.
+        own.note(player.level().getGameTime(), "volley_away", struck.name());
         data.setDirty();
         player.sendSystemMessage(Component.translatable(
                 "message.citiesinlife.volley_away", away, kind.displayName(), held));
         syncMissileMap(player);
+    }
+
+    /** The launch button in the hall: open the target list, gated exactly as the panel is. */
+    public static void openLaunchAll(ServerPlayer player) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        CityData data = CityData.get(server);
+        City own = data.cityOf(player.getUUID(), player.serverLevel().dimension());
+        if (own == null || !inCityHall(data, player, own)) {
+            reject(player, "not_in_city_hall");
+            return;
+        }
+        // The list itself is the neighbours data the client already keeps for the Neighbours tab,
+        // so this refreshes that and then says "open it" - no second copy of the same table.
+        syncNeighbours(player);
+        CitiesInLifeNetwork.sendTo(player, OpenLaunchAllPayload.INSTANCE);
     }
 
     /** Push what the City Hall panel shows: the gate, the alert, the room and the history. */
@@ -2755,6 +2798,26 @@ public final class ServerActions {
      * somebody else's city hall is a fine thing to do — you may well have been invited to a meeting
      * in it — and must not hand you their buttons.
      */
+    /**
+     * Whether this city is at war with anybody at all.
+     *
+     * <p>Asked through the stance table rather than by looking at the city's own war list, and that
+     * is the whole point: a war is held by whichever side declared it, so a city that was INVADED
+     * has an empty list of its own. Reading that list meant the aggressor was frozen out of buying
+     * land and drawing boxes while the defender - the one actually under fire, and the one with
+     * the most to gain from throwing up new buildings faster than they can be knocked down - was
+     * not restricted at all.
+     */
+    private static boolean atWar(CityData data, City city) {
+        for (City other : data.cities()) {
+            if (!other.id().equals(city.id())
+                    && Diplomacy.stance(other, city) == Relation.WAR) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static boolean inCityHall(CityData data, ServerPlayer player, City own) {
         Structure here = data.structureAt(player.level().dimension(), player.blockPosition());
         return here != null
