@@ -3,6 +3,7 @@ package com.branciho.citiesinlife.client;
 import com.branciho.citiesinlife.CitiesInLife;
 import com.branciho.citiesinlife.client.ClientRadiation;
 import com.branciho.citiesinlife.client.screen.CallToArmsScreen;
+import com.branciho.citiesinlife.client.screen.EditorScreen;
 import com.branciho.citiesinlife.client.screen.GuideScreen;
 import com.branciho.citiesinlife.client.screen.HologramScreen;
 import com.branciho.citiesinlife.client.screen.LaunchAllScreen;
@@ -27,6 +28,7 @@ import com.branciho.citiesinlife.net.payload.LinkOutletPayload;
 import com.branciho.citiesinlife.net.payload.LinkWaterPayload;
 import com.branciho.citiesinlife.net.payload.MarkPathPayload;
 import com.branciho.citiesinlife.net.payload.MarkRoadPayload;
+import com.branciho.citiesinlife.net.payload.RequestEditorPayload;
 import com.branciho.citiesinlife.net.payload.UpgradePayload;
 import com.branciho.citiesinlife.net.payload.RegisterStructurePayload;
 import com.branciho.citiesinlife.net.payload.RequestArmyPayload;
@@ -252,6 +254,18 @@ public final class ClientEvents {
             player.displayClientMessage(Component.translatable(StructureMode.active()
                     ? "hud.citiesinlife.structure_mode_on"
                     : "hud.citiesinlife.structure_mode_off"), true);
+        }
+
+        while (KeyBindings.TOGGLE_EDITOR_MODE.consumeClick()) {
+            // Asked for rather than opened. The server decides whether this player may have it —
+            // creative, and a city of their own — and it is the one that can be trusted to. What
+            // comes back is either the list plus an instruction to open, or a refusal saying which
+            // of the two conditions failed.
+            CitiesInLifeNetwork.sendToServer(new RequestEditorPayload(true));
+        }
+
+        if (ClientCityCache.takeEditor()) {
+            minecraft.setScreen(new EditorScreen());
         }
 
         // Type and measurement keys work whether or not a box is being drawn, so the player can set

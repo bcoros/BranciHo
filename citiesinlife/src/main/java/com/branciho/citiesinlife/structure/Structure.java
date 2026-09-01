@@ -27,9 +27,40 @@ public final class Structure {
 
     private final UUID id;
     private final UUID cityId;
-    private final String name;
+
+    /**
+     * What the player calls it.
+     *
+     * <p>Not final any more. It is the label over the health bar and the row in the editor, and a
+     * city where every third building is "Residential 4" is a city you cannot navigate.
+     */
+    private String name;
+
+    /**
+     * Hand-set capacity, or -1 to keep using what the box measures.
+     *
+     * <p>Editor mode only, and creative only. Measuring is right almost all of the time and should
+     * stay the default — the whole point of this mod is that it reads what you built rather than
+     * asking you to declare it. But "almost all" is not all: a build whose inside the scanner
+     * cannot see, a landmark that should be worth more than its floor space, a set piece you want
+     * to hold a fixed number. -1 rather than 0 because 0 is a legitimate answer somebody may want.
+     */
+    private int residentOverride = -1;
+    private int jobOverride = -1;
     /** The least health any registered building has, however little it is made of. */
     public static final int MIN_HEALTH = 40;
+
+    /** Longest name a building may carry. The same cap the sync payload writes with. */
+    public static final int MAX_NAME = 48;
+
+    /**
+     * Highest figure an override may be set to.
+     *
+     * <p>A bound rather than a balance decision. Editor mode is creative-only and the player may
+     * put whatever they like in these boxes, but a city with two billion residents overflows the
+     * treasury arithmetic and every per-head calculation downstream of it.
+     */
+    public static final int MAX_OVERRIDE = 1_000_000;
 
     private final StructureType type;
     private final ResourceKey<Level> dimension;
@@ -94,6 +125,33 @@ public final class Structure {
 
     public String name() {
         return name;
+    }
+
+    /** Rename it. Trimmed and bounded here rather than trusted from the packet. */
+    public void rename(String fresh) {
+        String trimmed = fresh == null ? "" : fresh.trim();
+        if (trimmed.isEmpty()) {
+            return;
+        }
+        this.name = trimmed.length() > MAX_NAME ? trimmed.substring(0, MAX_NAME) : trimmed;
+    }
+
+    /** The hand-set resident count, or -1 when the box is doing the measuring. */
+    public int residentOverride() {
+        return residentOverride;
+    }
+
+    public int jobOverride() {
+        return jobOverride;
+    }
+
+    /** Pass -1 to hand a figure back to the scanner. */
+    public void setResidentOverride(int people) {
+        this.residentOverride = people < 0 ? -1 : Math.min(people, MAX_OVERRIDE);
+    }
+
+    public void setJobOverride(int posts) {
+        this.jobOverride = posts < 0 ? -1 : Math.min(posts, MAX_OVERRIDE);
     }
 
     public StructureType type() {
@@ -199,11 +257,11 @@ public final class Structure {
     }
 
     public int residents() {
-        return type.residentsFor(usableCells());
+        return residentOverride >= 0 ? residentOverride : type.residentsFor(usableCells());
     }
 
     public int jobs() {
-        return type.jobsFor(usableCells());
+        return jobOverride >= 0 ? jobOverride : type.jobsFor(usableCells());
     }
 
     /**
@@ -254,6 +312,14 @@ public final class Structure {
         tag.putInt("cells", usableCells);
         tag.putInt("mass", blockMass);
         tag.putInt("health", health);
+        // Written only when actually set, so a building the player never touched carries no trace
+        // of the editor at all and picks up any future change to the measuring rules.
+        if (residentOverride >= 0) {
+            tag.putInt("residentsSet", residentOverride);
+        }
+        if (jobOverride >= 0) {
+            tag.putInt("jobsSet", jobOverride);
+        }
         tag.putInt("minX", min.getX());
         tag.putInt("minY", min.getY());
         tag.putInt("minZ", min.getZ());
@@ -295,6 +361,8 @@ public final class Structure {
         // means "nobody has counted this yet", and something will go and count it.
         structure.blockMass = tag.getInt("mass");
         structure.health = tag.contains("health") ? tag.getInt("health") : structure.maxHealth();
+        structure.residentOverride = tag.contains("residentsSet") ? tag.getInt("residentsSet") : -1;
+        structure.jobOverride = tag.contains("jobsSet") ? tag.getInt("jobsSet") : -1;
         return structure;
     }
 }

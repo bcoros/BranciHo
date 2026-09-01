@@ -29,12 +29,22 @@ public enum StructureType implements StringRepresentable {
 
     RESIDENTIAL("residential", 0x66E576, 0),
 
-    COMMERCIAL("commercial", 0x59A6FF, 6),
+    /**
+     * Shops. The sparsest employer in the mod, because a shop is mostly aisle.
+     *
+     * <p>Was six cells per job, which is what this whole file's documentation was never written
+     * for: at six, a modest shopping street employed more people than the city could ever house,
+     * and since population is drawn by the number of jobs going, the city then grew to fill them.
+     * The three ordinary employers were the only types on that scale — every service below kept
+     * the figures the class comment describes — so a city's whole population was being set by an
+     * accident in three constants.
+     */
+    COMMERCIAL("commercial", 0x59A6FF, 28),
 
     /** Offices. Denser than shops because a desk needs less room than a shop floor. */
-    BUSINESS("business", 0x4DD9E6, 3),
+    BUSINESS("business", 0x4DD9E6, 14),
 
-    FACTORY("factory", 0xFFD859, 4),
+    FACTORY("factory", 0xFFD859, 18),
 
     /** Where the police come from. Sparse floors: a station is mostly cells and corridor. */
     POLICE_STATION("police_station", 0x3A6BE0, 14, ServiceType.POLICE),

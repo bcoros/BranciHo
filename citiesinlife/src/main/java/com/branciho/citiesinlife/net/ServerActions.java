@@ -1,6 +1,7 @@
 package com.branciho.citiesinlife.net;
 
 import com.branciho.citiesinlife.city.AlertLevel;
+import com.branciho.citiesinlife.city.Demolition;
 import com.branciho.citiesinlife.config.CitiesInLifeConfig;
 import com.branciho.citiesinlife.city.City;
 import com.branciho.citiesinlife.city.Meeting;
@@ -12,7 +13,10 @@ import com.branciho.citiesinlife.city.Warfare;
 import com.branciho.citiesinlife.net.payload.CallToArmsPayload;
 import com.branciho.citiesinlife.net.payload.CityHallActionPayload;
 import com.branciho.citiesinlife.net.payload.CityHallPayload;
+import com.branciho.citiesinlife.net.payload.EditStructurePayload;
+import com.branciho.citiesinlife.net.payload.EditorPayload;
 import com.branciho.citiesinlife.net.payload.HologramPayload;
+import com.branciho.citiesinlife.net.payload.OpenEditorPayload;
 import com.branciho.citiesinlife.net.payload.OpenHologramPayload;
 import com.branciho.citiesinlife.net.payload.OpenLaunchAllPayload;
 import com.branciho.citiesinlife.net.payload.LaunchAllPayload;
@@ -2108,6 +2112,112 @@ public final class ServerActions {
         return "?";
     }
 
+    // ---------------------------------------------------------------- editor
+
+    /**
+     * The building editor: rename, re-measure, repair, and set capacity by hand.
+     *
+     * <p><b>Creative only</b>, and checked here rather than only on the key press. The client half
+     * of a permission check is a suggestion — anybody running a modified client can send the packet
+     * whenever they like — so survival mode is refused on arrival, not merely unbound.
+     *
+     * <p>Everything it can do is confined to buildings of the player's own city. There is no
+     * version of this that reaches a neighbour's tower, which is why war has no say in it.
+     */
+    public static void syncEditor(ServerPlayer player, boolean open) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        CityData data = CityData.get(server);
+        City own = data.cityOf(player.getUUID(), player.serverLevel().dimension());
+        if (!player.isCreative() || own == null) {
+            CitiesInLifeNetwork.sendTo(player, EditorPayload.none());
+            if (open) {
+                // Say why nothing opened. A key that silently does nothing reads as a broken key.
+                reject(player, own == null ? "editor_no_city" : "editor_survival");
+            }
+            return;
+        }
+        List<EditorPayload.Entry> buildings = new ArrayList<>();
+        for (Structure structure : data.structuresOf(own)) {
+            if (buildings.size() >= EditorPayload.MAX_BUILDINGS) {
+                break;
+            }
+            buildings.add(new EditorPayload.Entry(
+                    structure.id(),
+                    structure.name(),
+                    structure.type().id(),
+                    structure.min().getX(), structure.min().getY(), structure.min().getZ(),
+                    structure.usableCells(),
+                    structure.residents(),
+                    structure.jobs(),
+                    structure.residentOverride(),
+                    structure.jobOverride(),
+                    structure.health(),
+                    structure.maxHealth()));
+        }
+        CitiesInLifeNetwork.sendTo(player, new EditorPayload(true, buildings));
+        if (open) {
+            CitiesInLifeNetwork.sendTo(player, OpenEditorPayload.INSTANCE);
+        }
+    }
+
+    /** Do one thing to one building, then send the list back so the screen shows the result. */
+    public static void editStructure(ServerPlayer player, EditStructurePayload payload) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        ServerLevel level = player.serverLevel();
+        CityData data = CityData.get(server);
+        City own = data.cityOf(player.getUUID(), level.dimension());
+        if (!player.isCreative() || own == null) {
+            reject(player, own == null ? "editor_no_city" : "editor_survival");
+            return;
+        }
+        Structure structure = data.structure(payload.structureId());
+        // Yours, and in the world you are standing in. Both, because a city id alone would let a
+        // packet reach a building of yours in another dimension that you cannot see the result of.
+        if (structure == null || !own.structures().contains(structure.id())
+                || !structure.dimension().equals(level.dimension())) {
+            reject(player, "editor_gone");
+            return;
+        }
+        EditStructurePayload.Action action = EditStructurePayload.Action.byId(payload.action());
+        if (action == null) {
+            return;
+        }
+        switch (action) {
+            case RENAME -> structure.rename(payload.name());
+            case SET_RESIDENTS -> structure.setResidentOverride(payload.amount());
+            case SET_JOBS -> structure.setJobOverride(payload.amount());
+            case AUTOMATIC -> {
+                structure.setResidentOverride(-1);
+                structure.setJobOverride(-1);
+            }
+            case REMEASURE -> Demolition.recount(level, structure);
+            case REPAIR -> structure.restore();
+            case GOTO -> {
+                // The middle of the box horizontally and one block clear of the top, which lands you
+                // on the roof of a building rather than inside its ceiling. Creative only, so the
+                // drop at the far end is somebody else's problem.
+                double x = (structure.min().getX() + structure.max().getX()) / 2.0D + 0.5D;
+                double z = (structure.min().getZ() + structure.max().getZ()) / 2.0D + 0.5D;
+                player.teleportTo(level, x, structure.max().getY() + 1.0D, z,
+                        java.util.Set.of(), player.getYRot(), player.getXRot());
+                player.displayClientMessage(Component.translatable(
+                        "message.citiesinlife.editor_moved", structure.name()), true);
+            }
+        }
+        data.setDirty();
+        // Capacity is what most of these change, so the city panel must not be left showing the
+        // figure from before the edit. Cheap: it is a walk of one city's structures.
+        CitySimulation.refresh(data, own);
+        syncEditor(player, false);
+        sync(player);
+    }
+
     // ---------------------------------------------------------------- syncing
 
     /**
@@ -2743,7 +2853,8 @@ public final class ServerActions {
         seen.sort(Comparator.comparingDouble(sighting ->
                 player.distanceToSqr(sighting.x() + 0.5D, sighting.y() + 0.5D,
                         sighting.z() + 0.5D)));
-        CitiesInLifeNetwork.sendTo(player, new HologramPayload(true, seen));
+        CitiesInLifeNetwork.sendTo(player,
+                new HologramPayload(true, seen, own.claimedChunks().toLongArray()));
     }
 
     /**

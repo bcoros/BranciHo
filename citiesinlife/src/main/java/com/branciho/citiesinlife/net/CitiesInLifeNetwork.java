@@ -4,6 +4,8 @@ import com.branciho.citiesinlife.CitiesInLife;
 import com.branciho.citiesinlife.net.payload.ArmySyncPayload;
 import com.branciho.citiesinlife.net.payload.CityHallActionPayload;
 import com.branciho.citiesinlife.net.payload.CityHallPayload;
+import com.branciho.citiesinlife.net.payload.EditStructurePayload;
+import com.branciho.citiesinlife.net.payload.EditorPayload;
 import com.branciho.citiesinlife.net.payload.HologramPayload;
 import com.branciho.citiesinlife.net.payload.ClaimChunkPayload;
 import com.branciho.citiesinlife.net.payload.CitySyncPayload;
@@ -12,9 +14,11 @@ import com.branciho.citiesinlife.net.payload.LaunchAllPayload;
 import com.branciho.citiesinlife.net.payload.MeetingInvitePayload;
 import com.branciho.citiesinlife.net.payload.MeetingReplyPayload;
 import com.branciho.citiesinlife.net.payload.ModSettingsPayload;
+import com.branciho.citiesinlife.net.payload.OpenEditorPayload;
 import com.branciho.citiesinlife.net.payload.PeaceOfferPayload;
 import com.branciho.citiesinlife.net.payload.RadiationPayload;
 import com.branciho.citiesinlife.net.payload.RequestCityHallPayload;
+import com.branciho.citiesinlife.net.payload.RequestEditorPayload;
 import com.branciho.citiesinlife.net.payload.RequestHologramPayload;
 import com.branciho.citiesinlife.net.payload.SetSettingsPayload;
 import com.branciho.citiesinlife.net.payload.SetFlagPayload;
@@ -153,6 +157,14 @@ public final class CitiesInLifeNetwork {
                 (payload, context) -> context.enqueueWork(
                         () -> onServer(context, player -> ServerActions.launchMissile(player, payload))));
 
+        registrar.playToServer(RequestEditorPayload.TYPE, RequestEditorPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(
+                        () -> onServer(context, player -> ServerActions.syncEditor(player, payload.open()))));
+
+        registrar.playToServer(EditStructurePayload.TYPE, EditStructurePayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(
+                        () -> onServer(context, player -> ServerActions.editStructure(player, payload))));
+
         registrar.playToServer(LaunchAllPayload.TYPE, LaunchAllPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(
                         () -> onServer(context, player -> ServerActions.launchAll(player, payload))));
@@ -238,6 +250,12 @@ public final class CitiesInLifeNetwork {
 
         registrar.playToClient(OpenLaunchAllPayload.TYPE, OpenLaunchAllPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(ClientCityCache::openLaunchAll));
+
+        registrar.playToClient(EditorPayload.TYPE, EditorPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() -> ClientCityCache.accept(payload)));
+
+        registrar.playToClient(OpenEditorPayload.TYPE, OpenEditorPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(ClientCityCache::openEditor));
 
         registrar.playToClient(HologramPayload.TYPE, HologramPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(

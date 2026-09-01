@@ -1,5 +1,6 @@
 package com.branciho.citiesinlife.net;
 
+import com.branciho.citiesinlife.net.payload.EditorPayload;
 import net.minecraft.core.BlockPos;
 import com.branciho.citiesinlife.net.payload.CityHallPayload;
 import com.branciho.citiesinlife.net.payload.HologramPayload;
@@ -78,6 +79,15 @@ public final class ClientCityCache {
     private static HologramPayload hologram = HologramPayload.none();
     private static int hologramRevision;
 
+    /**
+     * The editor's list, and a counter that ticks every time a fresh one lands.
+     *
+     * <p>The counter is what an open editor watches: the list is replaced silently by the packet
+     * handler, so without it a screen that asked for a refresh has no way of noticing the answer.
+     */
+    private static EditorPayload editor = EditorPayload.none();
+    private static int editorRevision;
+
     /** A meeting invitation, waiting to be turned into a question on screen. */
     private static @Nullable MeetingInvitePayload pendingMeetingInvite;
 
@@ -126,6 +136,19 @@ public final class ClientCityCache {
     public static boolean takeLaunchAll() {
         boolean wanted = launchAllWanted;
         launchAllWanted = false;
+        return wanted;
+    }
+
+    /** And the same again for the editor, which Shift+V asks the server to open. */
+    private static boolean editorWanted;
+
+    public static void openEditor() {
+        editorWanted = true;
+    }
+
+    public static boolean takeEditor() {
+        boolean wanted = editorWanted;
+        editorWanted = false;
         return wanted;
     }
 
@@ -260,6 +283,19 @@ public final class ClientCityCache {
 
     public static HologramPayload hologram() {
         return hologram;
+    }
+
+    public static void accept(EditorPayload payload) {
+        editor = payload;
+        editorRevision++;
+    }
+
+    public static EditorPayload editor() {
+        return editor;
+    }
+
+    public static int editorRevision() {
+        return editorRevision;
     }
 
     public static int hologramRevision() {

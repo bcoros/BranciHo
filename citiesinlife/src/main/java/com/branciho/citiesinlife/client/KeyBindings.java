@@ -39,6 +39,24 @@ public final class KeyBindings {
             CATEGORY);
 
     /**
+     * Opens the building editor: rename, re-measure, repair, set capacity by hand.
+     *
+     * <p>Shift, like the other two toggles that change something rather than open a panel, so it
+     * cannot be hit while typing. V because it is the only letter near the other bindings that
+     * neither this mod nor vanilla has taken.
+     *
+     * <p>Creative only. The key is bound in survival too and simply says so when pressed — an
+     * unbound key and a refused one look identical, and one of them is a bug report.
+     */
+    public static final KeyMapping TOGGLE_EDITOR_MODE = new KeyMapping(
+            "key.citiesinlife.editor_mode",
+            KeyConflictContext.IN_GAME,
+            KeyModifier.SHIFT,
+            InputConstants.Type.KEYSYM,
+            GLFW.GLFW_KEY_V,
+            CATEGORY);
+
+    /**
      * Move up the building type list.
      *
      * <p>Arrows rather than the scroll wheel, which was the first attempt: stealing the wheel meant

@@ -9,6 +9,7 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
+import net.minecraft.world.level.ChunkPos;
 
 import java.util.List;
 
@@ -24,11 +25,30 @@ import java.util.List;
  */
 public class HologramScreen extends Screen {
 
-    private static final int PANEL_WIDTH = 300;
+    private static final int PANEL_WIDTH = 320;
     private static final int HEADER = 44;
     private static final int ROW_HEIGHT = 12;
-    private static final int ROWS = 9;
+    private static final int ROWS = 6;
     private static final int FOOTER = 34;
+
+    /**
+     * How tall the map itself is.
+     *
+     * <p>The block is a table with a globe of light over it and it was showing a list of names with
+     * coordinates beside them. Coordinates are not a map: reading one meant subtracting your own
+     * position in your head to work out whether somebody was near the gate or out by the farms.
+     * A square of your own territory with a dot per person answers that at a glance, which is what
+     * the thing looked like it did all along.
+     */
+    private static final int MAP_HEIGHT = 116;
+
+    /** Smallest a chunk may be drawn, and largest, so one chunk is not the whole table. */
+    private static final int MIN_CHUNK_PIXELS = 2;
+    private static final int MAX_CHUNK_PIXELS = 14;
+
+    private static final int COLOUR_GROUND = 0x5516E0D0;
+    private static final int COLOUR_GRID = 0x2216E0D0;
+    private static final int COLOUR_YOU = 0xFFFFE066;
 
     /** Half a second. People walk, and a map that lags behind them is worse than no map. */
     private static final int REFRESH_TICKS = 10;
@@ -44,7 +64,7 @@ public class HologramScreen extends Screen {
     }
 
     private static int panelHeight() {
-        return HEADER + ROWS * ROW_HEIGHT + FOOTER;
+        return HEADER + MAP_HEIGHT + 10 + ROWS * ROW_HEIGHT + FOOTER;
     }
 
     @Override
@@ -109,14 +129,18 @@ public class HologramScreen extends Screen {
                 left + 12, top + 30, CityScreen.COLOUR_TEXT, false);
 
         if (seen.isEmpty()) {
+            drawMap(graphics, hologram, seen);
             graphics.drawCenteredString(this.font,
                     Component.translatable("screen.citiesinlife.hologram_empty"),
-                    left + PANEL_WIDTH / 2, top + HEADER + 16, CityScreen.COLOUR_DIM);
+                    left + PANEL_WIDTH / 2, top + HEADER + MAP_HEIGHT + 18,
+                    CityScreen.COLOUR_DIM);
             return;
         }
 
+        drawMap(graphics, hologram, seen);
+
         scroll = Mth.clamp(scroll, 0, Math.max(0, seen.size() - ROWS));
-        int y = top + HEADER;
+        int y = top + HEADER + MAP_HEIGHT + 10;
         for (int i = scroll; i < seen.size() && i < scroll + ROWS; i++) {
             HologramPayload.Sighting sighting = seen.get(i);
             // The city's owner is picked out from everybody else standing on their ground, which is
@@ -129,6 +153,81 @@ public class HologramScreen extends Screen {
                     left + PANEL_WIDTH - 14 - this.font.width(where), y,
                     CityScreen.COLOUR_DIM, false);
             y += ROW_HEIGHT;
+        }
+    }
+
+    /**
+     * The city, from above, with a dot on everybody standing in it.
+     *
+     * <p>Scaled to whatever the territory happens to be rather than to a fixed zoom: a city of four
+     * chunks fills the frame and so does a city of four hundred, because the question the table
+     * answers — where in <em>my</em> city is this person — is the same question at either size.
+     *
+     * <p>Drawn from the claimed list the packet carried, so the squares and the dots always agree
+     * about what the city is. A dot outside the shaded ground cannot happen: the server only sends
+     * people standing on it.
+     */
+    private void drawMap(GuiGraphics graphics, HologramPayload hologram,
+                         List<HologramPayload.Sighting> seen) {
+        int mapLeft = left + 12;
+        int mapTop = top + HEADER;
+        int mapWidth = PANEL_WIDTH - 24;
+        graphics.fill(mapLeft, mapTop, mapLeft + mapWidth, mapTop + MAP_HEIGHT, 0x66000814);
+
+        long[] claimed = hologram.claimed();
+        if (claimed.length == 0) {
+            graphics.drawCenteredString(this.font,
+                    Component.translatable("screen.citiesinlife.hologram_no_land"),
+                    left + PANEL_WIDTH / 2, mapTop + MAP_HEIGHT / 2 - 4, CityScreen.COLOUR_DIM);
+            return;
+        }
+
+        int minChunkX = Integer.MAX_VALUE;
+        int maxChunkX = Integer.MIN_VALUE;
+        int minChunkZ = Integer.MAX_VALUE;
+        int maxChunkZ = Integer.MIN_VALUE;
+        for (long key : claimed) {
+            int cx = ChunkPos.getX(key);
+            int cz = ChunkPos.getZ(key);
+            minChunkX = Math.min(minChunkX, cx);
+            maxChunkX = Math.max(maxChunkX, cx);
+            minChunkZ = Math.min(minChunkZ, cz);
+            maxChunkZ = Math.max(maxChunkZ, cz);
+        }
+        int spanX = maxChunkX - minChunkX + 1;
+        int spanZ = maxChunkZ - minChunkZ + 1;
+        int scale = Mth.clamp(Math.min(mapWidth / spanX, MAP_HEIGHT / spanZ),
+                MIN_CHUNK_PIXELS, MAX_CHUNK_PIXELS);
+
+        // Centred on whatever it came out at, so a long thin city is not pinned to one corner.
+        int originX = mapLeft + (mapWidth - spanX * scale) / 2;
+        int originZ = mapTop + (MAP_HEIGHT - spanZ * scale) / 2;
+
+        for (long key : claimed) {
+            int x = originX + (ChunkPos.getX(key) - minChunkX) * scale;
+            int z = originZ + (ChunkPos.getZ(key) - minChunkZ) * scale;
+            graphics.fill(x, z, x + scale, z + scale, COLOUR_GROUND);
+            if (scale >= 4) {
+                // A chunk grid, but only once a chunk is big enough for the lines not to be the
+                // whole square.
+                graphics.fill(x, z, x + scale, z + 1, COLOUR_GRID);
+                graphics.fill(x, z, x + 1, z + scale, COLOUR_GRID);
+            }
+        }
+
+        // People last, over the ground rather than under it. Drawn from the back of the list
+        // forward so the nearest person - who the server sorted to the front - ends up on top.
+        for (int i = seen.size() - 1; i >= 0; i--) {
+            HologramPayload.Sighting sighting = seen.get(i);
+            // Block position to a point inside its chunk, so two people in one chunk are two dots
+            // rather than one. The sixteenth is the fraction across the chunk they are standing at.
+            double acrossX = (Math.floorMod(sighting.x(), 16)) / 16.0D;
+            double acrossZ = (Math.floorMod(sighting.z(), 16)) / 16.0D;
+            int x = originX + (int) (((sighting.x() >> 4) - minChunkX + acrossX) * scale);
+            int z = originZ + (int) (((sighting.z() >> 4) - minChunkZ + acrossZ) * scale);
+            int colour = sighting.own() ? COLOUR_YOU : CityScreen.COLOUR_BAD;
+            graphics.fill(x - 2, z - 2, x + 2, z + 2, 0xFF000814);
+            graphics.fill(x - 1, z - 1, x + 1, z + 1, colour);
         }
     }
 
