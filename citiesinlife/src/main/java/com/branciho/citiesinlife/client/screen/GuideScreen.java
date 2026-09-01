@@ -59,8 +59,9 @@ public class GuideScreen extends Screen {
     /** Chapter ids, and how many pages each has. Both halves live in the language file. */
     private static final String[] CHAPTERS = {
             "start", "money", "power", "water", "sewage", "roads", "services",
-            "war", "neighbours", "nuclear", "missiles", "sirens", "city_hall", "settings"};
-    private static final int[] PAGES = {3, 2, 3, 3, 2, 3, 4, 5, 3, 5, 5, 3, 5, 2};
+            "war", "neighbours", "nuclear", "missiles", "sirens", "city_hall", "editor",
+            "settings"};
+    private static final int[] PAGES = {3, 2, 3, 3, 2, 3, 4, 5, 3, 5, 5, 3, 5, 3, 2};
 
     private int chapter;
     private int page;
