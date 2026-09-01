@@ -1,5 +1,6 @@
 package com.branciho.citiesinlife.entity.ai;
 
+import com.branciho.citiesinlife.entity.ServiceEntity;
 import com.branciho.citiesinlife.path.PathNetwork;
 import com.branciho.citiesinlife.road.RoadNetwork;
 import net.minecraft.core.BlockPos;
@@ -30,6 +31,19 @@ import org.jetbrains.annotations.Nullable;
  *
  * <p>Deliberately a small number. Crank it up and they walk three sides of a square to avoid four
  * blocks of grass, which looks far more broken than cutting the corner ever did.
+ *
+ * <p><b>It is a cost, never a gate.</b> Nothing here can make a route impossible — every square
+ * that was walkable before is still walkable, merely dearer. Three things follow from that, and all
+ * three are the intended behaviour rather than happy accidents:
+ *
+ * <ul>
+ *   <li>No pavement anywhere means every square costs the same, so they walk wherever they like.
+ *   <li>Pavement laid in disconnected stretches is used stretch by stretch, with the gaps crossed
+ *       on the cheapest line — path to path, because that is simply what the arithmetic prefers.
+ *   <li>A stretch a block higher than the one before it is still pavement: each tile is judged by
+ *       what is under <em>it</em>, and a one-block step is an ordinary move for somebody who can
+ *       step a whole block. Terraced pavement up a hillside reads as one continuous route.
+ * </ul>
  */
 public class TownNodeEvaluator extends WalkNodeEvaluator {
 
@@ -44,6 +58,20 @@ public class TownNodeEvaluator extends WalkNodeEvaluator {
 
     /** Roads count too, and count for slightly less, because a pavement is for walking on. */
     private static final float ROAD_MALUS = 0.15F;
+
+    /**
+     * How much of that a service NPC pays.
+     *
+     * <p>A fifth. A constable on the beat and a fire crew on a shout are not tourists: they cut
+     * across the green, they go over the wall, they take the way that is actually shorter. Leaving
+     * a trace of the preference rather than none means they still drift onto a street where a
+     * street happens to run alongside — which is what "usually takes shortcuts" looks like, as
+     * opposed to "ignores roads on principle".
+     */
+    private static final float SERVICE_SHARE = 0.2F;
+
+    /** What this particular mob pays to leave the pavement, decided once per route. */
+    private float share = 1.0F;
 
     private @Nullable PathNetwork paths;
     private @Nullable RoadNetwork roads;
@@ -71,6 +99,7 @@ public class TownNodeEvaluator extends WalkNodeEvaluator {
             this.paths = network.anyIn(here) ? network : null;
             this.roads = streets.anyIn(here) ? streets : null;
             this.dimension = this.paths == null && this.roads == null ? null : here;
+            this.share = mob instanceof ServiceEntity ? SERVICE_SHARE : 1.0F;
         } else {
             this.paths = null;
             this.roads = null;
@@ -120,8 +149,8 @@ public class TownNodeEvaluator extends WalkNodeEvaluator {
         }
         if (roads != null
                 && (roads.isRoad(dimension, under.asLong()) || roads.isRoad(dimension, at.asLong()))) {
-            return ROAD_MALUS;
+            return ROAD_MALUS * share;
         }
-        return OFF_PATH_MALUS;
+        return OFF_PATH_MALUS * share;
     }
 }

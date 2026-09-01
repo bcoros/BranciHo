@@ -59,7 +59,23 @@ public final class Routes {
     }
 
     /**
-     * Set off, but only if the route actually arrives.
+     * How close the end of a route has to get before it counts as arriving.
+     *
+     * <p>Four blocks, and this number is the whole reason the first version of this was a disaster.
+     * {@code canReach()} is only true when the search landed <em>within one block</em> of the
+     * target — and half the things a citizen walks to are not blocks you can stand in. A bed is the
+     * obvious one: nobody can occupy a bed's own block, so the route necessarily ends beside it and
+     * necessarily reports "not reached". Refusing that route meant every citizen in the world
+     * walked home, stopped a stride short of their own bed and stood there all night.
+     *
+     * <p>So the test is distance, not the flag. A route that ends four blocks from the bed has
+     * arrived. A route that ends forty blocks short, against a wall, has not — which is the case
+     * this check exists for, and the only one it should refuse.
+     */
+    private static final float CLOSE_ENOUGH = 4.0F;
+
+    /**
+     * Set off, but only if the route actually gets there.
      *
      * <p>Returns whether it did. A false is not a failure to handle so much as an answer: there is
      * no way there from here on foot, and the caller should do something else or nothing.
@@ -69,11 +85,18 @@ public final class Routes {
             return false;
         }
         Path path = mob.getNavigation().getPath();
-        if (path == null || !path.canReach()) {
-            // Cancel it rather than leave it running. A partial path left in place is the bug.
-            mob.getNavigation().stop();
+        if (path == null) {
             return false;
         }
-        return true;
+        // getDistToTarget is how far the LAST node of the route is from where it was aimed, in
+        // Manhattan blocks. canReach is the same question with a threshold of one, which is too
+        // strict for anything you stand next to rather than on.
+        if (path.canReach() || path.getDistToTarget() <= CLOSE_ENOUGH) {
+            return true;
+        }
+        // Genuinely short. Cancel rather than leave it running: a partial route left in place is
+        // what walks somebody into a wall and holds them there.
+        mob.getNavigation().stop();
+        return false;
     }
 }
