@@ -26,11 +26,16 @@ public final class Routes {
      * every three seconds for every citizen who cannot get to work is how a pathfinding budget
      * turns into a tick budget.
      *
-     * <p>Growing, up to a ceiling: the first retry is soon, because the usual reason a route failed
-     * is a door somebody happened to be standing in. After a few, the honest conclusion is that
-     * there is no way there, and asking again every twenty seconds is plenty.
+     * <p>Growing, up to a ceiling: the first retry is soon-ish, because the usual reason a route
+     * failed is a door somebody happened to be standing in. After a few, the honest conclusion is
+     * that there is no way there, and asking again every twenty seconds is plenty.
+     *
+     * <p>The first wait is deliberately LONGER than the goals' ordinary repath interval, which is
+     * sixty to eighty ticks. A back-off shorter than the normal rhythm would speed retries up on
+     * failure, which is precisely backwards, and it is the kind of thing that reads as correct in a
+     * diff and does the opposite in the world.
      */
-    private static final int FIRST_BACKOFF = 40;
+    private static final int FIRST_BACKOFF = 100;
     private static final int MAX_BACKOFF = 400;
 
     private Routes() {
