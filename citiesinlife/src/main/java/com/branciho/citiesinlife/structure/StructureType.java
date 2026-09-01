@@ -30,21 +30,25 @@ public enum StructureType implements StringRepresentable {
     RESIDENTIAL("residential", 0x66E576, 0),
 
     /**
-     * Shops. The sparsest employer in the mod, because a shop is mostly aisle.
+     * Shops. Dense, and deliberately kept that way.
      *
-     * <p>Was six cells per job, which is what this whole file's documentation was never written
-     * for: at six, a modest shopping street employed more people than the city could ever house,
-     * and since population is drawn by the number of jobs going, the city then grew to fill them.
-     * The three ordinary employers were the only types on that scale — every service below kept
-     * the figures the class comment describes — so a city's whole population was being set by an
-     * accident in three constants.
+     * <p>These three were briefly raised to 28, 14 and 18 to match the class comment above, on the
+     * theory that they were the cause of runaway population. They were not, and the change did real
+     * damage: a city's jobs figure fell by more than four fifths overnight, which is a number the
+     * player watches and had built towards. The overpopulation was housing all along — see
+     * {@link #RESIDENTS_PER_CELL}, where a ten by ten house was holding a hundred and twenty-five
+     * people.
+     *
+     * <p>So they are back where they were. The comment at the top of this file describes an
+     * intention nothing was ever built against; these numbers describe cities people have actually
+     * built. Where the two disagree, the cities win.
      */
-    COMMERCIAL("commercial", 0x59A6FF, 28),
+    COMMERCIAL("commercial", 0x59A6FF, 6),
 
     /** Offices. Denser than shops because a desk needs less room than a shop floor. */
-    BUSINESS("business", 0x4DD9E6, 14),
+    BUSINESS("business", 0x4DD9E6, 3),
 
-    FACTORY("factory", 0xFFD859, 18),
+    FACTORY("factory", 0xFFD859, 4),
 
     /** Where the police come from. Sparse floors: a station is mostly cells and corridor. */
     POLICE_STATION("police_station", 0x3A6BE0, 14, ServiceType.POLICE),
@@ -133,14 +137,23 @@ public enum StructureType implements StringRepresentable {
      * added and got nothing for is the worst possible answer from a measuring tool: it reads as the
      * mod ignoring what you built.
      *
-     * <p>So there is no step any more. Every cell counts, and the rate is roughly double what the
-     * old one worked out at, because the old figure was quietly stingy — the quantiser threw away
-     * up to fifteen cells of every building, and a large house came out smaller than it looked.
+     * <p>So there is no step any more. Every cell counts.
+     *
+     * <p>The rate is a fifth of what it was, and this — not the jobs figures below — is where the
+     * runaway population was coming from. A cell is three cubic blocks of enclosed space, so at
+     * 1.25 an ordinary ten by ten house with head height held <em>a hundred and twenty-five
+     * people</em>. Multiply that across a district and a city was drawing tens of thousands of
+     * residents out of a few streets. At a quarter the same house holds twenty-five, which is still
+     * generous for a game and no longer absurd.
+     *
+     * <p>Jobs were left alone on purpose. Population is capped by housing and drawn by the work
+     * going, so cutting housing cuts the population without touching the number of posts a city
+     * offers — which is a figure the player builds towards and watches.
      *
      * <p>These are <em>virtual</em> citizens — a number, not entities. Physical NPCs are a small
      * visible sample of this figure, never one entity per person.
      */
-    public static final double RESIDENTS_PER_CELL = 1.25D;
+    public static final double RESIDENTS_PER_CELL = 0.25D;
 
     /** Below this, a floor is a cupboard rather than a workplace. */
     public static final int MIN_USABLE_CELLS = 9;
