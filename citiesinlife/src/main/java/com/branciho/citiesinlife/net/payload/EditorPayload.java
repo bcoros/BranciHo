@@ -41,7 +41,10 @@ public record EditorPayload(boolean usable, List<Entry> buildings) implements Cu
             int jobOverride,
             int healthOverride,
             int health,
-            int maxHealth
+            int maxHealth,
+            int boost,
+            /** What one point of Boost buys here: power, refuse, utility, or none. */
+            String boostUnit
     ) {
     }
 
@@ -81,6 +84,8 @@ public record EditorPayload(boolean usable, List<Entry> buildings) implements Cu
             buf.writeVarInt(entry.healthOverride());
             buf.writeVarInt(Math.max(0, entry.health()));
             buf.writeVarInt(Math.max(1, entry.maxHealth()));
+            buf.writeVarInt(Math.max(0, entry.boost()));
+            buf.writeUtf(entry.boostUnit(), 16);
         }
     }
 
@@ -97,7 +102,8 @@ public record EditorPayload(boolean usable, List<Entry> buildings) implements Cu
                     buf.readVarInt(), buf.readVarInt(), buf.readVarInt(),
                     buf.readVarInt(), buf.readVarInt(), buf.readVarInt(),
                     buf.readVarInt(), buf.readVarInt(), buf.readVarInt(),
-                    buf.readVarInt(), buf.readVarInt()));
+                    buf.readVarInt(), buf.readVarInt(),
+                    buf.readVarInt(), buf.readUtf(16)));
         }
         return new EditorPayload(usable, buildings);
     }

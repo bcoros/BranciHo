@@ -58,6 +58,24 @@ public final class Structure {
      * blocks will ever produce.
      */
     private int healthOverride = -1;
+
+    /**
+     * Extra output, in whatever this building's own units are.
+     *
+     * <p>The editor's Boost. One number rather than four, because a building only ever does one of
+     * these things: a power plant makes power, a depot clears rubbish, and the city hall is where
+     * the two utilities that have no box of their own end up.
+     *
+     * <p>Water and sewage share the city hall's number on purpose, not as a compromise. The
+     * simulation already ties them together — what a city sends to its sewers <em>is</em> what it
+     * drank — so lifting the water supply without lifting the sewage capacity to match would create
+     * untreated sewage out of nothing and pile it up as rubbish. One number that moves both is the
+     * only version of this that is not a trap.
+     *
+     * <p>Zero everywhere until somebody types something, so a world that has never opened the
+     * editor behaves exactly as it did.
+     */
+    private int boost;
     /** The least health any registered building has, however little it is made of. */
     public static final int MIN_HEALTH = 40;
 
@@ -158,6 +176,20 @@ public final class Structure {
 
     public int healthOverride() {
         return healthOverride;
+    }
+
+    /** Extra output in this building's own units, or 0 for none. See the field. */
+    public int boost() {
+        return boost;
+    }
+
+    public void setBoost(int amount) {
+        this.boost = Mth.clamp(amount, 0, MAX_OVERRIDE);
+    }
+
+    /** Whether a Boost figure means anything for this kind of building. */
+    public boolean boostable() {
+        return type.boostable();
     }
 
     /**
@@ -360,6 +392,9 @@ public final class Structure {
         if (healthOverride >= 0) {
             tag.putInt("healthSet", healthOverride);
         }
+        if (boost > 0) {
+            tag.putInt("boost", boost);
+        }
         tag.putInt("minX", min.getX());
         tag.putInt("minY", min.getY());
         tag.putInt("minZ", min.getZ());
@@ -405,6 +440,7 @@ public final class Structure {
         structure.jobOverride = tag.contains("jobsSet") ? tag.getInt("jobsSet") : -1;
         // Read before health below, because maxHealth() is what the missing-health fallback uses.
         structure.healthOverride = tag.contains("healthSet") ? tag.getInt("healthSet") : -1;
+        structure.boost = tag.getInt("boost");
         return structure;
     }
 }

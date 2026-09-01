@@ -178,6 +178,7 @@ public final class CitySimulation {
         UtilityTrade.run(server, data);
         for (City city : data.cities()) {
             makeRubbish(city);
+            collect(data, city);
             grow(city);
             upkeep(server, data, city);
             collectTaxes(city);
@@ -206,10 +207,29 @@ public final class CitySimulation {
         data.setDirty();
     }
 
-    /** Ask the grid what actually reaches this city. */
+    /**
+     * What the editor's Boost adds to one kind of output across this whole city.
+     *
+     * <p>Summed rather than taken from one building, so three boosted plants add up the way three
+     * real plants would. Costs a walk of the city's structure list, which every other figure on the
+     * panel already pays for.
+     */
+    private static int boostOf(CityData data, City city, java.util.function.Predicate<Structure> which) {
+        int total = 0;
+        for (Structure structure : data.structuresOf(city)) {
+            if (structure.boost() > 0 && which.test(structure)) {
+                total += structure.boost();
+            }
+        }
+        return total;
+    }
+
+    /** Ask the grid what actually reaches this city, then add whatever the editor promised. */
     private static void updatePower(MinecraftServer server, PowerGrid grid, City city) {
         ServerLevel level = server.getLevel(city.dimension());
         int produced = level == null ? 0 : grid.supplyFor(level, city);
+        produced += boostOf(CityData.get(server), city,
+                structure -> structure.type().isPlant());
         city.setPower(produced, city.powerNeeded());
     }
 
@@ -222,15 +242,20 @@ public final class CitySimulation {
      */
     private static void updateWater(MinecraftServer server, WaterGrid grid, City city) {
         int demand = waterFor(city.housing(), city.jobs());
+        // The city hall's Boost, which is where water lives because water has no box of its own.
+        // Added in every branch below rather than at the end: two of them return early, and a
+        // boost that quietly stops working when you take your last tank out would be a mystery.
+        int boosted = boostOf(CityData.get(server), city,
+                structure -> structure.type() == StructureType.CITY_CORE);
         ServerLevel level = server.getLevel(city.dimension());
         if (level == null) {
-            city.setWater(0, demand);
+            city.setWater(boosted, demand);
             return;
         }
 
         LongArrayList tanks = grid.storagesFor(level, city);
         if (tanks.isEmpty()) {
-            city.setWater(0, demand);
+            city.setWater(boosted, demand);
             city.setWaterTainted(0);
             return;
         }
@@ -274,7 +299,7 @@ public final class CitySimulation {
                 drawn += tank.drain(demand - drawn);
             }
         }
-        city.setWater(drawn, demand);
+        city.setWater(drawn + boosted, demand);
         // By share of the tanks, not as a yes or no: a city with four pumping stations and one
         // crossed connection is a different problem from one drinking nothing but sewage.
         int was = city.waterTainted();
@@ -304,13 +329,17 @@ public final class CitySimulation {
      */
     private static void updateSewage(MinecraftServer server, WaterGrid grid, City city) {
         int produced = city.waterSupplied();
+        CityData data = CityData.get(server);
+        // The same city hall figure that lifted the water. It has to be the same one: production
+        // here IS what the city drank, so boosting the supply without boosting the sewers would
+        // manufacture untreated sewage out of nothing and pile it up as rubbish.
+        int boosted = boostOf(data, city, structure -> structure.type() == StructureType.CITY_CORE);
         ServerLevel level = server.getLevel(city.dimension());
         if (level == null) {
-            city.setSewage(0, produced);
+            city.setSewage(Math.min(boosted, produced), produced);
             return;
         }
 
-        CityData data = CityData.get(server);
         LongArrayList collectors = grid.collectorsFor(level, city);
         BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
 
@@ -330,7 +359,7 @@ public final class CitySimulation {
             }
             collector.report(through, connected);
         }
-        city.setSewage(handled, produced);
+        city.setSewage(Math.min(handled + boosted, produced), produced);
 
         // Untreated sewage piles up as rubbish. Reusing refuse rather than inventing a second
         // unhappiness meter: it is the same complaint, it already has a tolerance scaled to the
@@ -448,6 +477,22 @@ public final class CitySimulation {
         // and desks, so they lift the ceiling rather than adding housing that does not exist.
         int drawn = city.jobs() * 2 + 20 + city.parkArea() / PARK_AREA_PER_RESIDENT;
         return Math.min(city.housing(), drawn);
+    }
+
+    /**
+     * What a boosted depot clears on its own, every step.
+     *
+     * <p>Rubbish is the one utility that works backwards — it is a pile that has to be taken away
+     * rather than a supply that has to arrive — so a depot's Boost <em>removes</em> where a plant's
+     * adds. It works with no bin lorry standing in it, which is the whole point of a number you
+     * type: the lorries are the simulation doing it properly, and this is the override.
+     */
+    private static void collect(CityData data, City city) {
+        int cleared = boostOf(data, city,
+                structure -> structure.type() == StructureType.GARBAGE_DEPOT);
+        if (cleared > 0) {
+            city.addRefuse(-cleared);
+        }
     }
 
     private static void grow(City city) {

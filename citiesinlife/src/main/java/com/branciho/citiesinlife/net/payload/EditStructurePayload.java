@@ -29,6 +29,8 @@ public record EditStructurePayload(UUID structureId, String action, String name,
         SET_JOBS("jobs"),
         /** How much health the building has in total, not how much is left of it. */
         SET_HEALTH("health"),
+        /** Extra output, in whatever this building's own units are. */
+        SET_BOOST("boost"),
         /** All three figures back to whatever the box measures. */
         AUTOMATIC("automatic"),
         /** Walk the box again: fresh cell count, fresh mass. */

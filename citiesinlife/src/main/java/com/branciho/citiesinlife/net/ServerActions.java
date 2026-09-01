@@ -2157,7 +2157,9 @@ public final class ServerActions {
                     structure.jobOverride(),
                     structure.healthOverride(),
                     structure.health(),
-                    structure.maxHealth()));
+                    structure.maxHealth(),
+                    structure.boost(),
+                    structure.type().boostUnit()));
         }
         CitiesInLifeNetwork.sendTo(player, new EditorPayload(true, buildings));
         if (open) {
@@ -2204,10 +2206,12 @@ public final class ServerActions {
             case SET_RESIDENTS -> structure.setResidentOverride(payload.amount());
             case SET_JOBS -> structure.setJobOverride(payload.amount());
             case SET_HEALTH -> structure.setHealthOverride(payload.amount());
+            case SET_BOOST -> structure.setBoost(payload.amount());
             case AUTOMATIC -> {
                 structure.setResidentOverride(-1);
                 structure.setJobOverride(-1);
                 structure.setHealthOverride(-1);
+                structure.setBoost(0);
             }
             case REMEASURE -> Demolition.recount(level, structure);
             case REPAIR -> structure.restore();
@@ -2243,6 +2247,8 @@ public final class ServerActions {
         // on every action would mean clicking Go To repeatedly grew the city.
         switch (action) {
             case SET_RESIDENTS, SET_JOBS, AUTOMATIC, REMEASURE -> CitySimulation.refresh(data, own);
+            // A boost changes what the city SUPPLIES rather than what it holds, and the panel reads
+            // those off the next utility tick, which is ten seconds away at worst.
             default -> {
             }
         }

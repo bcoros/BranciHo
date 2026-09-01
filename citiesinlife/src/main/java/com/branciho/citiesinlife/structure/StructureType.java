@@ -216,6 +216,28 @@ public enum StructureType implements StringRepresentable {
      * waiting to happen: a reactor that could not be built on unclaimed ground, a chimney smoking
      * off a furnace inside a reactor hall, a fire brigade that would not attend.
      */
+    /**
+     * Whether the editor's Boost figure does anything for this kind of building.
+     *
+     * <p>Four types, because four things in the simulation are produced by something with a box
+     * round it. Everything else either has no output at all or has one that comes from what is
+     * inside it rather than from a number.
+     */
+    public boolean boostable() {
+        return isPlant() || this == GARBAGE_DEPOT || this == CITY_CORE;
+    }
+
+    /** What one point of Boost buys here, for the line under the editor's box. */
+    public String boostUnit() {
+        if (isPlant()) {
+            return "power";
+        }
+        if (this == GARBAGE_DEPOT) {
+            return "refuse";
+        }
+        return this == CITY_CORE ? "utility" : "none";
+    }
+
     public boolean isPlant() {
         return this == POWER_PLANT || this == NUCLEAR_PLANT;
     }

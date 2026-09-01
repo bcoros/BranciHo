@@ -33,14 +33,14 @@ import java.util.UUID;
 public class EditorScreen extends Screen {
 
     private static final int PANEL_WIDTH = 380;
-    private static final int PANEL_HEIGHT = 290;
+    private static final int PANEL_HEIGHT = 320;
 
     /** How wide the building list is, and where the details start. */
     private static final int LIST_WIDTH = 152;
 
     private static final int ROW = 15;
     private static final int LIST_TOP = 52;
-    private static final int ROWS = 13;
+    private static final int ROWS = 15;
 
     private int left;
     private int top;
@@ -58,6 +58,7 @@ public class EditorScreen extends Screen {
     private EditBox residentBox;
     private EditBox jobBox;
     private EditBox healthBox;
+    private EditBox boostBox;
     private EditBox spawnBox;
 
     public EditorScreen() {
@@ -169,10 +170,24 @@ public class EditorScreen extends Screen {
                         })
                 .bounds(detail, buttons + 44, width, 18).build(), live));
 
+        // Boost: only for the four kinds of building that produce anything, and greyed with a line
+        // saying so for everything else, because an editable box that silently does nothing is
+        // worse than one you can see is not for this.
+        boolean boostable = live && !"none".equals(entry.boostUnit());
+        int boostRow = buttons + 76;
+        boostBox = numberBox(detail, boostRow, third,
+                "screen.citiesinlife.editor_boost", boostable ? String.valueOf(entry.boost()) : "");
+        boostBox.setEditable(boostable);
+        addRenderableWidget(active(Button.builder(
+                        Component.translatable("screen.citiesinlife.editor_boost_apply"),
+                        press -> send(EditStructurePayload.Action.SET_BOOST, "",
+                                Math.max(0, parse(boostBox.getValue(), 0))))
+                .bounds(detail + third + 6, boostRow, width - third - 6, 18).build(), boostable));
+
         // Spawning is its own row rather than another pair of buttons, because it takes a number
         // and because it is the one thing here that puts something in the world rather than
         // changing a figure about it.
-        int spawnRow = buttons + 82;
+        int spawnRow = buttons + 122;
         spawnBox = new EditBox(this.font, detail, spawnRow, 44, 18,
                 Component.translatable("screen.citiesinlife.editor_spawn_count"));
         spawnBox.setMaxLength(2);
@@ -373,8 +388,15 @@ public class EditorScreen extends Screen {
                 "screen.citiesinlife.editor_col_health", entry.healthOverride());
 
         graphics.drawString(this.font,
+                Component.translatable("screen.citiesinlife.editor_boost_"
+                        + entry.boostUnit()),
+                detail, top + 212,
+                "none".equals(entry.boostUnit())
+                        ? CityScreen.COLOUR_DIM : CityScreen.COLOUR_ACCENT, false);
+
+        graphics.drawString(this.font,
                 Component.translatable("screen.citiesinlife.editor_spawn_hint"),
-                detail, top + 218, CityScreen.COLOUR_DIM, false);
+                detail, top + 258, CityScreen.COLOUR_DIM, false);
 
         graphics.drawString(this.font,
                 Component.translatable("screen.citiesinlife.editor_health",
