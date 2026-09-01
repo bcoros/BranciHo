@@ -47,6 +47,17 @@ public final class Structure {
      */
     private int residentOverride = -1;
     private int jobOverride = -1;
+
+    /**
+     * Hand-set total health, or -1 to keep taking it from what the building is made of.
+     *
+     * <p>The <em>total</em>, not the current figure — Repair already exists for topping a building
+     * up, and "this tower has five thousand health" is the thing worth being able to say. Mass is a
+     * good default and a poor absolute: a bunker and a glass box of the same size are correctly
+     * told apart by it, but a landmark that ought to survive a warhead is not something counting
+     * blocks will ever produce.
+     */
+    private int healthOverride = -1;
     /** The least health any registered building has, however little it is made of. */
     public static final int MIN_HEALTH = 40;
 
@@ -145,6 +156,29 @@ public final class Structure {
         return jobOverride;
     }
 
+    public int healthOverride() {
+        return healthOverride;
+    }
+
+    /**
+     * Set the total by hand, or pass -1 to hand it back to the block count.
+     *
+     * <p>Current health rides along in proportion, the same way it does when a building is
+     * re-measured. Doubling a tower's total should not halve how healthy it looks, and a building
+     * standing at full stays at full.
+     */
+    public void setHealthOverride(int total) {
+        int wasMax = maxHealth();
+        int had = health;
+        this.healthOverride = total < 0 ? -1 : Math.min(total, MAX_OVERRIDE);
+        int nowMax = maxHealth();
+        if (wasMax <= 0) {
+            health = nowMax;
+            return;
+        }
+        health = Mth.clamp((int) ((long) had * nowMax / wasMax), 0, nowMax);
+    }
+
     /** Pass -1 to hand a figure back to the scanner. */
     public void setResidentOverride(int people) {
         this.residentOverride = people < 0 ? -1 : Math.min(people, MAX_OVERRIDE);
@@ -202,6 +236,9 @@ public final class Structure {
      * from nothing and a marker with no blocks in it is not born dead.
      */
     public int maxHealth() {
+        if (healthOverride >= 0) {
+            return Math.max(1, healthOverride);
+        }
         return Math.max(MIN_HEALTH, blockMass);
     }
 
@@ -320,6 +357,9 @@ public final class Structure {
         if (jobOverride >= 0) {
             tag.putInt("jobsSet", jobOverride);
         }
+        if (healthOverride >= 0) {
+            tag.putInt("healthSet", healthOverride);
+        }
         tag.putInt("minX", min.getX());
         tag.putInt("minY", min.getY());
         tag.putInt("minZ", min.getZ());
@@ -363,6 +403,8 @@ public final class Structure {
         structure.health = tag.contains("health") ? tag.getInt("health") : structure.maxHealth();
         structure.residentOverride = tag.contains("residentsSet") ? tag.getInt("residentsSet") : -1;
         structure.jobOverride = tag.contains("jobsSet") ? tag.getInt("jobsSet") : -1;
+        // Read before health below, because maxHealth() is what the missing-health fallback uses.
+        structure.healthOverride = tag.contains("healthSet") ? tag.getInt("healthSet") : -1;
         return structure;
     }
 }

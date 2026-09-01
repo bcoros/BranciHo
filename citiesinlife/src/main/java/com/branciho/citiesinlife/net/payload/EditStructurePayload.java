@@ -27,7 +27,9 @@ public record EditStructurePayload(UUID structureId, String action, String name,
         RENAME("rename"),
         SET_RESIDENTS("residents"),
         SET_JOBS("jobs"),
-        /** Both figures back to whatever the box measures. */
+        /** How much health the building has in total, not how much is left of it. */
+        SET_HEALTH("health"),
+        /** All three figures back to whatever the box measures. */
         AUTOMATIC("automatic"),
         /** Walk the box again: fresh cell count, fresh mass. */
         REMEASURE("remeasure"),

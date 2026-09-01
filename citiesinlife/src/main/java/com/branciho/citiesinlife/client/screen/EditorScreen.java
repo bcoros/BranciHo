@@ -57,6 +57,7 @@ public class EditorScreen extends Screen {
     private EditBox nameBox;
     private EditBox residentBox;
     private EditBox jobBox;
+    private EditBox healthBox;
     private EditBox spawnBox;
 
     public EditorScreen() {
@@ -116,29 +117,26 @@ public class EditorScreen extends Screen {
         nameBox.setValue(entry == null ? "" : entry.name());
         addRenderableWidget(nameBox);
 
-        int half = (width - 8) / 2;
-        residentBox = new EditBox(this.font, detail, top + 108, half, 18,
-                Component.translatable("screen.citiesinlife.editor_residents"));
-        residentBox.setMaxLength(8);
-        residentBox.setFilter(EditorScreen::digitsOnly);
-        // The measured figure when nothing is overridden, so the box you are about to type over
-        // starts from what the mod already thinks rather than from empty.
-        residentBox.setValue(entry == null ? "" : String.valueOf(entry.residents()));
-        addRenderableWidget(residentBox);
-
-        jobBox = new EditBox(this.font, detail + half + 8, top + 108, half, 18,
-                Component.translatable("screen.citiesinlife.editor_jobs"));
-        jobBox.setMaxLength(8);
-        jobBox.setFilter(EditorScreen::digitsOnly);
-        jobBox.setValue(entry == null ? "" : String.valueOf(entry.jobs()));
-        addRenderableWidget(jobBox);
+        // Three columns: people, jobs, health. Each starts at the figure currently in effect, so
+        // the box you are about to type over says what the mod already thinks rather than nothing.
+        int third = (width - 12) / 3;
+        residentBox = numberBox(detail, top + 112, third,
+                "screen.citiesinlife.editor_residents",
+                entry == null ? "" : String.valueOf(entry.residents()));
+        jobBox = numberBox(detail + third + 6, top + 112, third,
+                "screen.citiesinlife.editor_jobs",
+                entry == null ? "" : String.valueOf(entry.jobs()));
+        healthBox = numberBox(detail + 2 * (third + 6), top + 112, third,
+                "screen.citiesinlife.editor_health_box",
+                entry == null ? "" : String.valueOf(entry.maxHealth()));
 
         boolean live = entry != null;
         nameBox.setEditable(live);
         residentBox.setEditable(live);
         jobBox.setEditable(live);
+        healthBox.setEditable(live);
 
-        int buttons = top + 140;
+        int buttons = top + 146;
         addRenderableWidget(active(Button.builder(
                         Component.translatable("screen.citiesinlife.editor_apply"),
                         press -> apply())
@@ -193,6 +191,16 @@ public class EditorScreen extends Screen {
                 .build());
     }
 
+    /** One of the three capacity boxes: digits only, bounded, pre-filled, and registered. */
+    private EditBox numberBox(int x, int y, int width, String key, String value) {
+        EditBox box = new EditBox(this.font, x, y, width, 18, Component.translatable(key));
+        box.setMaxLength(8);
+        box.setFilter(EditorScreen::digitsOnly);
+        box.setValue(value);
+        addRenderableWidget(box);
+        return box;
+    }
+
     private static Button active(Button button, boolean live) {
         button.active = live;
         return button;
@@ -231,6 +239,13 @@ public class EditorScreen extends Screen {
         int jobs = parse(jobBox.getValue(), entry.jobs());
         if (jobs != entry.jobs() || entry.jobOverride() >= 0) {
             send(EditStructurePayload.Action.SET_JOBS, "", jobs);
+        }
+        // Health is the TOTAL, not what is left of it - Repair is the button for topping a
+        // building up. Setting it carries the current figure along in proportion, so doubling a
+        // tower's total does not halve how healthy it looks.
+        int health = parse(healthBox.getValue(), entry.maxHealth());
+        if (health != entry.maxHealth() || entry.healthOverride() >= 0) {
+            send(EditStructurePayload.Action.SET_HEALTH, "", Math.max(1, health));
         }
     }
 
@@ -343,23 +358,20 @@ public class EditorScreen extends Screen {
                         entry.usableCells()),
                 detail, top + 90, CityScreen.COLOUR_DIM, false);
 
-        // What each figure is currently coming from, said in the panel rather than left to be
-        // inferred from whether the number happens to look round.
-        graphics.drawString(this.font, Component.translatable(entry.residentOverride() >= 0
-                        ? "screen.citiesinlife.editor_set"
-                        : "screen.citiesinlife.editor_auto_label"),
-                detail, top + 128, entry.residentOverride() >= 0
-                        ? CityScreen.COLOUR_ACCENT : CityScreen.COLOUR_DIM, false);
-        int half = (PANEL_WIDTH - LIST_WIDTH - 24 - 8) / 2;
-        graphics.drawString(this.font, Component.translatable(entry.jobOverride() >= 0
-                        ? "screen.citiesinlife.editor_set"
-                        : "screen.citiesinlife.editor_auto_label"),
-                detail + half + 8, top + 128, entry.jobOverride() >= 0
-                        ? CityScreen.COLOUR_ACCENT : CityScreen.COLOUR_DIM, false);
+        // Three unlabelled number boxes are three guesses, so each gets a heading above it and,
+        // below it, where its figure is currently coming from - said in the panel rather than left
+        // to be inferred from whether the number happens to look round.
+        int third = (PANEL_WIDTH - LIST_WIDTH - 24 - 12) / 3;
+        column(graphics, detail, top, third, "screen.citiesinlife.editor_col_people",
+                entry.residentOverride());
+        column(graphics, detail + third + 6, top, third, "screen.citiesinlife.editor_col_jobs",
+                entry.jobOverride());
+        column(graphics, detail + 2 * (third + 6), top, third,
+                "screen.citiesinlife.editor_col_health", entry.healthOverride());
 
         graphics.drawString(this.font,
                 Component.translatable("screen.citiesinlife.editor_spawn_hint"),
-                detail, top + 212, CityScreen.COLOUR_DIM, false);
+                detail, top + 218, CityScreen.COLOUR_DIM, false);
 
         graphics.drawString(this.font,
                 Component.translatable("screen.citiesinlife.editor_health",
@@ -367,6 +379,17 @@ public class EditorScreen extends Screen {
                 detail, top + PANEL_HEIGHT - 44,
                 entry.health() >= entry.maxHealth()
                         ? CityScreen.COLOUR_GOOD : CityScreen.COLOUR_BAD, false);
+    }
+
+    /** A heading over one of the three boxes, and what its figure is coming from underneath. */
+    private void column(GuiGraphics graphics, int x, int top, int width, String key, int override) {
+        graphics.drawString(this.font, Component.translatable(key), x, top + 100,
+                CityScreen.COLOUR_TEXT, false);
+        Component source = Component.translatable(override >= 0
+                ? "screen.citiesinlife.editor_set"
+                : "screen.citiesinlife.editor_auto_label");
+        graphics.drawString(this.font, source, x, top + 132,
+                override >= 0 ? CityScreen.COLOUR_ACCENT : CityScreen.COLOUR_DIM, false);
     }
 
     @Override

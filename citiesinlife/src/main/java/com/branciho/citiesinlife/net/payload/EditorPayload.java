@@ -39,6 +39,7 @@ public record EditorPayload(boolean usable, List<Entry> buildings) implements Cu
             int jobs,
             int residentOverride,
             int jobOverride,
+            int healthOverride,
             int health,
             int maxHealth
     ) {
@@ -77,6 +78,7 @@ public record EditorPayload(boolean usable, List<Entry> buildings) implements Cu
             buf.writeVarInt(Math.max(0, entry.jobs()));
             buf.writeVarInt(entry.residentOverride());
             buf.writeVarInt(entry.jobOverride());
+            buf.writeVarInt(entry.healthOverride());
             buf.writeVarInt(Math.max(0, entry.health()));
             buf.writeVarInt(Math.max(1, entry.maxHealth()));
         }
@@ -94,7 +96,7 @@ public record EditorPayload(boolean usable, List<Entry> buildings) implements Cu
                     buf.readUUID(), buf.readUtf(MAX_NAME), buf.readUtf(32),
                     buf.readVarInt(), buf.readVarInt(), buf.readVarInt(),
                     buf.readVarInt(), buf.readVarInt(), buf.readVarInt(),
-                    buf.readVarInt(), buf.readVarInt(),
+                    buf.readVarInt(), buf.readVarInt(), buf.readVarInt(),
                     buf.readVarInt(), buf.readVarInt()));
         }
         return new EditorPayload(usable, buildings);

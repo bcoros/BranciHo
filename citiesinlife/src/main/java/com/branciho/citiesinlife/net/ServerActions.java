@@ -1654,7 +1654,7 @@ public final class ServerActions {
             return;
         }
         CitiesInLifeConfig.CITIZENS_PER_CITY.set(Mth.clamp(payload.citizensPerCity(), 0,
-                CitiesInLifeConfig.DEFAULT_CITIZENS));
+                CitiesInLifeConfig.MAX_CITIZENS));
         CitiesInLifeConfig.CARS_ENABLED.set(payload.carsEnabled());
         CitiesInLifeConfig.CAR_DISTANCE.set(Mth.clamp(payload.carDistance(), 32, 512));
         CitiesInLifeConfig.NUCLEAR_BLAST_SCALE.set(
@@ -2155,6 +2155,7 @@ public final class ServerActions {
                     structure.jobs(),
                     structure.residentOverride(),
                     structure.jobOverride(),
+                    structure.healthOverride(),
                     structure.health(),
                     structure.maxHealth()));
         }
@@ -2202,9 +2203,11 @@ public final class ServerActions {
             case RENAME -> structure.rename(payload.name());
             case SET_RESIDENTS -> structure.setResidentOverride(payload.amount());
             case SET_JOBS -> structure.setJobOverride(payload.amount());
+            case SET_HEALTH -> structure.setHealthOverride(payload.amount());
             case AUTOMATIC -> {
                 structure.setResidentOverride(-1);
                 structure.setJobOverride(-1);
+                structure.setHealthOverride(-1);
             }
             case REMEASURE -> Demolition.recount(level, structure);
             case REPAIR -> structure.restore();

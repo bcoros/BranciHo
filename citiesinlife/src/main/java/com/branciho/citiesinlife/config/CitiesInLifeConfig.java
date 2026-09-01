@@ -19,6 +19,20 @@ public final class CitiesInLifeConfig {
     /** What a city gets if nobody has touched the setting. */
     public static final int DEFAULT_CITIZENS = 15;
 
+    /**
+     * The highest the citizen cap may be wound up to.
+     *
+     * <p>Fifty is a lot of pathfinding mobs per city and it is meant to be. It used to be the same
+     * number as the default, which made the setting a one-way dial: you could turn your city down
+     * and never up. The ceiling and the default are different questions — one is "how much will
+     * this machine take", which is the player's to answer, and the other is "what should somebody
+     * who has never opened settings get", which is not.
+     *
+     * <p>Left well below anything that would be irresponsible. Fifty citizens is a busy city; it is
+     * not a mob farm.
+     */
+    public static final int MAX_CITIZENS = 50;
+
     private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
 
     public static final ModConfigSpec.IntValue CITIZENS_PER_CITY = BUILDER
@@ -26,8 +40,9 @@ public final class CitiesInLifeConfig {
                     "How many physical citizens each city may have walking around at once.",
                     "Set to 0 to switch NPCs off entirely - the city still has its population,",
                     "its jobs and its economy, you simply do not see anybody.",
-                    "15 is the full experience; 10, 5, 3 and 2 are the lighter settings.")
-            .defineInRange("citizensPerCity", DEFAULT_CITIZENS, 0, DEFAULT_CITIZENS);
+                    "15 is the full experience; 10, 5, 3 and 2 are the lighter settings.",
+                    "Up to 50 if your machine will take it - that is a crowd, and it costs.")
+            .defineInRange("citizensPerCity", DEFAULT_CITIZENS, 0, MAX_CITIZENS);
 
     /**
      * Whether server operators ignore city borders.

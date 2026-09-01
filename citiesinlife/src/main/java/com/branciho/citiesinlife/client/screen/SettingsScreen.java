@@ -1,6 +1,7 @@
 package com.branciho.citiesinlife.client.screen;
 
 import com.branciho.citiesinlife.config.CitiesInLifeClientConfig;
+import com.branciho.citiesinlife.config.CitiesInLifeConfig;
 import com.branciho.citiesinlife.net.CitiesInLifeNetwork;
 import com.branciho.citiesinlife.net.ClientCityCache;
 import com.branciho.citiesinlife.net.payload.ModSettingsPayload;
@@ -70,7 +71,10 @@ public class SettingsScreen extends Screen {
         int top = (this.height - HEIGHT) / 2;
         int y = top + 40;
 
-        stepper(left, y, -1, 1, () -> citizens, v -> citizens = Mth.clamp(v, 0, 15));
+        // Five at a time rather than one. The ceiling is fifty now, and thirty-five clicks to get
+        // there is a dial nobody turns. Clamped, so +5 from 48 lands on 50 rather than refusing.
+        stepper(left, y, -5, 5, () -> citizens,
+                v -> citizens = Mth.clamp(v, 0, CitiesInLifeConfig.MAX_CITIZENS));
         y += ROW;
         toggle(left, y, () -> cars, v -> cars = v);
         y += ROW;
