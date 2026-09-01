@@ -244,11 +244,20 @@ public enum StructureType implements StringRepresentable {
         return Math.max(1, (int) Math.round(usableCells * RESIDENTS_PER_CELL));
     }
 
+    /**
+     * How many jobs this many usable floor cells offers.
+     *
+     * <p>Floored at one, the same way housing is. It never mattered while a shop job cost six
+     * cells — the smallest workplace the mod accepts is nine, so the division always gave at least
+     * one. At twenty-eight it matters a great deal: a corner shop would divide to nought and employ
+     * nobody, which reads as the mod refusing to acknowledge the building rather than as a
+     * measurement. Past the minimum, a workplace employs somebody.
+     */
     public int jobsFor(int usableCells) {
         if (!employsPeople() || usableCells < MIN_USABLE_CELLS) {
             return 0;
         }
-        return usableCells / cellsPerJob;
+        return Math.max(1, usableCells / cellsPerJob);
     }
 
     @Override
