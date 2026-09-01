@@ -29,9 +29,10 @@ public class GuideScreen extends Screen {
      * nineteen pixels each from a fixed top, so an eleventh chapter on the old height put its
      * button underneath the page arrows.
      */
-    // Grown again for a THIRTEENTH chapter. The chapters are laid out at a fixed nineteen pixels
-    // each from a fixed top, so the last one sat three pixels off the page buttons at 310.
-    private static final int HEIGHT = 329;
+    // Grown again for a FOURTEENTH chapter. The chapters are laid out at a fixed nineteen pixels
+    // each from a fixed top, so every one added has to be paid for here or the last sits on top of
+    // the page buttons.
+    private static final int HEIGHT = 348;
     private static final int SIDEBAR = 116;
 
     /** Where the text may end. Anything past this would be drawn over the page buttons. */
@@ -40,8 +41,8 @@ public class GuideScreen extends Screen {
     /** Chapter ids, and how many pages each has. Both halves live in the language file. */
     private static final String[] CHAPTERS = {
             "start", "money", "power", "water", "sewage", "roads", "services",
-            "war", "neighbours", "nuclear", "missiles", "city_hall", "settings"};
-    private static final int[] PAGES = {3, 2, 3, 3, 2, 3, 3, 3, 3, 5, 4, 3, 2};
+            "war", "neighbours", "nuclear", "missiles", "sirens", "city_hall", "settings"};
+    private static final int[] PAGES = {3, 2, 3, 3, 2, 3, 4, 3, 3, 5, 4, 3, 5, 2};
 
     private int chapter;
     private int page;
