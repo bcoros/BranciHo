@@ -196,16 +196,25 @@ public class HologramScreen extends Screen {
         }
         int spanX = maxChunkX - minChunkX + 1;
         int spanZ = maxChunkZ - minChunkZ + 1;
+        // A chunk never shrinks below two pixels, so a territory wider than half the frame no
+        // longer fits in it. That is not a hypothetical: two claims a thousand chunks apart span a
+        // thousand even though the city is two chunks big. Everything drawn is clipped to the frame
+        // rather than allowed to spill across the panel and out of the screen.
         int scale = Mth.clamp(Math.min(mapWidth / spanX, MAP_HEIGHT / spanZ),
                 MIN_CHUNK_PIXELS, MAX_CHUNK_PIXELS);
 
-        // Centred on whatever it came out at, so a long thin city is not pinned to one corner.
+        // Centred on whatever it came out at, so a long thin city is not pinned to one corner. When
+        // it does not fit, the centring keeps the middle of the territory in the middle of the map
+        // and the far edges are what falls off.
         int originX = mapLeft + (mapWidth - spanX * scale) / 2;
         int originZ = mapTop + (MAP_HEIGHT - spanZ * scale) / 2;
 
         for (long key : claimed) {
             int x = originX + (ChunkPos.getX(key) - minChunkX) * scale;
             int z = originZ + (ChunkPos.getZ(key) - minChunkZ) * scale;
+            if (!inside(x, z, mapLeft, mapTop, mapWidth, scale)) {
+                continue;
+            }
             graphics.fill(x, z, x + scale, z + scale, COLOUR_GROUND);
             if (scale >= 4) {
                 // A chunk grid, but only once a chunk is big enough for the lines not to be the
@@ -225,10 +234,19 @@ public class HologramScreen extends Screen {
             double acrossZ = (Math.floorMod(sighting.z(), 16)) / 16.0D;
             int x = originX + (int) (((sighting.x() >> 4) - minChunkX + acrossX) * scale);
             int z = originZ + (int) (((sighting.z() >> 4) - minChunkZ + acrossZ) * scale);
+            if (!inside(x - 2, z - 2, mapLeft, mapTop, mapWidth, 4)) {
+                continue;
+            }
             int colour = sighting.own() ? COLOUR_YOU : CityScreen.COLOUR_BAD;
             graphics.fill(x - 2, z - 2, x + 2, z + 2, 0xFF000814);
             graphics.fill(x - 1, z - 1, x + 1, z + 1, colour);
         }
+    }
+
+    /** Whether a square of this size at this corner lies wholly within the map frame. */
+    private static boolean inside(int x, int z, int mapLeft, int mapTop, int mapWidth, int size) {
+        return x >= mapLeft && z >= mapTop
+                && x + size <= mapLeft + mapWidth && z + size <= mapTop + MAP_HEIGHT;
     }
 
     @Override

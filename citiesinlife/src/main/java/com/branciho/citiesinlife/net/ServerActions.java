@@ -2211,9 +2211,15 @@ public final class ServerActions {
             }
         }
         data.setDirty();
-        // Capacity is what most of these change, so the city panel must not be left showing the
-        // figure from before the edit. Cheap: it is a walk of one city's structures.
-        CitySimulation.refresh(data, own);
+        // Only for the actions that actually move a capacity figure. refresh() seeds a share of any
+        // new headroom into the population immediately so an edit has a visible consequence — which
+        // is right after setting a resident count and wrong after walking to a building. Calling it
+        // on every action would mean clicking Go To repeatedly grew the city.
+        switch (action) {
+            case SET_RESIDENTS, SET_JOBS, AUTOMATIC, REMEASURE -> CitySimulation.refresh(data, own);
+            default -> {
+            }
+        }
         syncEditor(player, false);
         sync(player);
     }
