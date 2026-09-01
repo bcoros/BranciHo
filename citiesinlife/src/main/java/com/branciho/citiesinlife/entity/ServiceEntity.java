@@ -13,6 +13,7 @@ import com.branciho.citiesinlife.entity.ai.PoliceGoal;
 import com.branciho.citiesinlife.entity.ai.RefuseGoal;
 import com.branciho.citiesinlife.entity.ai.RifleGoal;
 import com.branciho.citiesinlife.entity.ai.SoldierGoal;
+import com.branciho.citiesinlife.entity.ai.TownNavigation;
 import com.branciho.citiesinlife.entity.ai.TrenchGoal;
 import com.branciho.citiesinlife.entity.ai.SoldierTargetGoal;
 import com.branciho.citiesinlife.service.ServiceType;
@@ -31,6 +32,7 @@ import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
 import net.minecraft.world.entity.ai.goal.MeleeAttackGoal;
 import net.minecraft.world.entity.ai.goal.RandomLookAroundGoal;
 import net.minecraft.world.entity.ai.goal.WaterAvoidingRandomStrollGoal;
+import net.minecraft.world.entity.ai.navigation.PathNavigation;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.Nullable;
@@ -106,7 +108,22 @@ public class ServiceEntity extends PathfinderMob implements CityMember, Motorist
                 // Faster than a civilian. Everybody here is on their way to something.
                 .add(Attributes.MOVEMENT_SPEED, 0.38D)
                 .add(Attributes.ATTACK_DAMAGE, 4.0D)
-                .add(Attributes.FOLLOW_RANGE, 64.0D);
+                // Same two as the citizens, and for the same reasons: a kerb should be stepped over
+                // rather than jumped, and sixty-four blocks is not the length of a call-out.
+                .add(Attributes.STEP_HEIGHT, 1.0D)
+                .add(Attributes.FOLLOW_RANGE, 128.0D);
+    }
+
+    /**
+     * The town router, not the field one.
+     *
+     * <p>See {@link TownNavigation}. A police officer who cannot get round a wall is the same bug
+     * as a citizen who cannot, and rather more noticeable: nobody minds a civilian dawdling, but an
+     * ambulance stuck against a fence is the mod visibly not working.
+     */
+    @Override
+    protected PathNavigation createNavigation(Level level) {
+        return new TownNavigation(this, level);
     }
 
     @Override

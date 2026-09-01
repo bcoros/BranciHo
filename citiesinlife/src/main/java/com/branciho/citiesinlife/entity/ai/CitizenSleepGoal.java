@@ -25,6 +25,9 @@ public class CitizenSleepGoal extends Goal {
     private static final int REPATH_INTERVAL = 80;
 
     private final CitizenEntity citizen;
+
+    /** How long to wait after a route that could not arrive. Grows while it keeps failing. */
+    private final Routes.Patience patience = new Routes.Patience();
     private int repathIn;
 
     public CitizenSleepGoal(CitizenEntity citizen) {
@@ -103,9 +106,12 @@ public class CitizenSleepGoal extends Goal {
                 }
                 // Same rule as the walk to work: a route that does not arrive is not walked.
                 // Standing outside a wall all night is the same bug in the dark.
-                if (!Routes.walkTo(citizen, home.getX() + 0.5D, home.getY(),
+                if (Routes.walkTo(citizen, home.getX() + 0.5D, home.getY(),
                         home.getZ() + 0.5D, 1.0D)) {
+                    patience.arrived();
+                } else {
                     citizen.getNavigation().stop();
+                    repathIn = patience.backOff();
                 }
             }
             return;

@@ -18,7 +18,39 @@ import net.minecraft.world.level.pathfinder.Path;
  */
 public final class Routes {
 
+    /**
+     * How long to wait before trying again after a route that could not arrive.
+     *
+     * <p>A failed search is the expensive one — it is the only case that spends the whole node
+     * budget, because A* only stops early when it has actually found the target. Retrying that
+     * every three seconds for every citizen who cannot get to work is how a pathfinding budget
+     * turns into a tick budget.
+     *
+     * <p>Growing, up to a ceiling: the first retry is soon, because the usual reason a route failed
+     * is a door somebody happened to be standing in. After a few, the honest conclusion is that
+     * there is no way there, and asking again every twenty seconds is plenty.
+     */
+    private static final int FIRST_BACKOFF = 40;
+    private static final int MAX_BACKOFF = 400;
+
     private Routes() {
+    }
+
+    /** Somewhere to keep the wait between attempts, since a Goal is the thing that has one. */
+    public static final class Patience {
+
+        private int wait;
+
+        /** Ticks to sit out before trying again, and the count doubles each time it is asked. */
+        public int backOff() {
+            wait = wait == 0 ? FIRST_BACKOFF : Math.min(MAX_BACKOFF, wait * 2);
+            return wait;
+        }
+
+        /** A route arrived, so the next failure starts from a short wait again. */
+        public void arrived() {
+            wait = 0;
+        }
     }
 
     /**

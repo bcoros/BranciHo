@@ -28,6 +28,9 @@ public class CitizenWorkGoal extends Goal {
     private final CitizenEntity citizen;
     private int repathIn;
 
+    /** How long to wait after a route that could not arrive. Grows while it keeps failing. */
+    private final Routes.Patience patience = new Routes.Patience();
+
     public CitizenWorkGoal(CitizenEntity citizen) {
         this.citizen = citizen;
         setFlags(EnumSet.of(Goal.Flag.MOVE, Goal.Flag.LOOK, Goal.Flag.JUMP));
@@ -57,6 +60,7 @@ public class CitizenWorkGoal extends Goal {
     @Override
     public void start() {
         repathIn = 0;
+        patience.arrived();
     }
 
     @Override
@@ -97,11 +101,15 @@ public class CitizenWorkGoal extends Goal {
                 }
                 // Only if the route arrives. A partial path ends at whatever is in the way, and
                 // walking it is what puts a citizen's face against a wall for the whole shift.
-                if (!Routes.walkTo(citizen, spot.getX() + 0.5D, spot.getY(), spot.getZ() + 0.5D,
+                if (Routes.walkTo(citizen, spot.getX() + 0.5D, spot.getY(), spot.getZ() + 0.5D,
                         1.0D)) {
-                    // No way through today. Somebody who cannot get to work stays put, and tries
-                    // again in a few seconds in case whatever was in the way has a door in it now.
+                    patience.arrived();
+                } else {
+                    // No way through. Somebody who cannot get to work stays put rather than walking
+                    // the partial route into whatever is in the way - and waits longer each time,
+                    // because a failed search is the one that spends the entire node budget.
                     citizen.getNavigation().stop();
+                    repathIn = patience.backOff();
                 }
             }
             return;

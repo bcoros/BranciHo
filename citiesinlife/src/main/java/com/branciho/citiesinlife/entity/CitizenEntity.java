@@ -189,6 +189,16 @@ public class CitizenEntity extends PathfinderMob implements CityMember, Motorist
                 // an attribute that is missing when it is finally needed is a crash rather than a
                 // harmless zero.
                 .add(Attributes.ATTACK_DAMAGE, 3.0D)
+                // Step onto a whole block rather than having to jump it.
+                //
+                // Vanilla's 0.6 means a mob can walk up a slab and must JUMP a kerb - and the jump
+                // is the flaky part: the move control has to notice the step, set the jump, and the
+                // landing has to be clear, all while the path is pressing the mob into the block.
+                // Miss any of that and they scrabble at a one-block ledge forever, which is exactly
+                // what a city is full of: kerbs, doorsteps, garden walls, the edge of a road. Iron
+                // golems, horses and endermen all get 1.0 for the same reason. People who live in a
+                // town get it too.
+                .add(Attributes.STEP_HEIGHT, 1.0D)
                 // Doubles as the longest route the pathfinder will build, which is the number that
                 // matters here: forty-eight blocks is not a commute across a city, it is a walk to
                 // the end of the street. A route that has to go round a wall is far longer than the

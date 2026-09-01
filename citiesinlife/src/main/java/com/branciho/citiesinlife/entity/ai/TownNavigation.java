@@ -5,7 +5,6 @@ import net.minecraft.world.entity.ai.navigation.GroundPathNavigation;
 import net.minecraft.world.entity.ai.navigation.PathNavigation;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.pathfinder.PathFinder;
-import net.minecraft.world.level.pathfinder.WalkNodeEvaluator;
 
 /**
  * Pathfinding for somebody who lives in a town rather than in a field.
@@ -40,11 +39,22 @@ public final class TownNavigation extends GroundPathNavigation {
     /**
      * How many nodes the search may visit.
      *
-     * <p>Two thousand and forty-eight. Vanilla's 256 was chosen for a mob that lives in a field;
-     * this is chosen for one that lives behind a wall with a gate in it, which is the shape of
-     * every city anybody actually builds.
+     * <p>Eight thousand. Vanilla's 256 was chosen for a mob that lives in a field; this is chosen
+     * for one that lives behind a wall with a gate in it, which is the shape of every city anybody
+     * actually builds.
+     *
+     * <p>Two thousand was the first attempt and it was not enough. The budget buys area: roughly
+     * one node per walkable tile the search touches, so two thousand covers about a forty-five
+     * block square — fine for a gate round the corner, useless for one fifty blocks along the wall,
+     * which is an ordinary distance in a city somebody has actually built. Eight thousand covers
+     * something closer to ninety blocks square.
+     *
+     * <p>What stops this being expensive is not the number but how rarely it is paid. A route is
+     * built when a goal asks for one, a few times a minute; and a route that <em>fails</em> — the
+     * only case that spends the whole budget — now backs off instead of being retried every three
+     * seconds. See {@link Routes}.
      */
-    private static final int NODE_BUDGET = 2048;
+    private static final int NODE_BUDGET = 8192;
 
     public TownNavigation(Mob mob, Level level) {
         super(mob, level);
@@ -59,7 +69,9 @@ public final class TownNavigation extends GroundPathNavigation {
      */
     @Override
     protected PathFinder createPathFinder(int ignored) {
-        this.nodeEvaluator = new WalkNodeEvaluator();
+        // Pavement-aware: see TownNodeEvaluator. Routing is the only thing that decides where
+        // somebody walks, so it is the only place a preference for the pavement can live.
+        this.nodeEvaluator = new TownNodeEvaluator();
         this.nodeEvaluator.setCanPassDoors(true);
         // A closed wooden door is a way through, not a wall. Wants OpenDoorGoal on the same mob:
         // this makes the router plan through the door, and that makes somebody open it.

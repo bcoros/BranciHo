@@ -2,6 +2,7 @@ package com.branciho.citiesinlife.entity;
 
 import com.branciho.citiesinlife.block.AirfieldBlock;
 import com.branciho.citiesinlife.city.CityMember;
+import com.branciho.citiesinlife.entity.ai.TownNavigation;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
@@ -16,6 +17,7 @@ import net.minecraft.world.entity.ai.goal.FloatGoal;
 import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
 import net.minecraft.world.entity.ai.goal.RandomLookAroundGoal;
 import net.minecraft.world.entity.ai.goal.WaterAvoidingRandomStrollGoal;
+import net.minecraft.world.entity.ai.navigation.PathNavigation;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.Nullable;
@@ -65,7 +67,16 @@ public class TouristEntity extends PathfinderMob implements CityMember, Homeboun
         return PathfinderMob.createMobAttributes()
                 .add(Attributes.MAX_HEALTH, 20.0D)
                 .add(Attributes.MOVEMENT_SPEED, 0.30D)
-                .add(Attributes.FOLLOW_RANGE, 32.0D);
+                // A visitor walks the same kerbs as everybody else, and a tourist wedged against a
+                // garden wall for the whole of their five-minute stay is a poor advertisement.
+                .add(Attributes.STEP_HEIGHT, 1.0D)
+                .add(Attributes.FOLLOW_RANGE, 96.0D);
+    }
+
+    /** The town router: see {@link TownNavigation}. */
+    @Override
+    protected PathNavigation createNavigation(Level level) {
+        return new TownNavigation(this, level);
     }
 
     @Override
