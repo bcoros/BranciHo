@@ -986,7 +986,7 @@ public final class City {
 
         // Absent on any city saved before alert levels existed. getString returns "" for a missing
         // key, so byId falls straight through to PEACE - which is the right answer for a city
-        // nobody has ever put on alert, and avoids a null level reaching paintSirens.
+        // nobody has ever put on alert, and is what the sirens read.
         city.alertLevel = AlertLevel.byId(tag.getString("alertLevel"), AlertLevel.PEACE);
         // Absent in saves from before the mute existed, and getBoolean answers false for a missing
         // key, which is exactly the right default: a city that has never been muted is not muted.

@@ -39,6 +39,15 @@ public class SirenBlockEntity extends BlockEntity {
      */
     private static final int WAIL_INTERVAL = 110;
 
+    /**
+     * How often the sweep underneath the horn is re-sounded.
+     *
+     * <p>Once a second, alternating pitch, so there is never a gap between horn blasts where the
+     * siren sounds like it has stopped. It is also the part you hear first: the horn is long and
+     * low, and this is what makes it read as a siren rather than as weather.
+     */
+    private static final int SWEEP_INTERVAL = 20;
+
     /** Degrees per tick the horn cluster turns. Slow enough to read as heavy machinery. */
     private static final float SPIN_SPEED = 5.0F;
 
@@ -103,8 +112,14 @@ public class SirenBlockEntity extends BlockEntity {
         // than one very loud siren. The offset is stable for a given pole, so each keeps its place
         // in the round for as long as it stands there.
         long offset = Math.floorMod(pos.asLong(), WAIL_INTERVAL);
-        if (Math.floorMod(level.getGameTime() - offset, WAIL_INTERVAL) == 0L) {
+        long since = level.getGameTime() - offset;
+        if (Math.floorMod(since, WAIL_INTERVAL) == 0L) {
             MachineSounds.airRaid(level, pos, level.getRandom());
+        }
+        if (Math.floorMod(since, SWEEP_INTERVAL) == 0L) {
+            // Rising and falling in turn, which is the whole difference between a siren and a
+            // machine repeating a note.
+            MachineSounds.wail(level, pos, Math.floorMod(since / SWEEP_INTERVAL, 2L) == 0L);
         }
     }
 

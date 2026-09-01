@@ -238,4 +238,20 @@ public final class MachineSounds {
         at(level, pos, SoundEvents.RAID_HORN.value(), 3.2F,
                 random.nextBoolean() ? 0.62F : 0.85F);
     }
+
+    /**
+     * The rise and fall between horn blasts.
+     *
+     * <p>The horn on its own is a long note every few seconds, and the gaps between them are what
+     * make a siren sound like a machine that has stopped rather than one that is still going. This
+     * is the sweep underneath it: one held tone a second, alternating between two pitches, which is
+     * the shape a mechanical siren actually makes as the horns come round.
+     *
+     * <p>Loud enough to carry, and on the same dial as everything else.
+     */
+    public static void wail(Level level, BlockPos pos, boolean rising) {
+        at(level, pos, SoundEvents.NOTE_BLOCK_BIT.value(), 2.4F, rising ? 1.05F : 0.72F);
+        at(level, pos, SoundEvents.NOTE_BLOCK_DIDGERIDOO.value(), 1.6F,
+                rising ? 0.95F : 0.66F);
+    }
 }

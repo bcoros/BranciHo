@@ -7,6 +7,9 @@ import com.branciho.citiesinlife.sim.CitySimulation;
 import com.branciho.citiesinlife.sim.CreativeFunding;
 import com.branciho.citiesinlife.sim.ServiceDirector;
 import com.branciho.citiesinlife.sim.WarDirector;
+import com.branciho.citiesinlife.registry.ModBlocks;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.SectionPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -16,6 +19,10 @@ import com.branciho.citiesinlife.nuclear.Meltdown;
 import com.branciho.citiesinlife.nuclear.Radiation;
 import com.branciho.citiesinlife.nuclear.ReactorSurvey;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.level.chunk.LevelChunkSection;
+import net.neoforged.neoforge.event.level.ChunkEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import com.branciho.citiesinlife.city.Demolition;
 import com.branciho.citiesinlife.city.Meeting;
@@ -69,6 +76,53 @@ public final class ServerEvents {
     }
 
     /** In single player the next world would otherwise inherit this one's cached power plants. */
+    /**
+     * Give an already-placed siren the block entity it did not used to need.
+     *
+     * <p>Sirens were plain blocks until this version. A block entity is only written to the save
+     * file once it exists, so every siren standing in a world made before now has no block entity
+     * stored against it — and nothing creates one on load, because the chunk only registers block
+     * entities it has data for. Without this, a siren you built last week would never tick, never
+     * sound, and never even <em>draw</em>, since all of it is now drawn by a renderer that needs a
+     * block entity to hang off. It would silently disappear.
+     *
+     * <p>Asking for the block entity is what creates it: {@code Level#getBlockEntity} creates and
+     * registers one on demand for any state whose block wants it. So this only has to find them.
+     *
+     * <p>The cost is a palette test per section, not a walk over every block. A chunk section
+     * knows which blocks it might contain, and the overwhelming majority say "no siren here" for
+     * free; only a section that really has one is walked.
+     */
+    @SubscribeEvent
+    public static void onChunkLoad(ChunkEvent.Load event) {
+        if (event.getLevel().isClientSide() || !(event.getChunk() instanceof LevelChunk chunk)) {
+            return;
+        }
+        Level level = chunk.getLevel();
+        LevelChunkSection[] sections = chunk.getSections();
+        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+        for (int index = 0; index < sections.length; index++) {
+            LevelChunkSection section = sections[index];
+            if (section.hasOnlyAir()
+                    || !section.maybeHas(state -> state.is(ModBlocks.SIREN.get()))) {
+                continue;
+            }
+            int baseY = SectionPos.sectionToBlockCoord(chunk.getSectionYFromSectionIndex(index));
+            for (int x = 0; x < 16; x++) {
+                for (int y = 0; y < 16; y++) {
+                    for (int z = 0; z < 16; z++) {
+                        if (!section.getBlockState(x, y, z).is(ModBlocks.SIREN.get())) {
+                            continue;
+                        }
+                        cursor.set(chunk.getPos().getMinBlockX() + x, baseY + y,
+                                chunk.getPos().getMinBlockZ() + z);
+                        level.getBlockEntity(cursor);
+                    }
+                }
+            }
+        }
+    }
+
     @SubscribeEvent
     public static void onServerStopped(ServerStoppedEvent event) {
         PlantSurvey.forgetAll();
