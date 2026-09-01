@@ -1,6 +1,7 @@
 package com.branciho.citiesinlife.client.screen;
 
 import com.branciho.citiesinlife.city.AlertLevel;
+import com.branciho.citiesinlife.city.City;
 import com.branciho.citiesinlife.city.LedgerEntry;
 import com.branciho.citiesinlife.net.CitiesInLifeNetwork;
 import com.branciho.citiesinlife.net.ClientCityCache;
@@ -34,7 +35,7 @@ public class CityHallScreen extends Screen {
 
     private static final int HEADER = 40;
     private static final int ROW = 24;
-    private static final int BUTTON_ROWS = 4;
+    private static final int BUTTON_ROWS = 5;
     private static final int ROLL_HEIGHT = 24;
     private static final int LEDGER_LABEL = 14;
 
@@ -123,6 +124,27 @@ public class CityHallScreen extends Screen {
                 .build();
         launch.active = open;
         addRenderableWidget(launch);
+
+        y += ROW;
+        // The detail. Hire on the left, let one go on the right, and the count between them, so
+        // there is never a moment where you have to guess how many you are paying for.
+        int wide = (PANEL_WIDTH - 24 - 8) * 2 / 5;
+        Button hire = Button.builder(
+                        Component.translatable("screen.citiesinlife.hire_guard",
+                                City.HIRE_GUARD_COST),
+                        press -> send("hire_guard", ""))
+                .bounds(left + 12, y, wide, 20)
+                .build();
+        hire.active = open && hall.guards() < City.MAX_GUARDS;
+        addRenderableWidget(hire);
+
+        Button dismissGuard = Button.builder(
+                        Component.translatable("screen.citiesinlife.dismiss_guard"),
+                        press -> send("dismiss_guard", ""))
+                .bounds(left + PANEL_WIDTH - 12 - wide, y, wide, 20)
+                .build();
+        dismissGuard.active = open && hall.guards() > 0;
+        addRenderableWidget(dismissGuard);
 
         y += ROW;
         // The mute gets a row to itself rather than sharing one. It is the only control here that
@@ -222,6 +244,12 @@ public class CityHallScreen extends Screen {
                     left + PANEL_WIDTH - 12 - this.font.width(warn), top + 29,
                     CityScreen.COLOUR_BAD, false);
         }
+
+        Component detail = Component.translatable("screen.citiesinlife.guards_on",
+                hall.guards(), City.MAX_GUARDS);
+        graphics.drawCenteredString(this.font, detail, left + PANEL_WIDTH / 2,
+                top + HEADER + ROW * 2 + 6,
+                hall.guards() > 0 ? CityScreen.COLOUR_GOOD : CityScreen.COLOUR_DIM);
 
         int y = top + HEADER + BUTTON_ROWS * ROW + 2;
         List<String> roll = hall.roll();

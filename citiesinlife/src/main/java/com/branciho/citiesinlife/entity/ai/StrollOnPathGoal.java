@@ -41,7 +41,8 @@ public class StrollOnPathGoal extends Goal {
 
     @Override
     public boolean canUse() {
-        if (citizen.isSleeping() || citizen.activity() != CitizenEntity.ACTIVITY_IDLE) {
+        if (citizen.isSleeping() || citizen.curfew()
+                || citizen.activity() != CitizenEntity.ACTIVITY_IDLE) {
             return false;
         }
         if (!citizen.getNavigation().isDone()) {
@@ -87,7 +88,8 @@ public class StrollOnPathGoal extends Goal {
     public boolean canContinueToUse() {
         return !citizen.getNavigation().isDone()
                 && citizen.activity() == CitizenEntity.ACTIVITY_IDLE
-                && !citizen.isSleeping();
+                && !citizen.isSleeping()
+                && !citizen.curfew();
     }
 
     @Override

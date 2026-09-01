@@ -570,6 +570,48 @@ public final class City {
         return army.removeIf(soldier -> soldier.id().equals(id));
     }
 
+    // ------------------------------------------------------------- bodyguards
+
+    /** What one bodyguard costs to take on. Dearer than a soldier: this one follows you home. */
+    public static final long HIRE_GUARD_COST = 900L;
+
+    /** How many bodyguards one city may keep. A detail, not a retinue. */
+    public static final int MAX_GUARDS = 4;
+
+    /**
+     * The bodyguard roll.
+     *
+     * <p>The same {@link Soldier} record as the army, held in a separate list rather than flagged
+     * inside one. They are hired somewhere else, paid at a different rate, capped separately, and
+     * cannot be sent to take ground — so every question either list is ever asked has a different
+     * answer, and one list with a discriminator would mean writing that condition at every site.
+     */
+    private final List<Soldier> guards = new ArrayList<>();
+
+    public List<Soldier> guards() {
+        return guards;
+    }
+
+    public @Nullable Soldier guard(UUID id) {
+        for (Soldier guard : guards) {
+            if (guard.id().equals(id)) {
+                return guard;
+            }
+        }
+        return null;
+    }
+
+    public boolean engage(Soldier guard) {
+        if (guards.size() >= MAX_GUARDS) {
+            return false;
+        }
+        return guards.add(guard);
+    }
+
+    public boolean release(UUID id) {
+        return guards.removeIf(guard -> guard.id().equals(id));
+    }
+
     /** Put an updated record back in the same place, so the list does not shuffle under the screen. */
     public boolean replace(Soldier updated) {
         for (int i = 0; i < army.size(); i++) {
@@ -732,6 +774,18 @@ public final class City {
         }
         tag.put("army", armyList);
 
+        ListTag guardList = new ListTag();
+        for (Soldier guard : guards) {
+            CompoundTag entry = new CompoundTag();
+            entry.putUUID("id", guard.id());
+            entry.putString("name", guard.name());
+            entry.putInt("training", guard.training());
+            entry.putString("weapon", guard.weapon());
+            entry.putLong("trainingDoneAt", guard.trainingDoneAt());
+            guardList.add(entry);
+        }
+        tag.put("guards", guardList);
+
         tag.put("granted", writeIds(granted));
         tag.put("wars", writeIds(wars));
         tag.put("peaceOffers", writeIds(peaceOffers));
@@ -882,6 +936,19 @@ public final class City {
         for (int i = 0; i < armyList.size(); i++) {
             CompoundTag entry = armyList.getCompound(i);
             city.army.add(new Soldier(
+                    entry.getUUID("id"),
+                    entry.getString("name"),
+                    entry.getInt("training"),
+                    entry.getString("weapon"),
+                    entry.getLong("trainingDoneAt")));
+        }
+
+        // Absent in saves from before bodyguards existed. An empty list is the right answer for a
+        // city that never hired one.
+        ListTag guardList = tag.getList("guards", Tag.TAG_COMPOUND);
+        for (int i = 0; i < guardList.size() && city.guards.size() < MAX_GUARDS; i++) {
+            CompoundTag entry = guardList.getCompound(i);
+            city.guards.add(new Soldier(
                     entry.getUUID("id"),
                     entry.getString("name"),
                     entry.getInt("training"),

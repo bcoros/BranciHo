@@ -2623,6 +2623,7 @@ public final class ServerActions {
                 own.alertLevel().id(),
                 Meeting.running(own.id()),
                 own.hushed(),
+                own.guards().size(),
                 Meeting.roll(own.id()),
                 own.ledger()));
     }
@@ -2657,6 +2658,8 @@ public final class ServerActions {
             case "meeting_end" -> shutMeeting(server, player, own);
             case "address" -> address(server, player, data, own, payload.detail());
             case "hush" -> hush(player, data, own, !own.hushed());
+            case "hire_guard" -> hireGuard(player, data, own);
+            case "dismiss_guard" -> dismissGuard(player, data, own);
             default -> reject(player, "city_hall_unknown");
         }
         syncCityHall(player);
@@ -2715,6 +2718,46 @@ public final class ServerActions {
         player.sendSystemMessage(Component.translatable(quiet
                 ? "message.citiesinlife.hush_on"
                 : "message.citiesinlife.hush_off", own.name()));
+    }
+
+    /**
+     * Take on one more bodyguard.
+     *
+     * <p>Hired here rather than at the barracks on purpose: a bodyguard is a decision about your
+     * own person and the city hall is where you make those. The Service NPC Spawner standing in
+     * the hall puts them on their feet on its next pass, the same way the barracks does for the
+     * army — the roll is the truth and the body is its shadow.
+     */
+    private static void hireGuard(ServerPlayer player, CityData data, City own) {
+        if (own.guards().size() >= City.MAX_GUARDS) {
+            reject(player, "guards_full");
+            return;
+        }
+        if (!own.withdraw(City.HIRE_GUARD_COST)) {
+            player.sendSystemMessage(Component.translatable(
+                    "message.citiesinlife.cannot_afford", City.HIRE_GUARD_COST));
+            return;
+        }
+        String name = SOLDIER_NAMES[player.level().random.nextInt(SOLDIER_NAMES.length)];
+        own.engage(new City.Soldier(UUID.randomUUID(), name, 0, "", 0L));
+        data.setDirty();
+        own.note(player.level().getGameTime(), "guard_hired", name);
+        player.sendSystemMessage(Component.translatable(
+                "message.citiesinlife.guard_hired", name, own.guards().size(), City.MAX_GUARDS));
+    }
+
+    /** Let the last one go. One button rather than a roll, because four is not a list. */
+    private static void dismissGuard(ServerPlayer player, CityData data, City own) {
+        if (own.guards().isEmpty()) {
+            reject(player, "guards_none");
+            return;
+        }
+        City.Soldier gone = own.guards().get(own.guards().size() - 1);
+        own.release(gone.id());
+        data.setDirty();
+        own.note(player.level().getGameTime(), "guard_dismissed", gone.name());
+        player.sendSystemMessage(Component.translatable(
+                "message.citiesinlife.guard_dismissed", gone.name()));
     }
 
     /**

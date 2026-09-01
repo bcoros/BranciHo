@@ -62,6 +62,16 @@ public class ServiceSpawnerBlockEntity extends BlockEntity {
     /** Who this station currently has out. Cleaned of anybody who has died or been discarded. */
     private final List<UUID> onDuty = new ArrayList<>();
 
+    /**
+     * The bodyguards this hall has put on their feet, kept apart from the staff.
+     *
+     * <p>A city hall spawner runs two completely different things at once — clerks, who are hired
+     * by demand and stood down when there is none, and bodyguards, who are hired by the head off a
+     * roll and stay hired. One list would have the clerk staffing arithmetic count the guards and
+     * stand them down again the moment the counter got quiet.
+     */
+    private final List<UUID> onGuard = new ArrayList<>();
+
     public ServiceSpawnerBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.SERVICE_SPAWNER.get(), pos, state);
     }
@@ -133,6 +143,11 @@ public class ServiceSpawnerBlockEntity extends BlockEntity {
             muster(serverLevel, city);
             return;
         }
+        // The city hall does both. Bodyguards come off their own roll and then the clerks are
+        // staffed underneath them exactly like any other service.
+        if (service == ServiceType.CLERK) {
+            musterGuards(serverLevel, city);
+        }
 
         // The floor is the change. needFor() is pure demand, and demand for a police officer in a
         // city where nobody has done anything is zero - which was correct, defensible, and meant
@@ -174,6 +189,9 @@ public class ServiceSpawnerBlockEntity extends BlockEntity {
             case POLICE -> countCitizens(serverLevel, city, true, false);
             case HOSPITAL -> countCitizens(serverLevel, city, false, true);
             case FIRE -> countTroubledTurbines(serverLevel, city);
+            // A counter and somebody behind it. Not demand-driven: a city hall with nobody in it
+            // is not a quiet city hall, it is the empty room this was added to fix.
+            case CLERK -> 1;
             case GARBAGE -> city.refuse() <= city.refuseTolerance()
                     ? 0
                     : 1 + (city.refuse() - city.refuseTolerance()) / Math.max(1, city.refuseTolerance());
@@ -248,6 +266,61 @@ public class ServiceSpawnerBlockEntity extends BlockEntity {
                 setChanged();
             }
         }
+    }
+
+    /**
+     * Put the city's bodyguard roll on its feet, and take off anybody who has been let go.
+     *
+     * <p>The same shape as {@link #muster}, against a different list and with an employer and a
+     * formation slot attached. The slot is the record's index on the roll, so a detail keeps the
+     * same shape from one muster to the next rather than reshuffling every time one is hired.
+     */
+    private void musterGuards(ServerLevel serverLevel, City city) {
+        List<UUID> present = new ArrayList<>();
+        for (UUID id : onGuard) {
+            if (serverLevel.getEntity(id) instanceof ServiceEntity guard && guard.soldierId() != null) {
+                present.add(guard.soldierId());
+            }
+        }
+        List<City.Soldier> roll = city.guards();
+        for (int slot = 0; slot < roll.size(); slot++) {
+            City.Soldier record = roll.get(slot);
+            if (present.contains(record.id())) {
+                continue;
+            }
+            if (!deployGuard(serverLevel, city, record, slot)) {
+                return;
+            }
+        }
+
+        for (Iterator<UUID> iterator = onGuard.iterator(); iterator.hasNext(); ) {
+            UUID id = iterator.next();
+            if (serverLevel.getEntity(id) instanceof ServiceEntity guard
+                    && (guard.soldierId() == null || city.guard(guard.soldierId()) == null)) {
+                guard.discard();
+                iterator.remove();
+                setChanged();
+            }
+        }
+    }
+
+    private boolean deployGuard(ServerLevel serverLevel, City city, City.Soldier record, int slot) {
+        int before = onDuty.size();
+        if (!deploy(serverLevel, city, ServiceType.BODYGUARD, record)) {
+            return false;
+        }
+        // deploy() adds to onDuty because that is the only list it knows about. Move it across, so
+        // the clerk staffing never sees a guard and never counts one.
+        if (onDuty.size() > before) {
+            UUID id = onDuty.remove(onDuty.size() - 1);
+            onGuard.add(id);
+            if (serverLevel.getEntity(id) instanceof ServiceEntity guard) {
+                guard.setEmployerId(city.owner());
+                guard.setFormationSlot(slot);
+            }
+        }
+        setChanged();
+        return true;
     }
 
     private boolean deploy(ServerLevel serverLevel, City city, ServiceType service,
@@ -337,8 +410,12 @@ public class ServiceSpawnerBlockEntity extends BlockEntity {
 
     /** Everybody in, permanently — the station is gone or is no longer a station. */
     public void sendEverybodyHome() {
-        if (onDuty.isEmpty() || !(level instanceof ServerLevel serverLevel)) {
+        if (!(level instanceof ServerLevel serverLevel)) {
             onDuty.clear();
+            onGuard.clear();
+            return;
+        }
+        if (onDuty.isEmpty() && onGuard.isEmpty()) {
             return;
         }
         for (UUID id : onDuty) {
@@ -346,13 +423,24 @@ public class ServiceSpawnerBlockEntity extends BlockEntity {
                 worker.discard();
             }
         }
+        // The guards go too. Their roll survives in the city, so they come back the moment there
+        // is a city hall to come back to - being fired is a different thing from the hall being
+        // demolished around them.
+        for (UUID id : onGuard) {
+            if (serverLevel.getEntity(id) instanceof ServiceEntity guard) {
+                guard.discard();
+            }
+        }
         onDuty.clear();
+        onGuard.clear();
         setChanged();
     }
 
     private void forgetTheDead(ServerLevel serverLevel) {
         boolean changed = onDuty.removeIf(id -> !(serverLevel.getEntity(id) instanceof ServiceEntity worker)
                 || !worker.isAlive());
+        changed |= onGuard.removeIf(id -> !(serverLevel.getEntity(id) instanceof ServiceEntity guard)
+                || !guard.isAlive());
         if (changed) {
             setChanged();
         }
@@ -390,6 +478,11 @@ public class ServiceSpawnerBlockEntity extends BlockEntity {
         for (int i = 0; i < list.size(); i++) {
             onDuty.add(list.getCompound(i).getUUID("id"));
         }
+        onGuard.clear();
+        ListTag guards = tag.getList("onGuard", Tag.TAG_COMPOUND);
+        for (int i = 0; i < guards.size(); i++) {
+            onGuard.add(guards.getCompound(i).getUUID("id"));
+        }
     }
 
     @Override
@@ -403,5 +496,12 @@ public class ServiceSpawnerBlockEntity extends BlockEntity {
             list.add(entry);
         }
         tag.put("onDuty", list);
+        ListTag guards = new ListTag();
+        for (UUID id : onGuard) {
+            CompoundTag entry = new CompoundTag();
+            entry.putUUID("id", id);
+            guards.add(entry);
+        }
+        tag.put("onGuard", guards);
     }
 }

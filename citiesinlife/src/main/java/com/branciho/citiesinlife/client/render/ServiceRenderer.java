@@ -32,6 +32,9 @@ public class ServiceRenderer extends HumanoidMobRenderer<ServiceEntity, ServiceM
         UNIFORMS.put(ServiceType.HOSPITAL, CitiesInLife.id("textures/entity/service/doctor.png"));
         UNIFORMS.put(ServiceType.GARBAGE, CitiesInLife.id("textures/entity/service/binman.png"));
         UNIFORMS.put(ServiceType.MILITARY, CitiesInLife.id("textures/entity/service/soldier.png"));
+        UNIFORMS.put(ServiceType.CLERK, CitiesInLife.id("textures/entity/service/clerk.png"));
+        UNIFORMS.put(ServiceType.BODYGUARD,
+                CitiesInLife.id("textures/entity/service/bodyguard.png"));
     }
 
     public ServiceRenderer(EntityRendererProvider.Context context) {

@@ -44,7 +44,27 @@ public enum ServiceType implements StringRepresentable {
     GARBAGE("garbage", true),
 
     /** The barracks. Soldiers come from the Military Tool, not from need. */
-    MILITARY("military", true);
+    MILITARY("military", true),
+
+    /**
+     * City hall staff.
+     *
+     * <p>The one service whose whole job is to make a building look occupied. A city hall was the
+     * only registered building in the mod with nobody in it — you founded a city there and then
+     * never went back — and a counter with somebody behind it is most of the difference between a
+     * civic building and a shed you once clicked.
+     */
+    CLERK("clerk", true),
+
+    /**
+     * Hired at the city hall, and then they come with you.
+     *
+     * <p>Armed like the army and paid for like the army, but pointed at a person rather than at a
+     * map: a bodyguard walks in formation behind whoever hired them and fights whatever is fighting
+     * them. Deliberately not part of the army roll, because a bodyguard standing at your shoulder
+     * is not a soldier you can also send to take a chunk.
+     */
+    BODYGUARD("bodyguard", true);
 
     private final String id;
     private final boolean staffed;
@@ -63,9 +83,16 @@ public enum ServiceType implements StringRepresentable {
         return staffed;
     }
 
-    /** Whether its people stay put instead of coming and going with demand. Only soldiers do. */
+    /**
+     * Whether its people stay put instead of coming and going with demand.
+     *
+     * <p>Three of them do, for three different reasons. Soldiers and bodyguards are paid for by
+     * the head and would be a refund if they wandered off; a clerk is what makes the city hall
+     * look staffed, and a city hall that empties whenever nothing is happening is the problem the
+     * clerk was added to solve.
+     */
     public boolean permanent() {
-        return this == MILITARY;
+        return this == MILITARY || this == BODYGUARD || this == CLERK;
     }
 
     public Component displayName() {
@@ -92,6 +119,11 @@ public enum ServiceType implements StringRepresentable {
      * <p>The three with a recognisable one. A park keeper and a bin lorry are both perfectly real
      * and neither would earn its own model and siren.
      */
+    /** Whether this service is issued a weapon and expected to use it. */
+    public boolean armed() {
+        return this == MILITARY || this == BODYGUARD;
+    }
+
     public boolean drives() {
         return this == POLICE || this == FIRE || this == HOSPITAL;
     }

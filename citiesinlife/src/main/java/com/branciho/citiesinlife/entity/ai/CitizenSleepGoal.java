@@ -35,10 +35,14 @@ public class CitizenSleepGoal extends Goal {
     @Override
     public boolean canUse() {
         BlockPos home = citizen.home();
-        if (home == null || !Shifts.sleepingHours(citizen.level())) {
+        // Under a curfew the clock stops mattering: this is what actually sends people home, at
+        // whatever hour the alert was declared.
+        if (home == null || !(citizen.curfew() || Shifts.sleepingHours(citizen.level()))) {
             return false;
         }
-        if (Shifts.onShift(citizen.level(), citizen.nightShift())) {
+        // ...and it outranks a night shift too, or every till worker in the city would carry on
+        // walking to work through an air raid.
+        if (!citizen.curfew() && Shifts.onShift(citizen.level(), citizen.nightShift())) {
             return false;
         }
         return stillABed(home);

@@ -5,6 +5,8 @@ import com.branciho.citiesinlife.city.CityData;
 import com.branciho.citiesinlife.city.CityMember;
 import com.branciho.citiesinlife.city.Diplomacy;
 import com.branciho.citiesinlife.city.Relation;
+import com.branciho.citiesinlife.entity.ai.BodyguardFollowGoal;
+import com.branciho.citiesinlife.entity.ai.BodyguardTargetGoal;
 import com.branciho.citiesinlife.entity.ai.FireDutyGoal;
 import com.branciho.citiesinlife.entity.ai.MedicGoal;
 import com.branciho.citiesinlife.entity.ai.PoliceGoal;
@@ -80,6 +82,16 @@ public class ServiceEntity extends PathfinderMob implements CityMember, Motorist
     /** For a soldier, which entry in the city's army roll this body belongs to. */
     private @Nullable UUID soldierId;
 
+    /**
+     * The player a bodyguard is assigned to, and where in the wedge they walk.
+     *
+     * <p>The employer is the city's owner in practice, but stored as a UUID rather than resolved
+     * from the city every time: a guard has to answer "who am I with" twenty times a second, and
+     * the answer must survive the city being handed over or the owner logging out mid-walk.
+     */
+    private @Nullable UUID employerId;
+    private int formationSlot;
+
     /** Ticks since this one last had a job. Reset by every duty goal that finds work. */
     private int idleTicks;
 
@@ -119,6 +131,7 @@ public class ServiceEntity extends PathfinderMob implements CityMember, Motorist
         // deciding while the goals above are already running.
         goalSelector.addGoal(4, new PoliceGoal(this));
         goalSelector.addGoal(4, new SoldierTargetGoal(this));
+        goalSelector.addGoal(4, new BodyguardTargetGoal(this));
         goalSelector.addGoal(5, new FireDutyGoal(this));
         goalSelector.addGoal(5, new MedicGoal(this));
         goalSelector.addGoal(5, new RefuseGoal(this));
@@ -126,6 +139,9 @@ public class ServiceEntity extends PathfinderMob implements CityMember, Motorist
         // The other half of a war. Mutually exclusive with the one above by their own checks:
         // you are either advancing on their ground or dug into yours, never both.
         goalSelector.addGoal(5, new TrenchGoal(this));
+        // Below the fighting and above the strolling: a bodyguard breaks formation to deal with
+        // somebody and walks back into it afterwards, which is the whole behaviour.
+        goalSelector.addGoal(6, new BodyguardFollowGoal(this, 1.05D));
         goalSelector.addGoal(7, new WaterAvoidingRandomStrollGoal(this, 0.9D));
         goalSelector.addGoal(8, new LookAtPlayerGoal(this, Player.class, 8.0F));
         goalSelector.addGoal(9, new RandomLookAroundGoal(this));
@@ -219,6 +235,28 @@ public class ServiceEntity extends PathfinderMob implements CityMember, Motorist
         return soldierId;
     }
 
+    /** The player this bodyguard is walking with, or null if they are not one, or nobody is on. */
+    public @Nullable Player employer() {
+        if (employerId == null || role() != ServiceType.BODYGUARD) {
+            return null;
+        }
+        Player boss = level().getPlayerByUUID(employerId);
+        return boss != null && boss.isAlive() ? boss : null;
+    }
+
+    public void setEmployerId(@Nullable UUID employerId) {
+        this.employerId = employerId;
+    }
+
+    /** Which station in the formation this one walks. */
+    public int formationSlot() {
+        return formationSlot;
+    }
+
+    public void setFormationSlot(int formationSlot) {
+        this.formationSlot = formationSlot;
+    }
+
     public void setSoldierId(@Nullable UUID soldierId) {
         this.soldierId = soldierId;
     }
@@ -285,6 +323,11 @@ public class ServiceEntity extends PathfinderMob implements CityMember, Motorist
                 City mine = city();
                 yield mine != null && Diplomacy.stance(victimCity, mine) == Relation.WAR;
             }
+            // A bodyguard answers to a person, not to a map, so the war table cannot decide this
+            // for them. Their own targeting goal has already refused to pick anybody who is not in
+            // a fight with their employer; without this arm the protection rules would cancel
+            // every blow they ever landed and they would be an expensive escort of mimes.
+            case BODYGUARD -> !cityId.equals(victimCity.id());
             default -> false;
         };
     }
@@ -355,5 +398,7 @@ public class ServiceEntity extends PathfinderMob implements CityMember, Motorist
         cityId = tag.hasUUID("city") ? tag.getUUID("city") : null;
         station = tag.contains("station") ? BlockPos.of(tag.getLong("station")) : null;
         soldierId = tag.hasUUID("soldier") ? tag.getUUID("soldier") : null;
+        employerId = tag.hasUUID("employer") ? tag.getUUID("employer") : null;
+        formationSlot = tag.getInt("formationSlot");
     }
 }

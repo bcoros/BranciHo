@@ -38,6 +38,10 @@ public class CitizenWorkGoal extends Goal {
         if (citizen.isSleeping() || citizen.workstation() == null) {
             return false;
         }
+        // A curfew is the city telling everybody to get indoors. Nobody's shift outranks that.
+        if (citizen.curfew()) {
+            return false;
+        }
         if (!Shifts.onShift(citizen.level(), citizen.nightShift())) {
             return false;
         }

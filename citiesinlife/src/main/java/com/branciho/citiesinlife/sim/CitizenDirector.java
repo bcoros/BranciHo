@@ -97,6 +97,7 @@ public final class CitizenDirector {
             }
 
             poison(city, citizens);
+            curfew(city, citizens);
             assignJobs(server, level, data, city, citizens);
 
             if (citizens.size() < cap) {
@@ -367,6 +368,20 @@ public final class CitizenDirector {
      * <p>Deliberately applied to the citizens of the city whose water is bad, not to everyone
      * standing near a dirty pipe. The pipe is not what is poisoning them; the mains are.
      */
+    /**
+     * Tell everybody whether the city is under a curfew.
+     *
+     * <p>Pushed onto the citizens rather than pulled by them. Four goals ask this question and
+     * three of them run every tick; a territory-and-city lookup at twenty hertz per citizen to
+     * learn something that changes once an hour is not a trade worth making.
+     */
+    private static void curfew(City city, List<CitizenEntity> citizens) {
+        boolean indoors = city.alertLevel().rousing();
+        for (CitizenEntity citizen : citizens) {
+            citizen.setCurfew(indoors);
+        }
+    }
+
     private static void poison(City city, List<CitizenEntity> citizens) {
         int tainted = city.waterTainted();
         if (tainted <= 0) {

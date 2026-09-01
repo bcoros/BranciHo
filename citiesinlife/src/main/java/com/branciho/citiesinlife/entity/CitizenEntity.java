@@ -160,6 +160,16 @@ public class CitizenEntity extends PathfinderMob implements CityMember, Motorist
      */
     private boolean nightShift;
 
+    /**
+     * Whether the city has told everybody to get indoors and stay there.
+     *
+     * <p>Set by the director from the city's alert level rather than asked for per citizen, because
+     * every goal that reads it runs at twenty hertz and a territory lookup at that rate is not
+     * worth the freshness. Saved, so a reload in the middle of a war does not give one loose
+     * five-second window of people strolling out to work.
+     */
+    private boolean curfew;
+
     /** Cached rather than looked up per call: the wander scorer asks about paths ten times a go. */
     private @Nullable PathNetwork paths;
 
@@ -198,7 +208,19 @@ public class CitizenEntity extends PathfinderMob implements CityMember, Motorist
         goalSelector.addGoal(2, new CitizenWorkGoal(this));
         goalSelector.addGoal(3, new CitizenSleepGoal(this));
         goalSelector.addGoal(5, new StrollOnPathGoal(this, 0.9D));
-        goalSelector.addGoal(6, new WaterAvoidingRandomStrollGoal(this, 0.8D));
+        // Vanilla's stroll has no idea what a curfew is, so it is wrapped rather than used. Left
+        // at the same priority it always had: this is the same goal, with one more reason to say no.
+        goalSelector.addGoal(6, new WaterAvoidingRandomStrollGoal(this, 0.8D) {
+            @Override
+            public boolean canUse() {
+                return !curfew && super.canUse();
+            }
+
+            @Override
+            public boolean canContinueToUse() {
+                return !curfew && super.canContinueToUse();
+            }
+        });
         goalSelector.addGoal(7, new LookAtPlayerGoal(this, Player.class, 8.0F));
         goalSelector.addGoal(8, new RandomLookAroundGoal(this));
     }
@@ -364,7 +386,10 @@ public class CitizenEntity extends PathfinderMob implements CityMember, Motorist
             boolean stillInBed = bed != null
                     && level().getBlockState(bed).getBlock() instanceof BedBlock
                     && blockPosition().distSqr(bed) <= 4.0D;
-            if (!stillInBed || !Shifts.sleepingHours(level())) {
+            // The curfew term matters more than it looks. Without it a citizen sent to bed at
+            // noon is put there by the goal and thrown out again here on the very next tick,
+            // forever, twenty times a second.
+            if (!stillInBed || !(curfew || Shifts.sleepingHours(level()))) {
                 stopSleeping();
             } else {
                 // Asleep and legitimately so. Pin them: a sleeper who is still being pathed
@@ -527,6 +552,15 @@ public class CitizenEntity extends PathfinderMob implements CityMember, Motorist
         return nightShift;
     }
 
+    /** Whether this citizen is under a curfew and should be at home whatever the hour. */
+    public boolean curfew() {
+        return curfew;
+    }
+
+    public void setCurfew(boolean curfew) {
+        this.curfew = curfew;
+    }
+
     public void setNightShift(boolean nightShift) {
         this.nightShift = nightShift;
     }
@@ -568,6 +602,7 @@ public class CitizenEntity extends PathfinderMob implements CityMember, Motorist
             tag.putLong("workstation", workstation.asLong());
         }
         tag.putBoolean("nightShift", nightShift);
+        tag.putBoolean("curfew", curfew);
         tag.putBoolean("workAbroad", workAbroad);
         if (flightTo != null) {
             tag.putLong("flightTo", flightTo.asLong());
@@ -588,6 +623,7 @@ public class CitizenEntity extends PathfinderMob implements CityMember, Motorist
         home = tag.contains("home") ? BlockPos.of(tag.getLong("home")) : null;
         workstation = tag.contains("workstation") ? BlockPos.of(tag.getLong("workstation")) : null;
         nightShift = tag.getBoolean("nightShift");
+        curfew = tag.getBoolean("curfew");
         workAbroad = tag.getBoolean("workAbroad");
         flightTo = tag.contains("flightTo") ? BlockPos.of(tag.getLong("flightTo")) : null;
         flightTicks = tag.getInt("flightTicks");

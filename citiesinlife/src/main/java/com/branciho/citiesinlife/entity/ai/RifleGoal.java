@@ -41,7 +41,9 @@ public class RifleGoal extends Goal {
 
     @Override
     public boolean canUse() {
-        return soldier.role() == ServiceType.MILITARY
+        // Bodyguards carry the same kit and shoot it the same way; the only difference between
+        // the two is who tells them who to point it at.
+        return soldier.role().armed()
                 && Gunfire.firearm(soldier.getMainHandItem())
                 && viableTarget() != null;
     }

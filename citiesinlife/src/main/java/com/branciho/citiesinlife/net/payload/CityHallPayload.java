@@ -27,11 +27,13 @@ import java.util.List;
  * @param alert    the declared alert level, by string id
  * @param meeting  whether a meeting is open in this city
  * @param hushed   whether every siren and alarm the city owns has been muted
+ * @param guards   how many bodyguards are on the roll
  * @param roll     the host and everyone who has turned up, in arrival order
  * @param ledger   the city's own history, oldest first
  */
 public record CityHallPayload(boolean hasCity, boolean inHall, String alert, boolean meeting,
-                              boolean hushed, List<String> roll, List<LedgerEntry> ledger)
+                              boolean hushed, int guards, List<String> roll,
+                              List<LedgerEntry> ledger)
         implements CustomPacketPayload {
 
     private static final int MAX_NAME = 64;
@@ -47,7 +49,8 @@ public record CityHallPayload(boolean hasCity, boolean inHall, String alert, boo
 
     /** What the panel shows before the first packet arrives, and after the city is gone. */
     public static CityHallPayload none() {
-        return new CityHallPayload(false, false, "peace", false, false, List.of(), List.of());
+        return new CityHallPayload(false, false, "peace", false, false, 0,
+                List.of(), List.of());
     }
 
     private void write(FriendlyByteBuf buf) {
@@ -56,6 +59,7 @@ public record CityHallPayload(boolean hasCity, boolean inHall, String alert, boo
         buf.writeUtf(alert, 16);
         buf.writeBoolean(meeting);
         buf.writeBoolean(hushed);
+        buf.writeVarInt(Math.max(0, Math.min(guards, City.MAX_GUARDS)));
 
         int names = Math.min(roll.size(), MAX_ROLL);
         buf.writeVarInt(names);
@@ -81,6 +85,7 @@ public record CityHallPayload(boolean hasCity, boolean inHall, String alert, boo
         String alert = buf.readUtf(16);
         boolean meeting = buf.readBoolean();
         boolean hushed = buf.readBoolean();
+        int guards = range(buf.readVarInt(), City.MAX_GUARDS, "bodyguards");
 
         int names = range(buf.readVarInt(), MAX_ROLL, "meeting roll");
         List<String> roll = new ArrayList<>(names);
@@ -95,7 +100,7 @@ public record CityHallPayload(boolean hasCity, boolean inHall, String alert, boo
                     buf.readLong(), buf.readUtf(LedgerEntry.MAX_KEY),
                     buf.readUtf(LedgerEntry.MAX_DETAIL)));
         }
-        return new CityHallPayload(hasCity, inHall, alert, meeting, hushed, roll, ledger);
+        return new CityHallPayload(hasCity, inHall, alert, meeting, hushed, guards, roll, ledger);
     }
 
     private static int range(int count, int cap, String what) {

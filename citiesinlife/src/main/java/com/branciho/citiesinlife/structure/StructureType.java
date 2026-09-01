@@ -25,7 +25,7 @@ public enum StructureType implements StringRepresentable {
      * <p>Deliberately not a block you place. The player builds a city hall that looks like a city
      * hall and then declares it to be one — the same rule as every other structure here.
      */
-    CITY_CORE("city_core", 0xFFD86A, 0),
+    CITY_CORE("city_core", 0xFFD86A, 0, ServiceType.CLERK),
 
     RESIDENTIAL("residential", 0x66E576, 0),
 
