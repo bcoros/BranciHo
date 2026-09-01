@@ -74,6 +74,7 @@ import com.branciho.citiesinlife.plant.PlantSurvey;
 import com.branciho.citiesinlife.power.PowerBlock;
 import com.branciho.citiesinlife.power.PowerGrid;
 import com.branciho.citiesinlife.scan.StructureScanner;
+import com.branciho.citiesinlife.sim.CitizenDirector;
 import com.branciho.citiesinlife.sim.CitySimulation;
 import com.branciho.citiesinlife.sim.CreativeFunding;
 import com.branciho.citiesinlife.structure.Structure;
@@ -2164,6 +2165,15 @@ public final class ServerActions {
     }
 
     /** Do one thing to one building, then send the list back so the screen shows the result. */
+    /**
+     * Most people the editor will put in one building at a time.
+     *
+     * <p>Not a balance figure — the city-wide cap is the real limit and this sits well under any
+     * sensible one. It is here so a malformed packet cannot ask for two billion citizens and have
+     * the server try.
+     */
+    private static final int MAX_HAND_SPAWN = 64;
+
     public static void editStructure(ServerPlayer player, EditStructurePayload payload) {
         MinecraftServer server = player.getServer();
         if (server == null) {
@@ -2208,6 +2218,19 @@ public final class ServerActions {
                         java.util.Set.of(), player.getYRot(), player.getXRot());
                 player.displayClientMessage(Component.translatable(
                         "message.citiesinlife.editor_moved", structure.name()), true);
+            }
+            case SPAWN -> {
+                int wanted = Mth.clamp(payload.amount(), 1, MAX_HAND_SPAWN);
+                int made = CitizenDirector.spawnInto(level, own, structure, wanted);
+                // Say what actually happened rather than what was asked for. The city-wide cap
+                // trims anybody over it within the second, so spawning past it would produce
+                // people who visibly evaporate - and a button that lies about that is worse than
+                // one that refuses.
+                player.displayClientMessage(made >= wanted
+                        ? Component.translatable("message.citiesinlife.editor_spawned",
+                                made, structure.name())
+                        : Component.translatable("message.citiesinlife.editor_spawned_short",
+                                made, wanted, CitiesInLifeConfig.citizensPerCity()), false);
             }
         }
         data.setDirty();

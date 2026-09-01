@@ -34,7 +34,9 @@ public record EditStructurePayload(UUID structureId, String action, String name,
         /** Health back to full, without waiting out the peacetime trickle. */
         REPAIR("repair"),
         /** Stand the player on top of it. */
-        GOTO("goto");
+        GOTO("goto"),
+        /** Put {@code amount} citizens in it. */
+        SPAWN("spawn");
 
         private final String id;
 

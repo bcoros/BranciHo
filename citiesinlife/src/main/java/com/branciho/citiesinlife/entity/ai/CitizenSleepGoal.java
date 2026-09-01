@@ -101,8 +101,12 @@ public class CitizenSleepGoal extends Goal {
                     citizen.getNavigation().stop();
                     return;
                 }
-                citizen.getNavigation().moveTo(
-                        home.getX() + 0.5D, home.getY(), home.getZ() + 0.5D, 1.0D);
+                // Same rule as the walk to work: a route that does not arrive is not walked.
+                // Standing outside a wall all night is the same bug in the dark.
+                if (!Routes.walkTo(citizen, home.getX() + 0.5D, home.getY(),
+                        home.getZ() + 0.5D, 1.0D)) {
+                    citizen.getNavigation().stop();
+                }
             }
             return;
         }

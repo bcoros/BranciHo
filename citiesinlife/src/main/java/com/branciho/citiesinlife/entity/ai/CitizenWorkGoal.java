@@ -95,8 +95,14 @@ public class CitizenWorkGoal extends Goal {
                     citizen.getNavigation().stop();
                     return;
                 }
-                citizen.getNavigation().moveTo(
-                        spot.getX() + 0.5D, spot.getY(), spot.getZ() + 0.5D, 1.0D);
+                // Only if the route arrives. A partial path ends at whatever is in the way, and
+                // walking it is what puts a citizen's face against a wall for the whole shift.
+                if (!Routes.walkTo(citizen, spot.getX() + 0.5D, spot.getY(), spot.getZ() + 0.5D,
+                        1.0D)) {
+                    // No way through today. Somebody who cannot get to work stays put, and tries
+                    // again in a few seconds in case whatever was in the way has a door in it now.
+                    citizen.getNavigation().stop();
+                }
             }
             return;
         }

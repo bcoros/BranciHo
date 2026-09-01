@@ -69,6 +69,15 @@ public final class CitizenDirector {
     /** Roughly one till worker in three is on nights, so a shop can be open at odd hours. */
     private static final int NIGHT_SHIFT_ODDS = 3;
 
+    /**
+     * How many places inside a building are tried before giving up on standing room.
+     *
+     * <p>Only for the editor's Spawn button, which asks about a box the player chose rather than
+     * about a bed the director found. Sixty-four darts at a building is enough to find a floor in
+     * anything with one, and cheap enough not to be felt.
+     */
+    private static final int SPAWN_SAMPLES = 64;
+
     private CitizenDirector() {
     }
 
@@ -160,7 +169,8 @@ public final class CitizenDirector {
         return false;
     }
 
-    private static void spawn(ServerLevel level, City city, BlockPos bed, BlockPos spot) {
+    /** {@code bed} may be null: a citizen without one never sleeps, which is allowed. */
+    private static void spawn(ServerLevel level, City city, @Nullable BlockPos bed, BlockPos spot) {
         CitizenEntity citizen = ModEntities.CITIZEN.get().create(level);
         if (citizen == null) {
             return;
@@ -229,6 +239,87 @@ public final class CitizenDirector {
                 && level.getBlockState(pos).getCollisionShape(level, pos).isEmpty()
                 && level.getBlockState(pos.above()).getCollisionShape(level, pos.above()).isEmpty()
                 && !level.getBlockState(pos.below()).getCollisionShape(level, pos.below()).isEmpty();
+    }
+
+    // ------------------------------------------------------------ by hand
+
+    /**
+     * Put people in a building because somebody asked for them.
+     *
+     * <p>Editor mode's Spawn button. Everything the director does automatically is a judgement about
+     * whether a citizen is <em>warranted</em> — is there a free bed, is a player near enough to see
+     * it, is the city under its cap. This skips the first two, because the person clicking the
+     * button has already made that judgement, and keeps the third, because the cap is not a
+     * balance rule but a performance one: the sweep above deletes anybody over it within a second,
+     * so spawning past it would produce citizens that visibly evaporate.
+     *
+     * <p>Beds are still handed out where there are free ones. A citizen with a bed sleeps in it and
+     * goes home to it; one without simply never sleeps, which is a fine thing for a crowd extra to
+     * do and a bad thing to refuse to spawn over.
+     *
+     * @return how many actually appeared, which is not always how many were asked for
+     */
+    public static int spawnInto(ServerLevel level, City city, Structure building, int wanted) {
+        List<CitizenEntity> existing = new ArrayList<>(level.getEntities(ModEntities.CITIZEN.get(),
+                citizen -> citizen.isAlive() && city.id().equals(citizen.cityId())));
+        int room = CitiesInLifeConfig.citizensPerCity() - existing.size();
+        int count = Math.min(wanted, Math.max(0, room));
+        if (count <= 0) {
+            return 0;
+        }
+
+        LongArrayList beds = findBeds(level, building);
+        List<BlockPos> free = new ArrayList<>();
+        for (int i = 0; i < beds.size(); i++) {
+            BlockPos bed = BlockPos.of(beds.getLong(i));
+            if (!taken(existing, bed)) {
+                free.add(bed);
+            }
+        }
+
+        int made = 0;
+        for (int i = 0; i < count; i++) {
+            BlockPos bed = i < free.size() ? free.get(i) : null;
+            // Standing room beside their own bed when they have one, and anywhere inside the box
+            // when they do not. A shop is a perfectly good place to put ten people.
+            BlockPos spot = bed == null ? null : freeSpotNear(level, bed);
+            if (spot == null) {
+                spot = standingRoomIn(level, building);
+            }
+            if (spot == null) {
+                // Nowhere in the whole box anybody could stand. Nothing else will work either.
+                break;
+            }
+            spawn(level, city, bed, spot);
+            made++;
+        }
+        return made;
+    }
+
+    /**
+     * Somewhere inside this building a person could stand.
+     *
+     * <p>Sampled rather than swept. A tower is a hundred thousand blocks and this runs on a button
+     * press that may ask for thirty people; walking the whole box thirty times to find a floor is
+     * the sort of thing that stalls a server for a second and gets blamed on something else.
+     */
+    private static @Nullable BlockPos standingRoomIn(ServerLevel level, Structure building) {
+        BlockPos min = building.min();
+        BlockPos max = building.max();
+        int spanX = max.getX() - min.getX() + 1;
+        int spanY = max.getY() - min.getY() + 1;
+        int spanZ = max.getZ() - min.getZ() + 1;
+        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+        for (int attempt = 0; attempt < SPAWN_SAMPLES; attempt++) {
+            cursor.set(
+                    min.getX() + level.random.nextInt(spanX),
+                    min.getY() + level.random.nextInt(spanY),
+                    min.getZ() + level.random.nextInt(spanZ));
+            if (roomToStand(level, cursor)) {
+                return cursor.immutable();
+            }
+        }
+        return null;
     }
 
     // ------------------------------------------------------------------- jobs

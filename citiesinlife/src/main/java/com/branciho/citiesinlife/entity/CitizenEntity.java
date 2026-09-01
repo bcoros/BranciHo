@@ -2,6 +2,9 @@ package com.branciho.citiesinlife.entity;
 
 import com.branciho.citiesinlife.city.CityData;
 import com.branciho.citiesinlife.entity.ai.Shifts;
+import com.branciho.citiesinlife.entity.ai.TownNavigation;
+import net.minecraft.world.entity.ai.goal.OpenDoorGoal;
+import net.minecraft.world.entity.ai.navigation.PathNavigation;
 import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.phys.Vec3;
 import com.branciho.citiesinlife.city.CityMember;
@@ -186,7 +189,11 @@ public class CitizenEntity extends PathfinderMob implements CityMember, Motorist
                 // an attribute that is missing when it is finally needed is a crash rather than a
                 // harmless zero.
                 .add(Attributes.ATTACK_DAMAGE, 3.0D)
-                .add(Attributes.FOLLOW_RANGE, 48.0D);
+                // Doubles as the longest route the pathfinder will build, which is the number that
+                // matters here: forty-eight blocks is not a commute across a city, it is a walk to
+                // the end of the street. A route that has to go round a wall is far longer than the
+                // straight line it replaces, so this is the distance a detour is allowed to be.
+                .add(Attributes.FOLLOW_RANGE, 128.0D);
     }
 
     @Override
@@ -197,9 +204,25 @@ public class CitizenEntity extends PathfinderMob implements CityMember, Motorist
         builder.define(DATA_CRIMINAL, false);
     }
 
+    /**
+     * Think further ahead than a cow does.
+     *
+     * <p>See {@link TownNavigation}. Short version: vanilla's node budget cannot get round a wall,
+     * so a citizen walks up to one and stops.
+     */
+    @Override
+    protected PathNavigation createNavigation(Level level) {
+        return new TownNavigation(this, level);
+    }
+
     @Override
     protected void registerGoals() {
         goalSelector.addGoal(0, new FloatGoal(this));
+        // Immediately after floating, and above everything with a schedule. The router now plans
+        // routes through closed doors, and a planned route through a door nobody opens is a route
+        // into a door. Closing it behind them, because a town where every door stands open is a
+        // town somebody has to walk round shutting.
+        goalSelector.addGoal(0, new OpenDoorGoal(this, true));
         // Above work and sleep, because somebody who has decided to do this is not going to the
         // office first.
         goalSelector.addGoal(1, new CommitMurderGoal(this));

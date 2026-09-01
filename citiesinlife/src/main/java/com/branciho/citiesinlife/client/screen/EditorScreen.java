@@ -33,14 +33,14 @@ import java.util.UUID;
 public class EditorScreen extends Screen {
 
     private static final int PANEL_WIDTH = 380;
-    private static final int PANEL_HEIGHT = 250;
+    private static final int PANEL_HEIGHT = 290;
 
     /** How wide the building list is, and where the details start. */
     private static final int LIST_WIDTH = 152;
 
     private static final int ROW = 15;
     private static final int LIST_TOP = 52;
-    private static final int ROWS = 10;
+    private static final int ROWS = 13;
 
     private int left;
     private int top;
@@ -51,9 +51,13 @@ public class EditorScreen extends Screen {
 
     private int seenRevision = -1;
 
+    /** How many to spawn. Held across rebuilds, which happen on every edit. */
+    private String spawnCount = "1";
+
     private EditBox nameBox;
     private EditBox residentBox;
     private EditBox jobBox;
+    private EditBox spawnBox;
 
     public EditorScreen() {
         super(Component.translatable("screen.citiesinlife.editor"));
@@ -163,6 +167,25 @@ public class EditorScreen extends Screen {
                             this.onClose();
                         })
                 .bounds(detail, buttons + 44, width, 18).build(), live));
+
+        // Spawning is its own row rather than another pair of buttons, because it takes a number
+        // and because it is the one thing here that puts something in the world rather than
+        // changing a figure about it.
+        int spawnRow = buttons + 82;
+        spawnBox = new EditBox(this.font, detail, spawnRow, 44, 18,
+                Component.translatable("screen.citiesinlife.editor_spawn_count"));
+        spawnBox.setMaxLength(2);
+        spawnBox.setFilter(EditorScreen::digitsOnly);
+        spawnBox.setValue(spawnCount);
+        spawnBox.setResponder(text -> spawnCount = text);
+        spawnBox.setEditable(live);
+        addRenderableWidget(spawnBox);
+
+        addRenderableWidget(active(Button.builder(
+                        Component.translatable("screen.citiesinlife.editor_spawn"),
+                        press -> send(EditStructurePayload.Action.SPAWN, "",
+                                Math.max(1, parse(spawnCount, 1))))
+                .bounds(detail + 50, spawnRow, width - 50, 18).build(), live));
 
         addRenderableWidget(Button.builder(Component.translatable("gui.done"),
                         press -> this.onClose())
@@ -335,9 +358,13 @@ public class EditorScreen extends Screen {
                         ? CityScreen.COLOUR_ACCENT : CityScreen.COLOUR_DIM, false);
 
         graphics.drawString(this.font,
+                Component.translatable("screen.citiesinlife.editor_spawn_hint"),
+                detail, top + 212, CityScreen.COLOUR_DIM, false);
+
+        graphics.drawString(this.font,
                 Component.translatable("screen.citiesinlife.editor_health",
                         entry.health(), entry.maxHealth()),
-                detail, top + PANEL_HEIGHT - 48,
+                detail, top + PANEL_HEIGHT - 44,
                 entry.health() >= entry.maxHealth()
                         ? CityScreen.COLOUR_GOOD : CityScreen.COLOUR_BAD, false);
     }
