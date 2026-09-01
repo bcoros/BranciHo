@@ -82,6 +82,9 @@ public class AlarmBlockEntity extends BlockEntity {
      */
     private AlertLevel cityAlert = AlertLevel.PEACE;
 
+    /** Whether the city hall has muted every alarm it owns, genuine ones included. */
+    private boolean cityHushed;
+
     public AlarmBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.ALARM.get(), pos, state);
     }
@@ -131,6 +134,7 @@ public class AlarmBlockEntity extends BlockEntity {
         insideReactor = false;
         insideSilo = false;
         cityAlert = AlertLevel.PEACE;
+        cityHushed = false;
 
         // Asked before any of the early returns below, because an alarm answers to the city it is
         // standing in whether or not it is also wired to a plant. A lamp in a warehouse is still
@@ -139,6 +143,7 @@ public class AlarmBlockEntity extends BlockEntity {
             City around = Diplomacy.owner(roused.getServer(), roused.dimension(), pos);
             if (around != null) {
                 cityAlert = around.alertLevel();
+                cityHushed = around.hushed();
             }
         }
 
@@ -194,6 +199,9 @@ public class AlarmBlockEntity extends BlockEntity {
      * that is genuinely on fire keeps its own red until the thing causing it is fixed.
      */
     private AlarmBlock.Trouble trouble() {
+        if (cityHushed) {
+            return AlarmBlock.Trouble.NONE;
+        }
         AlarmBlock.Trouble seen = genuineTrouble();
         AlarmBlock.Trouble declared = declaredTrouble();
         return seen.ordinal() >= declared.ordinal() ? seen : declared;
@@ -264,6 +272,11 @@ public class AlarmBlockEntity extends BlockEntity {
      * A readout that contradicts the light above it is worse than no readout.
      */
     public Component report() {
+        // Said first, because a muted alarm showing nothing is the one state a player is most
+        // likely to have forgotten they asked for.
+        if (cityHushed) {
+            return Component.translatable("message.citiesinlife.alarm_hushed");
+        }
         if (insideSilo) {
             return Component.translatable(siloLaunching
                     ? "message.citiesinlife.alarm_silo_launching"

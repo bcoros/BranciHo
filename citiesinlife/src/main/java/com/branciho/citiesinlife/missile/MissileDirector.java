@@ -1,10 +1,10 @@
 package com.branciho.citiesinlife.missile;
 
 import com.branciho.citiesinlife.block.SealingBlock;
-import com.branciho.citiesinlife.block.SirenBlock;
 import com.branciho.citiesinlife.city.City;
 import com.branciho.citiesinlife.city.CityData;
 import com.branciho.citiesinlife.city.Diplomacy;
+import com.branciho.citiesinlife.city.Sirens;
 import com.branciho.citiesinlife.city.Relation;
 import com.branciho.citiesinlife.entity.MissileEntity;
 import com.branciho.citiesinlife.structure.Structure;
@@ -70,14 +70,6 @@ public final class MissileDirector {
     /** How often the sky is swept for things that are coming. */
     private static final int SCAN_INTERVAL = 10;
 
-    /**
-     * How often a city that should be wailing has its sirens re-checked.
-     *
-     * <p>Ten seconds. Slow enough that the structure walk is irrelevant, fast enough that a chunk
-     * loading back in does not leave a mute pole standing in a city under attack.
-     */
-    private static final int REPAINT_INTERVAL = 200;
-
     /** The chance an interceptor that reaches its quarry actually stops it. */
     private static final float INTERCEPT_CHANCE = 0.5F;
 
@@ -119,12 +111,6 @@ public final class MissileDirector {
 
     /** Incoming missiles a defender has already thrown something at. One try each. */
     private static final Set<UUID> ANSWERED = new HashSet<>();
-
-    /**
-     * Cities whose sirens are currently up for any reason - an incoming warhead or a declared
-     * alert - so they are only switched when the answer changes.
-     */
-    private static final Set<UUID> WAILING = new HashSet<>();
 
     private MissileDirector() {
     }
@@ -199,21 +185,6 @@ public final class MissileDirector {
         }
         if (server.getTickCount() % SCAN_INTERVAL == 0) {
             watchTheSky(server);
-        }
-        // Sirens are normally switched once, on the tick a city's answer changes. That is cheap and
-        // it is wrong in one case: a structure whose chunk happened to be unloaded on that exact
-        // tick is skipped and never revisited, so it comes back silent while the rest of the city
-        // wails. Re-painting the cities that SHOULD be sounding, occasionally, catches those up -
-        // and costs nothing at all in the normal case, because the set is empty unless a city is
-        // under attack or has deliberately declared an alert.
-        if (!WAILING.isEmpty() && server.getTickCount() % REPAINT_INTERVAL == 0) {
-            CityData data = CityData.get(server);
-            for (UUID cityId : List.copyOf(WAILING)) {
-                City city = data.city(cityId);
-                if (city != null) {
-                    paintSirens(server, data, city, true);
-                }
-            }
         }
         resolveShots(server);
     }
@@ -337,28 +308,11 @@ public final class MissileDirector {
             }
         }
 
-        // Sirens, switched only where the answer changed. A city under attack keeps its sirens up
-        // for the whole flight; everybody else's go quiet the moment the sky is clear.
-        //
-        // A city hall that has declared an alert is the second reason a siren goes up, and it is
-        // OR-ed in here rather than painted from the button. Painting from the button would put two
-        // writers on the same blockstate: this loop only calls paintSirens when a city's answer
-        // CHANGES, so an out-of-band press would be silently stomped the next time an unrelated
-        // missile flipped that city - and never reasserted for a city with no missile activity at
-        // all. Folded in here there is one answer and one writer, and standing the city down still
-        // cannot silence a siren that a live warhead is keeping up.
-        for (City city : data.cities()) {
-            boolean wail = threatened.contains(city.id()) || city.alertLevel().rousing();
-            if (wail == WAILING.contains(city.id())) {
-                continue;
-            }
-            if (wail) {
-                WAILING.add(city.id());
-            } else {
-                WAILING.remove(city.id());
-            }
-            paintSirens(server, data, city, wail);
-        }
+        // Handed over rather than acted on. Something in the air is one of four reasons a city's
+        // sirens are up and this sweep is the only code that can know about that one, so it says
+        // so and stops there - it is not the missile director's business whether the reactor is
+        // also on fire.
+        Sirens.threaten(threatened);
     }
 
     /** Tell the owner what is coming and how long they have. */
@@ -505,44 +459,12 @@ public final class MissileDirector {
     }
 
 
-    /** Every siren this city owns, wherever it is standing. */
-    private static void paintSirens(MinecraftServer server, CityData data, City city,
-                                    boolean wailing) {
-        ServerLevel level = server.getLevel(city.dimension());
-        if (level == null) {
-            return;
-        }
-        for (Structure structure : data.structuresOf(city)) {
-            if (!structure.dimension().equals(level.dimension())
-                    || !level.isLoaded(structure.min())) {
-                continue;
-            }
-            SiloSurvey survey = SiloSurvey.of(level, structure);
-            if (survey.tooLarge()) {
-                continue;
-            }
-            for (BlockPos at : survey.sirens()) {
-                BlockState was = level.getBlockState(at);
-                if (was.hasProperty(SirenBlock.WAILING)
-                        && was.getValue(SirenBlock.WAILING) != wailing) {
-                    level.setBlock(at, was.setValue(SirenBlock.WAILING, wailing),
-                            Block.UPDATE_CLIENTS);
-                }
-            }
-        }
-    }
-
     private static void sound(Level level, BlockPos at, net.minecraft.sounds.SoundEvent event,
                               float volume, float pitch) {
         level.playSound(null, at, event, SoundSource.BLOCKS, volume, pitch);
     }
 
     /** Whether this silo is currently opening, firing or closing. */
-    /** Whether this city's sirens are currently up, for anything that needs to match them. */
-    public static boolean wailing(UUID cityId) {
-        return WAILING.contains(cityId);
-    }
-
     public static boolean busy(UUID siloId) {
         return LAUNCHING.containsKey(siloId);
     }
@@ -552,6 +474,5 @@ public final class MissileDirector {
         LAUNCHING.clear();
         SHOTS.clear();
         ANSWERED.clear();
-        WAILING.clear();
     }
 }

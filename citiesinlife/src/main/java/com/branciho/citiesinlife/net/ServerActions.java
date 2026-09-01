@@ -2622,6 +2622,7 @@ public final class ServerActions {
                 inCityHall(data, player, own),
                 own.alertLevel().id(),
                 Meeting.running(own.id()),
+                own.hushed(),
                 Meeting.roll(own.id()),
                 own.ledger()));
     }
@@ -2655,6 +2656,7 @@ public final class ServerActions {
             case "meeting_start" -> openMeeting(server, player, own);
             case "meeting_end" -> shutMeeting(server, player, own);
             case "address" -> address(server, player, data, own, payload.detail());
+            case "hush" -> hush(player, data, own, !own.hushed());
             default -> reject(player, "city_hall_unknown");
         }
         syncCityHall(player);
@@ -2695,6 +2697,24 @@ public final class ServerActions {
         own.note(player.level().getGameTime(), "alert_" + level.id(), "");
         player.sendSystemMessage(Component.translatable(
                 "message.citiesinlife.alert_set", own.name(), level.displayName()));
+    }
+
+    /**
+     * Mute, or unmute, every siren and alarm the city owns.
+     *
+     * <p>Public because the button block in the hall presses the same lever the panel does. There
+     * is deliberately no separate "silence just this one" — the thing being asked for is quiet, and
+     * a mute that left half the city sounding would not be it.
+     */
+    public static void hush(ServerPlayer player, CityData data, City own, boolean quiet) {
+        if (!own.setHushed(quiet)) {
+            return;
+        }
+        data.setDirty();
+        own.note(player.level().getGameTime(), quiet ? "hushed" : "unhushed", "");
+        player.sendSystemMessage(Component.translatable(quiet
+                ? "message.citiesinlife.hush_on"
+                : "message.citiesinlife.hush_off", own.name()));
     }
 
     private static void openMeeting(MinecraftServer server, ServerPlayer player, City own) {

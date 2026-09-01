@@ -544,7 +544,7 @@ public final class ModBlocks {
                         .noOcclusion(), kind));
     }
 
-    /** The pole that tells a city something is coming. */
+    /** The mast that tells a city something is coming. */
     public static final DeferredBlock<SirenBlock> SIREN =
             BLOCKS.register("siren",
                     () -> new SirenBlock(BlockBehaviour.Properties.of()
@@ -552,6 +552,7 @@ public final class ModBlocks {
                             .strength(3.0F, 6.0F)
                             .requiresCorrectToolForDrops()
                             .sound(SoundType.METAL)
+                            .lightLevel(SirenBlock::lightFor)
                             .noOcclusion()));
 
     public static void register(IEventBus modBus) {

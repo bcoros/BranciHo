@@ -98,6 +98,23 @@ public final class Radiation {
     }
 
     /**
+     * Where fallout is still coming from, in one dimension.
+     *
+     * <p>Exposed for the sirens, which have to know whether a crater is standing on ground their
+     * own city claimed. The positions rather than a yes/no, because "is there fallout anywhere in
+     * the world" is not a question a city should answer with its own sirens.
+     */
+    public static List<BlockPos> craters(ResourceKey<Level> dimension) {
+        List<BlockPos> found = new ArrayList<>(SOURCES.size());
+        for (Source source : SOURCES) {
+            if (source.dimension().equals(dimension)) {
+                found.add(BlockPos.containing(source.at()));
+            }
+        }
+        return found;
+    }
+
+    /**
      * Whether this entity is standing in fallout at all.
      *
      * <p>Asked by the protection rules, which otherwise make a city's own people the only living

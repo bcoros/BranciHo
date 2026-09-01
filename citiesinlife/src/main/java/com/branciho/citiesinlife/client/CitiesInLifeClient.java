@@ -11,6 +11,8 @@ import com.branciho.citiesinlife.client.render.ServiceModel;
 import com.branciho.citiesinlife.client.render.ServiceRenderer;
 import com.branciho.citiesinlife.client.render.LeverArmModel;
 import com.branciho.citiesinlife.client.render.LeverRenderer;
+import com.branciho.citiesinlife.client.render.SirenModel;
+import com.branciho.citiesinlife.client.render.SirenRenderer;
 import com.branciho.citiesinlife.client.render.TouristModel;
 import com.branciho.citiesinlife.client.render.TouristRenderer;
 import com.branciho.citiesinlife.client.render.TurbineModel;
@@ -80,6 +82,7 @@ public final class CitiesInLifeClient {
         event.registerLayerDefinition(TouristModel.LAYER, TouristModel::createBodyLayer);
         event.registerLayerDefinition(LeverArmModel.LAYER, LeverArmModel::create);
         event.registerLayerDefinition(MissileModel.LAYER, MissileModel::create);
+        event.registerLayerDefinition(SirenModel.LAYER, SirenModel::create);
     }
 
     @SubscribeEvent
@@ -98,6 +101,9 @@ public final class CitiesInLifeClient {
         event.registerEntityRenderer(ModEntities.SERVICE.get(), ServiceRenderer::new);
         event.registerEntityRenderer(ModEntities.CAR.get(), CarRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.MISSILE.get(), MissileRenderer::new);
+        // A lattice mast three and a half blocks tall with a turning horn cluster: no part
+        // of it is expressible as a block model, so all of it is drawn here.
+        event.registerBlockEntityRenderer(ModBlockEntities.SIREN.get(), SirenRenderer::new);
         event.registerEntityRenderer(ModEntities.MISSILE.get(), MissileEntityRenderer::new);
         event.registerEntityRenderer(ModEntities.TOURIST.get(), TouristRenderer::new);
     }

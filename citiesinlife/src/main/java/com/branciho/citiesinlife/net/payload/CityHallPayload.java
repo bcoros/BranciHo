@@ -26,11 +26,12 @@ import java.util.List;
  * @param inHall   whether they are standing inside its city hall box
  * @param alert    the declared alert level, by string id
  * @param meeting  whether a meeting is open in this city
+ * @param hushed   whether every siren and alarm the city owns has been muted
  * @param roll     the host and everyone who has turned up, in arrival order
  * @param ledger   the city's own history, oldest first
  */
 public record CityHallPayload(boolean hasCity, boolean inHall, String alert, boolean meeting,
-                              List<String> roll, List<LedgerEntry> ledger)
+                              boolean hushed, List<String> roll, List<LedgerEntry> ledger)
         implements CustomPacketPayload {
 
     private static final int MAX_NAME = 64;
@@ -46,7 +47,7 @@ public record CityHallPayload(boolean hasCity, boolean inHall, String alert, boo
 
     /** What the panel shows before the first packet arrives, and after the city is gone. */
     public static CityHallPayload none() {
-        return new CityHallPayload(false, false, "peace", false, List.of(), List.of());
+        return new CityHallPayload(false, false, "peace", false, false, List.of(), List.of());
     }
 
     private void write(FriendlyByteBuf buf) {
@@ -54,6 +55,7 @@ public record CityHallPayload(boolean hasCity, boolean inHall, String alert, boo
         buf.writeBoolean(inHall);
         buf.writeUtf(alert, 16);
         buf.writeBoolean(meeting);
+        buf.writeBoolean(hushed);
 
         int names = Math.min(roll.size(), MAX_ROLL);
         buf.writeVarInt(names);
@@ -78,6 +80,7 @@ public record CityHallPayload(boolean hasCity, boolean inHall, String alert, boo
         boolean inHall = buf.readBoolean();
         String alert = buf.readUtf(16);
         boolean meeting = buf.readBoolean();
+        boolean hushed = buf.readBoolean();
 
         int names = range(buf.readVarInt(), MAX_ROLL, "meeting roll");
         List<String> roll = new ArrayList<>(names);
@@ -92,7 +95,7 @@ public record CityHallPayload(boolean hasCity, boolean inHall, String alert, boo
                     buf.readLong(), buf.readUtf(LedgerEntry.MAX_KEY),
                     buf.readUtf(LedgerEntry.MAX_DETAIL)));
         }
-        return new CityHallPayload(hasCity, inHall, alert, meeting, roll, ledger);
+        return new CityHallPayload(hasCity, inHall, alert, meeting, hushed, roll, ledger);
     }
 
     private static int range(int count, int cap, String what) {

@@ -16,6 +16,7 @@ import com.branciho.citiesinlife.blockentity.ServiceSpawnerBlockEntity;
 import com.branciho.citiesinlife.blockentity.CoolingPortBlockEntity;
 import com.branciho.citiesinlife.blockentity.ReactorLeverBlockEntity;
 import com.branciho.citiesinlife.blockentity.SewageCollectorBlockEntity;
+import com.branciho.citiesinlife.blockentity.SirenBlockEntity;
 import com.branciho.citiesinlife.blockentity.SteamEmitterBlockEntity;
 import com.branciho.citiesinlife.blockentity.UraniumStorageBlockEntity;
 import com.branciho.citiesinlife.blockentity.WaterStorageBlockEntity;
@@ -129,6 +130,12 @@ public final class ModBlockEntities {
             ALARM = BLOCK_ENTITIES.register("alarm",
                     () -> BlockEntityType.Builder
                             .of(AlarmBlockEntity::new, ModBlocks.ALARM.get())
+                            .build(null));
+
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<SirenBlockEntity>>
+            SIREN = BLOCK_ENTITIES.register("siren",
+                    () -> BlockEntityType.Builder
+                            .of(SirenBlockEntity::new, ModBlocks.SIREN.get())
                             .build(null));
 
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<EndPipeBlockEntity>>

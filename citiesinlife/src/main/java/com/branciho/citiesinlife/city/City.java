@@ -187,6 +187,21 @@ public final class City {
     private final List<LedgerEntry> ledger = new ArrayList<>();
 
     /**
+     * The master mute: every siren and every alarm in the city, off.
+     *
+     * <p>Deliberately overrides genuine emergencies as well as declared ones, which is the whole
+     * reason it exists. A reactor that will be critical for the next twenty minutes while you fix
+     * it, or a crater that will give off fallout for ten, is a thing you already know about — and
+     * the alternative to a mute is a player turning the mod's volume down and then not hearing the
+     * next one either.
+     *
+     * <p>Saved, because it is a decision rather than a state of the world, and a decision that
+     * unmade itself over a reload would be worse than useless. Every panel that can set it also
+     * shows it, so it cannot be forgotten quietly.
+     */
+    private boolean hushed;
+
+    /**
      * How far back the city remembers.
      *
      * <p>A hundred and twenty lines is months of anything worth writing down. It was forty, chosen
@@ -388,6 +403,20 @@ public final class City {
 
     public AlertLevel alertLevel() {
         return alertLevel;
+    }
+
+    /** Whether the city has muted every siren and alarm it owns. */
+    public boolean hushed() {
+        return hushed;
+    }
+
+    /** @return whether this changed anything */
+    public boolean setHushed(boolean hushed) {
+        if (this.hushed == hushed) {
+            return false;
+        }
+        this.hushed = hushed;
+        return true;
     }
 
     /**
@@ -727,6 +756,7 @@ public final class City {
         tag.putByteArray("flag", flag);
 
         tag.putString("alertLevel", alertLevel.id());
+        tag.putBoolean("hushed", hushed);
         ListTag ledgerList = new ListTag();
         for (LedgerEntry entry : ledger) {
             CompoundTag row = new CompoundTag();
@@ -891,6 +921,9 @@ public final class City {
         // key, so byId falls straight through to PEACE - which is the right answer for a city
         // nobody has ever put on alert, and avoids a null level reaching paintSirens.
         city.alertLevel = AlertLevel.byId(tag.getString("alertLevel"), AlertLevel.PEACE);
+        // Absent in saves from before the mute existed, and getBoolean answers false for a missing
+        // key, which is exactly the right default: a city that has never been muted is not muted.
+        city.hushed = tag.getBoolean("hushed");
 
         // Capped on the way in as well as on the way out. A save hand-edited to hold ten thousand
         // ledger rows would otherwise be loaded in full and then written back out in full forever.

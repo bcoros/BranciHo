@@ -1,17 +1,17 @@
 package com.branciho.citiesinlife.block;
 
-import com.branciho.citiesinlife.city.City;
-import com.branciho.citiesinlife.city.Diplomacy;
-import com.branciho.citiesinlife.missile.MissileDirector;
-import com.branciho.citiesinlife.sound.MachineSounds;
+import com.branciho.citiesinlife.blockentity.SirenBlockEntity;
+import com.branciho.citiesinlife.registry.ModBlockEntities;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.util.RandomSource;
-import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.BaseEntityBlock;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.RenderShape;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityTicker;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
@@ -20,29 +20,37 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * An air-raid siren: the only warning a city gets.
+ * A siren: the only warning a city gets.
  *
  * <p>Without one, a missile arrives. That is the whole of it — the first you know is the crater,
  * and there is no version of that which is a game rather than a punishment. A siren turns an
  * incoming warhead into a minute of knowing, which is enough time to get out of the way, watch it
- * come in, or find out whether your interceptors work.
+ * come in, or find out whether your interceptors work. It answers to three more things besides:
+ * an alert declared at the city hall, a reactor of your own past saving, and fallout still coming
+ * off a crater on your ground.
  *
- * <p>It answers to territory rather than to a wire. Anything flying at ground your city has claimed
- * sets off every siren that city owns, wherever they are standing, because the thing being defended
- * is the land and not the pole.
+ * <p>It answers to territory rather than to a wire, and — since this version — to territory alone.
+ * It used to be switched on by a sweep over the city's registered building boxes, which meant that
+ * a siren on a pole in the street, where sirens go, belonged to no box and therefore never made a
+ * sound in its life. Now every siren asks for itself, once a second, from wherever it is standing.
  *
- * <p>No block entity. Whether it is wailing is a block state the missile director sets, which costs
- * one state change at the start of an attack and one at the end rather than a ticking machine on
- * every pole in the city.
+ * <p>A block entity, and not only for that. The mast is three and a half blocks tall and the horn
+ * cluster turns while it sounds, neither of which a block model can do.
  */
-public class SirenBlock extends Block {
+public class SirenBlock extends BaseEntityBlock {
 
     public static final MapCodec<SirenBlock> CODEC = simpleCodec(SirenBlock::new);
 
     public static final BooleanProperty WAILING = BooleanProperty.create("wailing");
 
-    /** A post with a horn on top. */
-    private static final VoxelShape SHAPE = Block.box(4.0D, 0.0D, 4.0D, 12.0D, 16.0D, 12.0D);
+    /**
+     * The foot of the mast, and only the foot.
+     *
+     * <p>Everything above the first block is drawn rather than built, and left walk-through on
+     * purpose: a lattice tower you can shelter under reads as a tower, and a three-block column of
+     * collision on a one-block item does not.
+     */
+    private static final VoxelShape SHAPE = Block.box(3.0D, 0.0D, 3.0D, 13.0D, 16.0D, 13.0D);
 
     public SirenBlock(Properties properties) {
         super(properties);
@@ -50,7 +58,7 @@ public class SirenBlock extends Block {
     }
 
     @Override
-    protected MapCodec<? extends Block> codec() {
+    protected MapCodec<? extends BaseEntityBlock> codec() {
         return CODEC;
     }
 
@@ -65,53 +73,40 @@ public class SirenBlock extends Block {
         return SHAPE;
     }
 
+    /** All of it is drawn by the renderer, so the block model itself is an empty particle source. */
+    @Override
+    protected RenderShape getRenderShape(BlockState state) {
+        return RenderShape.MODEL;
+    }
+
     public static boolean wailing(BlockState state) {
         return state.hasProperty(WAILING) && state.getValue(WAILING);
     }
 
-    /**
-     * A siren raised into a city whose sirens are already up starts up, not silent.
-     *
-     * <p>The missile director switches a city's sirens on the tick its answer changes, which is the
-     * right thing for a warhead — one switch at the start of an attack and one at the end, rather
-     * than a walk over every pole every tick. A pole planted between those two moments is part of
-     * neither, so it asks once, here, at the only instant that matters to it.
-     *
-     * <p>The director does also sweep the cities that ought to be sounding every ten seconds, which
-     * would eventually catch this. Ten seconds is a long time to stand beside a silent siren during
-     * an air raid, and that sweep is there for chunks that were unloaded rather than for this.
-     */
+    /** The lamp on top, lit only while it is sounding. */
+    public static int lightFor(BlockState state) {
+        return wailing(state) ? 12 : 0;
+    }
+
     @Override
-    public @Nullable BlockState getStateForPlacement(BlockPlaceContext context) {
-        BlockState placed = super.getStateForPlacement(context);
-        if (placed == null || !(context.getLevel() instanceof ServerLevel level)) {
-            return placed;
-        }
-        City city = Diplomacy.owner(level.getServer(), level.dimension(), context.getClickedPos());
-        if (city == null) {
-            return placed;
-        }
-        // Two reasons a city's sirens are up, and a pole planted into either of them should join in:
-        // a declared alert, and a warhead actually in the air. The second one matters more and is
-        // the easier of the two to miss - an attack is exactly when somebody runs out and puts up
-        // another siren.
-        boolean up = city.alertLevel().rousing() || MissileDirector.wailing(city.id());
-        return up ? placed.setValue(WAILING, true) : placed;
+    public @Nullable BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
+        return new SirenBlockEntity(pos, state);
     }
 
     /**
-     * The wail.
+     * Ticked on both sides, which is unusual here and deliberate.
      *
-     * <p>Louder than anything else the mod plays and still on the machine-volume dial, because a
-     * siren that cannot be turned down is a siren that gets the mod uninstalled. It rides
-     * {@code animateTick} like every other machine here, which means you hear it from about thirty
-     * blocks — a pole in the middle of a district covers the district.
+     * <p>The server tick is the decision — am I in a city, and is that city sounding. The client
+     * tick is the turning and the wail, which are played locally so the machine-volume setting can
+     * reach them.
      */
     @Override
-    public void animateTick(BlockState state, Level level, BlockPos pos, RandomSource random) {
-        super.animateTick(state, level, pos, random);
-        if (wailing(state)) {
-            MachineSounds.airRaid(level, pos, random);
-        }
+    public @Nullable <T extends BlockEntity> BlockEntityTicker<T> getTicker(
+            Level level, BlockState state, BlockEntityType<T> type) {
+        return level.isClientSide
+                ? createTickerHelper(type, ModBlockEntities.SIREN.get(),
+                        SirenBlockEntity::clientTick)
+                : createTickerHelper(type, ModBlockEntities.SIREN.get(),
+                        SirenBlockEntity::serverTick);
     }
 }

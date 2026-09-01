@@ -19,6 +19,7 @@ import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import com.branciho.citiesinlife.city.Demolition;
 import com.branciho.citiesinlife.city.Meeting;
+import com.branciho.citiesinlife.city.Sirens;
 import com.branciho.citiesinlife.missile.MissileDirector;
 import com.branciho.citiesinlife.missile.Warhead;
 
@@ -77,6 +78,7 @@ public final class ServerEvents {
         Warhead.clear();
         MissileDirector.clear();
         Meeting.clear();
+        Sirens.clear();
         Meltdown.forgetAll();
     }
 

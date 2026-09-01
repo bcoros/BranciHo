@@ -614,7 +614,7 @@
   "block.citiesinlife.ballistic_missile": "Ballistic Missile",
   "block.citiesinlife.nuclear_missile": "Nuclear Missile",
   "block.citiesinlife.interceptor_missile": "Interceptor Missile",
-  "block.citiesinlife.siren": "Air-Raid Siren",
+  "block.citiesinlife.siren": "Siren",
   "item.citiesinlife.missile_stage": "Rocket Stage",
   "item.citiesinlife.uranium_core": "Enriched Uranium Core",
   "missile.citiesinlife.ballistic_missile": "Ballistic Missile",
@@ -710,5 +710,13 @@
   "message.citiesinlife.alarm_silo_ready": "Silo quiet. Doors sealed.",
   "message.citiesinlife.alarm_reactor_critical": "Reactor past its limits. Get out of the hall.",
   "message.citiesinlife.alarm_reactor_strained": "Reactor under strain. Check the cooling loop.",
-  "message.citiesinlife.alarm_reactor_clear": "Reactor within limits."
+  "message.citiesinlife.alarm_reactor_clear": "Reactor within limits.",
+  "message.citiesinlife.alarm_hushed": "Muted from the city hall. Nothing is being reported.",
+  "screen.citiesinlife.hush_on": "Silence All Sirens & Alarms",
+  "screen.citiesinlife.hush_off": "Sound Sirens & Alarms Again",
+  "screen.citiesinlife.hushed": "MUTED",
+  "message.citiesinlife.hush_on": "%s has silenced every siren and alarm it owns. Nothing will sound until you turn them back on.",
+  "message.citiesinlife.hush_off": "%s will sound its sirens and alarms again.",
+  "ledger.citiesinlife.hushed": "Silenced every siren and alarm",
+  "ledger.citiesinlife.unhushed": "Sirens and alarms live again"
 }

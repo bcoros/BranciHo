@@ -34,7 +34,7 @@ public class CityHallScreen extends Screen {
 
     private static final int HEADER = 40;
     private static final int ROW = 24;
-    private static final int BUTTON_ROWS = 3;
+    private static final int BUTTON_ROWS = 4;
     private static final int ROLL_HEIGHT = 24;
     private static final int LEDGER_LABEL = 14;
 
@@ -125,6 +125,20 @@ public class CityHallScreen extends Screen {
         addRenderableWidget(launch);
 
         y += ROW;
+        // The mute gets a row to itself rather than sharing one. It is the only control here that
+        // can hide a genuine emergency, and a button that does that should not be one of a pair a
+        // player might hit by accident.
+        Button hush = Button.builder(
+                        Component.translatable(hall.hushed()
+                                ? "screen.citiesinlife.hush_off"
+                                : "screen.citiesinlife.hush_on"),
+                        press -> send("hush", ""))
+                .bounds(left + 12, y, PANEL_WIDTH - 24, 20)
+                .build();
+        hush.active = open;
+        addRenderableWidget(hush);
+
+        y += ROW;
         addressBox = new EditBox(this.font, left + 12, y, PANEL_WIDTH - 24 - third - 4, 20,
                 Component.translatable("screen.citiesinlife.address_hint"));
         addressBox.setMaxLength(CityHallActionPayload.MAX_DETAIL);
@@ -197,7 +211,12 @@ public class CityHallScreen extends Screen {
         graphics.drawString(this.font,
                 Component.translatable("screen.citiesinlife.alert_level", level.displayName()),
                 left + 12, top + 29, level.colour(), false);
-        if (!hall.inHall()) {
+        if (hall.hushed()) {
+            Component muted = Component.translatable("screen.citiesinlife.hushed");
+            graphics.drawString(this.font, muted,
+                    left + PANEL_WIDTH - 12 - this.font.width(muted), top + 29,
+                    CityScreen.COLOUR_BAD, false);
+        } else if (!hall.inHall()) {
             Component warn = Component.translatable("screen.citiesinlife.not_in_hall");
             graphics.drawString(this.font, warn,
                     left + PANEL_WIDTH - 12 - this.font.width(warn), top + 29,
