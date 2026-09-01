@@ -61,7 +61,7 @@ public class GuideScreen extends Screen {
             "start", "money", "power", "water", "sewage", "roads", "services",
             "war", "neighbours", "nuclear", "missiles", "sirens", "city_hall", "editor",
             "settings"};
-    private static final int[] PAGES = {3, 2, 3, 3, 2, 3, 4, 5, 3, 5, 5, 3, 5, 3, 2};
+    private static final int[] PAGES = {3, 2, 3, 3, 2, 5, 4, 5, 3, 5, 5, 3, 5, 3, 2};
 
     private int chapter;
     private int page;
