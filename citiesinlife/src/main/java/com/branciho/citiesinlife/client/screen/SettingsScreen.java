@@ -55,7 +55,9 @@ public class SettingsScreen extends Screen {
         super(Component.translatable("screen.citiesinlife.settings"));
         this.parent = parent;
         ModSettingsPayload known = ClientCityCache.settings();
-        this.citizens = known == null ? 15 : known.citizensPerCity();
+        this.citizens = known == null
+                ? CitiesInLifeConfig.DEFAULT_CITIZENS
+                : known.citizensPerCity();
         this.cars = known == null || known.carsEnabled();
         this.carDistance = known == null ? 100 : known.carDistance();
         this.blast = known == null ? 100 : known.nuclearBlastPercent();
