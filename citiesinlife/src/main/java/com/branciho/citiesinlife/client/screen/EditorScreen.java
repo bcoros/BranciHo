@@ -136,6 +136,9 @@ public class EditorScreen extends Screen {
         jobBox.setEditable(live);
         healthBox.setEditable(live);
 
+        // The button rows below are two across; the boxes above are three. Kept as its own number
+        // rather than reusing the column width, because they are answering different questions.
+        int half = (width - 8) / 2;
         int buttons = top + 146;
         addRenderableWidget(active(Button.builder(
                         Component.translatable("screen.citiesinlife.editor_apply"),
