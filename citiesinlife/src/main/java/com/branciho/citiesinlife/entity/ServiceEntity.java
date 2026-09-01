@@ -387,6 +387,10 @@ public class ServiceEntity extends PathfinderMob implements CityMember, Motorist
         if (soldierId != null) {
             tag.putUUID("soldier", soldierId);
         }
+        if (employerId != null) {
+            tag.putUUID("employer", employerId);
+        }
+        tag.putInt("formationSlot", formationSlot);
     }
 
     @Override

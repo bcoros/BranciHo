@@ -174,7 +174,19 @@ public final class StructureScanner {
                     }
                 }
                 if (lowestSolid < 0) {
-                    // Nothing solid anywhere in this column: open air, and open air has no inside.
+                    // Nothing solid anywhere in this column. Usually that means open air, and open
+                    // air has no inside - but it also describes a box drawn wholly within a large
+                    // room, where the floor is below the selection and the ceiling above it. That
+                    // one is a real building and used to measure nothing at all, so the column is
+                    // counted whole when there is something holding it up AND something over it.
+                    if (capped(level, cursor, x, min.getY(), z, -1)
+                            && capped(level, cursor, x, max.getY(), z, 1)) {
+                        for (int i = 0; i < height; i++) {
+                            if (passable[i]) {
+                                enclosed++;
+                            }
+                        }
+                    }
                     continue;
                 }
 
