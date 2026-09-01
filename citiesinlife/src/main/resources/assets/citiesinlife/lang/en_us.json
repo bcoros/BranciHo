@@ -718,5 +718,9 @@
   "message.citiesinlife.hush_on": "%s has silenced every siren and alarm it owns. Nothing will sound until you turn them back on.",
   "message.citiesinlife.hush_off": "%s will sound its sirens and alarms again.",
   "ledger.citiesinlife.hushed": "Silenced every siren and alarm",
-  "ledger.citiesinlife.unhushed": "Sirens and alarms live again"
+  "ledger.citiesinlife.unhushed": "Sirens and alarms live again",
+  "block.citiesinlife.meeting_button": "Emergency Meeting Button",
+  "block.citiesinlife.hush_button": "Silence Button",
+  "message.citiesinlife.button_no_city": "You have no city. This button belongs to one.",
+  "message.citiesinlife.button_not_in_hall": "This button only works inside your own city hall."
 }

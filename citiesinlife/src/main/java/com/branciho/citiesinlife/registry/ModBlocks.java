@@ -49,6 +49,7 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import com.branciho.citiesinlife.block.MissileBlock;
+import com.branciho.citiesinlife.block.CityHallButtonBlock;
 import com.branciho.citiesinlife.block.SirenBlock;
 import com.branciho.citiesinlife.missile.MissileKind;
 
@@ -553,6 +554,28 @@ public final class ModBlocks {
                             .requiresCorrectToolForDrops()
                             .sound(SoundType.METAL)
                             .lightLevel(SirenBlock::lightFor)
+                            .noOcclusion()));
+
+    /**
+     * The two buttons that live in the city hall.
+     *
+     * <p>Both are the same object with a different colour of dome and a different wire behind it,
+     * so they read as a pair on the wall and nobody has to remember which is which.
+     */
+    public static final DeferredBlock<CityHallButtonBlock.Meeting> MEETING_BUTTON =
+            BLOCKS.register("meeting_button",
+                    () -> new CityHallButtonBlock.Meeting(BlockBehaviour.Properties.of()
+                            .mapColor(MapColor.COLOR_RED)
+                            .strength(2.0F, 6.0F)
+                            .sound(SoundType.METAL)
+                            .noOcclusion()));
+
+    public static final DeferredBlock<CityHallButtonBlock.Hush> HUSH_BUTTON =
+            BLOCKS.register("hush_button",
+                    () -> new CityHallButtonBlock.Hush(BlockBehaviour.Properties.of()
+                            .mapColor(MapColor.COLOR_BLUE)
+                            .strength(2.0F, 6.0F)
+                            .sound(SoundType.METAL)
                             .noOcclusion()));
 
     public static void register(IEventBus modBus) {

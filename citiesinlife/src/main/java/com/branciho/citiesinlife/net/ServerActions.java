@@ -2653,7 +2653,7 @@ public final class ServerActions {
 
         switch (payload.action()) {
             case "alert" -> declareAlert(player, data, own, payload.detail());
-            case "meeting_start" -> openMeeting(server, player, own);
+            case "meeting_start" -> callMeeting(server, player, own);
             case "meeting_end" -> shutMeeting(server, player, own);
             case "address" -> address(server, player, data, own, payload.detail());
             case "hush" -> hush(player, data, own, !own.hushed());
@@ -2717,7 +2717,14 @@ public final class ServerActions {
                 : "message.citiesinlife.hush_off", own.name()));
     }
 
-    private static void openMeeting(MinecraftServer server, ServerPlayer player, City own) {
+    /**
+     * Open a meeting and invite everybody.
+     *
+     * <p>Public because the button block in the hall pulls the same lever the panel does. Both go
+     * through here rather than through {@link Meeting} directly, so the refusal messages and the
+     * announcement stay in one place.
+     */
+    public static void callMeeting(MinecraftServer server, ServerPlayer player, City own) {
         String refusal = Meeting.open(server, player, own);
         if (refusal != null) {
             player.sendSystemMessage(Component.translatable(refusal));

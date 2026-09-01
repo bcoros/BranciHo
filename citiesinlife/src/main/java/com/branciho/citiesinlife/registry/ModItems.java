@@ -267,6 +267,12 @@ public final class ModItems {
     public static final DeferredItem<BlockItem> SIREN =
             ITEMS.registerSimpleBlockItem("siren", ModBlocks.SIREN);
 
+    public static final DeferredItem<BlockItem> MEETING_BUTTON =
+            ITEMS.registerSimpleBlockItem("meeting_button", ModBlocks.MEETING_BUTTON);
+
+    public static final DeferredItem<BlockItem> HUSH_BUTTON =
+            ITEMS.registerSimpleBlockItem("hush_button", ModBlocks.HUSH_BUTTON);
+
     public static void register(IEventBus modBus) {
         ITEMS.register(modBus);
     }

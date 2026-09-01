@@ -12,7 +12,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.phys.AABB;
 
 /**
  * A siren, deciding for itself whether it should be sounding.
@@ -112,16 +111,5 @@ public class SirenBlockEntity extends BlockEntity {
     /** The horn cluster's angle at this exact moment, for the renderer. */
     public float spin(float partialTick) {
         return previousSpin + (spin - previousSpin) * partialTick;
-    }
-
-    /**
-     * The mast stands three and a half blocks tall and the horns overhang their own block.
-     *
-     * <p>Without this the whole thing vanishes the moment the one block it is anchored to leaves
-     * the view frustum, which on a tower you are standing under is most of the time.
-     */
-    @Override
-    public AABB getRenderBoundingBox() {
-        return new AABB(worldPosition).inflate(1.0D, 0.0D, 1.0D).expandTowards(0.0D, 4.0D, 0.0D);
     }
 }

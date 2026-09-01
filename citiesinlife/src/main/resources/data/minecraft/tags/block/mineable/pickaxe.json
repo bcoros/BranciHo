@@ -46,6 +46,8 @@
     "citiesinlife:ballistic_missile",
     "citiesinlife:nuclear_missile",
     "citiesinlife:interceptor_missile",
-    "citiesinlife:siren"
+    "citiesinlife:siren",
+    "citiesinlife:meeting_button",
+    "citiesinlife:hush_button"
   ]
 }
