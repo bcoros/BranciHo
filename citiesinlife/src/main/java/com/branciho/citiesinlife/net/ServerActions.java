@@ -198,6 +198,16 @@ public final class ServerActions {
 
         City city = data.cityOf(player.getUUID(), level.dimension());
 
+        // A city at war registers nothing, for the same reason it buys no land: whatever it is
+        // going to be holding at the end of this, it has to be holding already. Otherwise the
+        // answer to being invaded is to draw fresh boxes faster than the other side can knock them
+        // down - and now that buildings have health, that would be an infinite supply of them.
+        // Founding is exempt: you cannot be at war before you have a city.
+        if (city != null && !city.wars().isEmpty()) {
+            reject(player, "at_war_no_building");
+            return;
+        }
+
         if (type == StructureType.CITY_CORE) {
             if (city != null) {
                 reject(player, "already_have_city");

@@ -11,6 +11,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Mth;
 import net.minecraft.world.level.ChunkPos;
 
 import java.util.ArrayList;
@@ -46,6 +47,17 @@ public final class Demolition {
     private static final int PER_TICK = 4;
 
     /**
+     * The radius an ordinary charge of TNT clears, and the yardstick everything is measured against.
+     *
+     * <p>Four blocks. A blast of exactly this size does its damage at face value; anything bigger
+     * hits proportionally harder, so a warhead is not merely a creeper that reached further.
+     */
+    private static final float REFERENCE_RADIUS = 4.0F;
+
+    /** How hard the biggest thing in the mod may hit, as a multiple of a stick of TNT. */
+    private static final float MAX_FORCE = 8.0F;
+
+    /**
      * Health taken off per block a blast removes from inside the box.
      *
      * <p>Four, so a building is finished when roughly a quarter of what it is made of has been
@@ -55,8 +67,8 @@ public final class Demolition {
      */
     private static final int DAMAGE_PER_BLOCK = 4;
 
-    /** One damaged building, and how much of it went. */
-    private record Wound(UUID structureId, int blocks) {
+    /** One damaged building, and the health this owes it. */
+    private record Wound(UUID structureId, int damage) {
     }
 
     private static final Map<UUID, Integer> PENDING = new HashMap<>();
@@ -68,6 +80,24 @@ public final class Demolition {
      * is a large negative number — which reads as healing, and is how a building would survive
      * being at the centre of a crater.
      */
+    /**
+     * How hard this blast hits, over and above how many blocks it took.
+     *
+     * <p>Block count alone is not the whole story. A charge that clears twice the radius removes
+     * far more than twice the blocks from a small building — but against a large one, where most of
+     * the blast falls outside the box, counting blocks alone would make a warhead and a creeper
+     * feel much the same. Scaling by radius as well is what makes a bigger explosion a bigger
+     * explosion rather than a wider one.
+     *
+     * <p>Capped, so nothing arrives with a multiplier that overflows the arithmetic below.
+     */
+    private static float force(float radius) {
+        if (radius <= 0.0F) {
+            return 1.0F;
+        }
+        return Mth.clamp(radius / REFERENCE_RADIUS, 1.0F, MAX_FORCE);
+    }
+
     private static int saturate(int blocks) {
         return Math.min(blocks, Integer.MAX_VALUE / DAMAGE_PER_BLOCK);
     }
@@ -84,7 +114,7 @@ public final class Demolition {
      * its own blast resistance — or that the border rules took back out of the list — does not
      * take a road with it.
      */
-    public static void blast(ServerLevel level, Collection<BlockPos> destroyed) {
+    public static void blast(ServerLevel level, Collection<BlockPos> destroyed, float radius) {
         if (destroyed.isEmpty()) {
             return;
         }
@@ -94,7 +124,7 @@ public final class Demolition {
             roads.mark(level.dimension(), pos, pos, 0, true);
             paths.mark(level.dimension(), pos, pos, true);
         }
-        wound(level, destroyed);
+        wound(level, destroyed, force(radius));
     }
 
     /**
@@ -131,7 +161,7 @@ public final class Demolition {
      * {@code structureAt} walks a chunk's structure list every time it is called, so asking it once
      * per victim would be the same handful of buildings looked up three hundred times.
      */
-    private static void wound(ServerLevel level, Collection<BlockPos> destroyed) {
+    private static void wound(ServerLevel level, Collection<BlockPos> destroyed, float force) {
         CityData data = CityData.get(level.getServer());
         Set<Long> chunks = new HashSet<>();
         for (BlockPos pos : destroyed) {
@@ -157,7 +187,13 @@ public final class Demolition {
                 }
             }
             if (hits > 0) {
-                PENDING.merge(structure.id(), hits, Integer::sum);
+                // Turned into damage here rather than at the far end, because that is where the
+                // force of this particular blast is still known - by the time the queue is
+                // assessed, several explosions of different sizes may have been folded together.
+                int hurt = (int) Math.min(Integer.MAX_VALUE,
+                        (long) (saturate(hits) * DAMAGE_PER_BLOCK * force));
+                PENDING.merge(structure.id(), hurt,
+                        (a, b) -> (int) Math.min(Integer.MAX_VALUE, (long) a + b));
             }
         }
     }
@@ -199,7 +235,7 @@ public final class Demolition {
         // Health is the whole of it now, and it is a number the player can watch fall: structure
         // mode draws it over the box. There is no second, invisible rule that can condemn a
         // building whose bar still says it is standing.
-        boolean ruined = structure.damage(saturate(wound.blocks()) * DAMAGE_PER_BLOCK);
+        boolean ruined = structure.damage(wound.damage());
         data.setDirty();
 
         City city = data.city(structure.cityId());

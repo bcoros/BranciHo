@@ -161,7 +161,7 @@ public final class MultiplayerEvents {
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void onExplosionAftermath(ExplosionEvent.Detonate event) {
         if (event.getLevel() instanceof ServerLevel level) {
-            Demolition.blast(level, event.getAffectedBlocks());
+            Demolition.blast(level, event.getAffectedBlocks(), event.getExplosion().radius());
         }
     }
 
