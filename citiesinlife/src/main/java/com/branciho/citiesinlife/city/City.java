@@ -189,10 +189,13 @@ public final class City {
     /**
      * How far back the city remembers.
      *
-     * <p>Forty lines is a couple of in-game weeks of anything worth writing down, fits a scrolling
-     * panel without paging, and keeps the cost of trimming from the front irrelevant.
+     * <p>A hundred and twenty lines is months of anything worth writing down. It was forty, chosen
+     * to fit a panel that turned out not to scroll at all — so the panel only ever showed the last
+     * six and the other thirty-four were unreachable. Now that it scrolls, the limit can be what a
+     * city's history ought to be rather than what fits on a screen, and trimming from the front of
+     * a list this size still costs nothing next to the tick that writes to it.
      */
-    public static final int MAX_LEDGER = 40;
+    public static final int MAX_LEDGER = 120;
 
     public City(UUID id, String name, UUID owner, ResourceKey<Level> dimension) {
         this.id = id;

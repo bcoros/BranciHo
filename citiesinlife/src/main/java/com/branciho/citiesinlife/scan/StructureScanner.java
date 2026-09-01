@@ -55,6 +55,21 @@ public final class StructureScanner {
      */
     private static final int VOLUME_PER_CELL = 3;
 
+    /**
+     * How far outside the selection to look for a floor or a roof the box missed.
+     *
+     * <p>A cell counts as interior when there is something solid below it and something solid above
+     * it, and until now both had to be <em>inside the box</em>. That made drawing the box a test of
+     * precision: start the selection on the air above your floorboards rather than on the
+     * floorboards, or stop it on the last wall block rather than on the roof, and every column came
+     * back with one solid block and nothing between — a finished building measuring nought.
+     *
+     * <p>So the cap may be just outside. Two blocks, which covers the off-by-one that actually
+     * happens without inventing a ceiling for a column standing in the open: sky above a field is
+     * still sky, so a field still measures nothing.
+     */
+    private static final int EDGE_REACH = 2;
+
     /** What measuring a selection produced, in floor-equivalent cells. */
     public record Measurement(int usableCells) {
     }
@@ -142,7 +157,23 @@ public final class StructureScanner {
                         highestSolid = i;
                     }
                 }
-                for (int i = lowestSolid + 1; i < highestSolid; i++) {
+                if (lowestSolid < 0) {
+                    // Nothing solid anywhere in this column: open air, and open air has no inside.
+                    continue;
+                }
+
+                // The floor and the roof are allowed to be just outside the box. Only ever asked
+                // when the box's own edge is open space - a column already capped inside the
+                // selection is answered, and does not pay for the extra lookups.
+                int floor = lowestSolid;
+                if (passable[0] && capped(level, cursor, x, min.getY(), z, -1)) {
+                    floor = -1;
+                }
+                int roof = highestSolid;
+                if (passable[height - 1] && capped(level, cursor, x, max.getY(), z, 1)) {
+                    roof = height;
+                }
+                for (int i = floor + 1; i < roof; i++) {
                     if (passable[i]) {
                         enclosed++;
                     }
@@ -150,5 +181,21 @@ public final class StructureScanner {
             }
         }
         return enclosed / VOLUME_PER_CELL;
+    }
+
+    /**
+     * Whether there is a floor below, or a roof above, within reach of the selection's edge.
+     *
+     * <p>{@code step} is -1 to look down from the bottom of the box and 1 to look up from the top.
+     */
+    private static boolean capped(Level level, BlockPos.MutableBlockPos cursor,
+                                  int x, int edgeY, int z, int step) {
+        for (int away = 1; away <= EDGE_REACH; away++) {
+            cursor.set(x, edgeY + step * away, z);
+            if (level.getBlockState(cursor).blocksMotion()) {
+                return true;
+            }
+        }
+        return false;
     }
 }

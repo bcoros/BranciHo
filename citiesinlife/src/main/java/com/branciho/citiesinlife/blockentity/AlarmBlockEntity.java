@@ -1,6 +1,7 @@
 package com.branciho.citiesinlife.blockentity;
 
 import com.branciho.citiesinlife.block.AlarmBlock;
+import com.branciho.citiesinlife.city.AlertLevel;
 import com.branciho.citiesinlife.city.City;
 import com.branciho.citiesinlife.city.CityData;
 import com.branciho.citiesinlife.city.Diplomacy;
@@ -74,12 +75,12 @@ public class AlarmBlockEntity extends BlockEntity {
     private boolean siloLaunching;
 
     /**
-     * Whether the city hall standing over this alarm has declared an alert.
+     * What the city hall standing over this alarm has declared.
      *
      * <p>Cached from the survey like everything else here, so it costs one territory lookup twice a
      * second rather than one per tick, and catches up within half a second of the button.
      */
-    private boolean cityRoused;
+    private AlertLevel cityAlert = AlertLevel.PEACE;
 
     public AlarmBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.ALARM.get(), pos, state);
@@ -129,14 +130,16 @@ public class AlarmBlockEntity extends BlockEntity {
         reactorLevel = AlarmBlock.Trouble.NONE;
         insideReactor = false;
         insideSilo = false;
-        cityRoused = false;
+        cityAlert = AlertLevel.PEACE;
 
         // Asked before any of the early returns below, because an alarm answers to the city it is
         // standing in whether or not it is also wired to a plant. A lamp in a warehouse is still
         // one of "all the alarms" when the city hall raises them.
         if (level instanceof ServerLevel roused) {
             City around = Diplomacy.owner(roused.getServer(), roused.dimension(), pos);
-            cityRoused = around != null && around.alertLevel().rousing();
+            if (around != null) {
+                cityAlert = around.alertLevel();
+            }
         }
 
         if (level instanceof ServerLevel serverLevel) {
@@ -181,19 +184,28 @@ public class AlarmBlockEntity extends BlockEntity {
     /**
      * What this lamp shows: whichever is worse, what it can see or what the city has declared.
      *
-     * <p>A declared alert raises every alarm to amber and no further. Red is left to mean what a
-     * player has already learned it means — this particular building is in trouble, go to it — so
-     * that during a citywide alert the one plant that is actually on fire is still the red lamp
-     * among the amber ones. It also gives the stand-down its promised behaviour for free: dropping
-     * the alert removes only the amber term, and anything genuinely wrong keeps its own light until
-     * the thing causing it is fixed.
+     * <p>The two declared levels get different colours, because they mean different things and a
+     * player has to be able to tell them apart across a dark city. An alert is amber — stand by,
+     * something may be coming. War is red, on every alarm in the city, because at that point
+     * something <em>is</em> coming and there is nothing cautionary left to say.
+     *
+     * <p>Worse-of-the-two rather than a replacement, which is what gives the stand-down its
+     * promised behaviour for free: dropping the alert removes only the declared term, and a plant
+     * that is genuinely on fire keeps its own red until the thing causing it is fixed.
      */
     private AlarmBlock.Trouble trouble() {
         AlarmBlock.Trouble seen = genuineTrouble();
-        if (!cityRoused || seen.ordinal() >= AlarmBlock.Trouble.FOULED.ordinal()) {
-            return seen;
-        }
-        return AlarmBlock.Trouble.FOULED;
+        AlarmBlock.Trouble declared = declaredTrouble();
+        return seen.ordinal() >= declared.ordinal() ? seen : declared;
+    }
+
+    /** The lamp the city hall alone would put on, with nothing else wrong. */
+    private AlarmBlock.Trouble declaredTrouble() {
+        return switch (cityAlert) {
+            case PEACE -> AlarmBlock.Trouble.NONE;
+            case ALERT -> AlarmBlock.Trouble.FOULED;
+            case WAR -> AlarmBlock.Trouble.FIRE;
+        };
     }
 
     private AlarmBlock.Trouble genuineTrouble() {
@@ -243,19 +255,40 @@ public class AlarmBlockEntity extends BlockEntity {
         return AlarmBlock.Trouble.NONE;
     }
 
-    /** One line saying what it can see, so a silent alarm can be told from an unwired one. */
+    /**
+     * One line saying what it can see, so a silent alarm can be told from an unwired one.
+     *
+     * <p>Asked in the same order the lamp itself decides, which it was not before: the reactor and
+     * silo surveys return early without ever counting turbines, so an alarm bolted to a reactor at
+     * the top of its range used to answer "all turbines running clean" while its own lamp was red.
+     * A readout that contradicts the light above it is worse than no readout.
+     */
     public Component report() {
+        if (insideSilo) {
+            return Component.translatable(siloLaunching
+                    ? "message.citiesinlife.alarm_silo_launching"
+                    : "message.citiesinlife.alarm_silo_ready");
+        }
+        if (insideReactor) {
+            return Component.translatable(switch (reactorLevel) {
+                case FIRE -> "message.citiesinlife.alarm_reactor_critical";
+                case FOULED -> "message.citiesinlife.alarm_reactor_strained";
+                case NONE -> "message.citiesinlife.alarm_reactor_clear";
+            });
+        }
         if (howManyBurning > 0) {
             return Component.translatable("message.citiesinlife.alarm_fire", howManyBurning);
         }
         if (howManyClogged > 0) {
             return Component.translatable("message.citiesinlife.alarm_fouled", howManyClogged);
         }
-        // Asked before the no-plant answer. Under a citywide alert every lamp in the city goes
-        // amber, and a player who taps one to ask why deserves to be told it is the city hall and
-        // not a fouled turbine - otherwise they go looking for a clog that was never there.
-        if (cityRoused) {
-            return Component.translatable("message.citiesinlife.alarm_city_alert");
+        // Asked before the no-plant answer. Under a declared alert every lamp in the city lights,
+        // and a player who taps one to ask why deserves to be told it is the city hall and not a
+        // fouled turbine - otherwise they go looking for a clog that was never there.
+        if (cityAlert != AlertLevel.PEACE) {
+            return Component.translatable(cityAlert == AlertLevel.WAR
+                    ? "message.citiesinlife.alarm_city_war"
+                    : "message.citiesinlife.alarm_city_alert");
         }
         if (!insidePlant) {
             return Component.translatable("message.citiesinlife.alarm_no_plant");

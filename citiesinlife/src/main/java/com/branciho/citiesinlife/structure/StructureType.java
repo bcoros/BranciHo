@@ -14,7 +14,8 @@ import org.jetbrains.annotations.Nullable;
  *
  * <p>Capacity is expressed as <em>cells per unit</em> rather than units per cell so the numbers read
  * as floor space: an office worker gets 14 floor cells, a factory worker 18, a shop worker 28
- * because shops are mostly aisle. Housing is handled separately because it quantises.
+ * because shops are mostly aisle. Housing goes the other way — residents per cell — because a home
+ * is the one thing here that should reward every single block of floor you add to it.
  */
 public enum StructureType implements StringRepresentable {
 
@@ -112,24 +113,37 @@ public enum StructureType implements StringRepresentable {
      */
     MISSILE_SILO("missile_silo", 0xB0552F, 0, null, false);
 
-    /** Floor cells consumed by one dwelling. */
-    public static final double CELLS_PER_DWELLING = 16.0D;
+    /**
+     * Virtual residents one cell of floor houses.
+     *
+     * <p>Housing used to be quantised into whole dwellings — sixteen cells bought one dwelling and
+     * a dwelling was ten people — which meant a house could only ever hold 0, 10, 20, 30 people and
+     * nothing in between. Two builds that felt completely different to put up read the same, and a
+     * modest one landed on nought because it was one cell short of the first step. Floor space you
+     * added and got nothing for is the worst possible answer from a measuring tool: it reads as the
+     * mod ignoring what you built.
+     *
+     * <p>So there is no step any more. Every cell counts, and the rate is roughly double what the
+     * old one worked out at, because the old figure was quietly stingy — the quantiser threw away
+     * up to fifteen cells of every building, and a large house came out smaller than it looked.
+     *
+     * <p>These are <em>virtual</em> citizens — a number, not entities. Physical NPCs are a small
+     * visible sample of this figure, never one entity per person.
+     */
+    public static final double RESIDENTS_PER_CELL = 1.25D;
+
+    /** Below this, a floor is a cupboard rather than a workplace. */
+    public static final int MIN_USABLE_CELLS = 9;
 
     /**
-     * Virtual residents per dwelling.
+     * Below this, a house is a shed.
      *
-     * <p>Ten rather than a literal household, because a registered building stands for a piece of a
-     * city rather than for one address. A modest apartment block reading as 370 people is what makes
-     * a city feel like a city; the same block reading as 111 reads like a village and made the whole
-     * economy feel pointless.
-     *
-     * <p>These are <em>virtual</em> citizens — a number, not entities. Physical NPCs will later be a
-     * small visible sample of this figure, never one entity per person.
+     * <p>Lower than {@link #MIN_USABLE_CELLS} on purpose. Somewhere to sleep is a smaller ask than
+     * somewhere to work, and a hut that houses two people is a much better answer than a hut that
+     * houses nobody. Kept separate rather than lowering the shared figure, because that one is also
+     * what decides when a bombed building stops counting as a building.
      */
-    public static final int RESIDENTS_PER_DWELLING = 10;
-
-    /** Below this, a floor is a cupboard rather than a home or a workplace. */
-    public static final int MIN_USABLE_CELLS = 9;
+    public static final int MIN_HOUSING_CELLS = 4;
 
     private final String id;
     private final int colour;
@@ -210,15 +224,14 @@ public enum StructureType implements StringRepresentable {
     /**
      * How many residents this many usable floor cells houses.
      *
-     * <p>Quantised into whole dwellings because half an apartment houses nobody. A linear
-     * cells-to-people ratio looks fine on a cottage and is wildly wrong on a tower.
+     * <p>Straight multiplication, rounded. Every cell you add is worth somebody, which is the only
+     * behaviour that makes extending a house feel like extending a house.
      */
     public int residentsFor(int usableCells) {
-        if (!housesPeople() || usableCells < MIN_USABLE_CELLS) {
+        if (!housesPeople() || usableCells < MIN_HOUSING_CELLS) {
             return 0;
         }
-        int dwellings = (int) Math.floor(usableCells / CELLS_PER_DWELLING);
-        return dwellings * RESIDENTS_PER_DWELLING;
+        return Math.max(1, (int) Math.round(usableCells * RESIDENTS_PER_CELL));
     }
 
     public int jobsFor(int usableCells) {

@@ -12,6 +12,7 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.Mth;
 
 import java.util.List;
 
@@ -37,8 +38,8 @@ public class CityHallScreen extends Screen {
     private static final int ROLL_HEIGHT = 24;
     private static final int LEDGER_LABEL = 14;
 
-    /** As much history as fits without the panel needing to scroll or the screen to overflow. */
-    private static final int LEDGER_ROWS = 6;
+    /** How many lines of history are on screen at once. The rest is a wheel away. */
+    private static final int LEDGER_ROWS = 8;
     private static final int LEDGER_ROW_HEIGHT = 11;
     private static final int FOOTER = 30;
 
@@ -50,6 +51,17 @@ public class CityHallScreen extends Screen {
     private int seenRevision = -1;
     private int sinceAsked;
     private EditBox addressBox;
+
+    /**
+     * How far back through the ledger the reader has scrolled, in rows.
+     *
+     * <p>Counted from the NEWEST end rather than the oldest, which is what makes a live panel
+     * behave. At rest it is zero and the newest lines are on screen; a line arriving while you sit
+     * there pushes the view along with it instead of shunting the whole history up by one under
+     * your eyes. Scroll back and it holds the older lines steady, because the distance from the
+     * end only changes when you change it.
+     */
+    private int scrollBack;
 
     /**
      * What the player has typed so far.
@@ -212,10 +224,10 @@ public class CityHallScreen extends Screen {
             }
         }
 
-        y = top + HEADER + BUTTON_ROWS * ROW + ROLL_HEIGHT;
         graphics.drawString(this.font, Component.translatable("screen.citiesinlife.ledger"),
-                left + 12, y, CityScreen.COLOUR_TEXT, false);
-        y += LEDGER_LABEL;
+                left + 12, top + HEADER + BUTTON_ROWS * ROW + ROLL_HEIGHT,
+                CityScreen.COLOUR_TEXT, false);
+        y = ledgerTop();
 
         List<LedgerEntry> ledger = hall.ledger();
         if (ledger.isEmpty()) {
@@ -224,14 +236,66 @@ public class CityHallScreen extends Screen {
                     left + 12, y, CityScreen.COLOUR_DIM, false);
             return;
         }
-        // Newest last is how a history reads, but only the last few fit - so the window is the TAIL
-        // of the list and a city that has done a lot shows what it did recently.
-        int from = Math.max(0, ledger.size() - LEDGER_ROWS);
-        for (int i = from; i < ledger.size(); i++) {
+        // Clamped here rather than where the wheel is read, because the list this is an offset into
+        // arrives from the server and can shrink between one frame and the next.
+        scrollBack = Mth.clamp(scrollBack, 0, hiddenRows(ledger.size()));
+        int last = ledger.size() - scrollBack;
+        int from = Math.max(0, last - LEDGER_ROWS);
+        for (int i = from; i < last; i++) {
             graphics.drawString(this.font, ledger.get(i).describe(), left + 12, y,
                     CityScreen.COLOUR_DIM, false);
             y += LEDGER_ROW_HEIGHT;
         }
+        drawScrollbar(graphics, ledger.size(), from);
+    }
+
+    /** How many rows of history do not fit on screen, and so have to be scrolled to. */
+    private static int hiddenRows(int entries) {
+        return Math.max(0, entries - LEDGER_ROWS);
+    }
+
+    /**
+     * A bar down the side of the ledger saying how much more there is.
+     *
+     * <p>Only drawn when there is more, so a young city with four lines of history does not get a
+     * scrollbar telling it that four lines is all four lines.
+     */
+    private void drawScrollbar(GuiGraphics graphics, int entries, int from) {
+        int hidden = hiddenRows(entries);
+        if (hidden <= 0) {
+            return;
+        }
+        int top = ledgerTop();
+        int height = LEDGER_ROWS * LEDGER_ROW_HEIGHT;
+        int x = left + PANEL_WIDTH - 16;
+        graphics.fill(x, top, x + 3, top + height, CityScreen.COLOUR_ACCENT & 0x40FFFFFF);
+        int grip = Math.max(8, height * LEDGER_ROWS / entries);
+        int travel = height - grip;
+        int at = top + (travel * from) / hidden;
+        graphics.fill(x, at, x + 3, at + grip, CityScreen.COLOUR_ACCENT);
+    }
+
+    /** The y the first line of history is drawn at. */
+    private int ledgerTop() {
+        return top + HEADER + BUTTON_ROWS * ROW + ROLL_HEIGHT + LEDGER_LABEL;
+    }
+
+    /**
+     * The wheel walks the ledger.
+     *
+     * <p>Taken unconditionally rather than only over the ledger's own rectangle: there is nothing
+     * else on this panel a wheel could mean, and asking a player to find the exact strip of pixels
+     * that accepts scrolling is the kind of thing that reads as the feature not working.
+     */
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        List<LedgerEntry> ledger = ClientCityCache.cityHall().ledger();
+        int hidden = hiddenRows(ledger.size());
+        if (hidden > 0) {
+            scrollBack = Mth.clamp(scrollBack + (int) Math.signum(scrollY), 0, hidden);
+            return true;
+        }
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 
     @Override
