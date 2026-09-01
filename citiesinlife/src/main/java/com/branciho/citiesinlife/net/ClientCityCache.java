@@ -2,6 +2,7 @@ package com.branciho.citiesinlife.net;
 
 import net.minecraft.core.BlockPos;
 import com.branciho.citiesinlife.net.payload.CityHallPayload;
+import com.branciho.citiesinlife.net.payload.HologramPayload;
 import com.branciho.citiesinlife.net.payload.CitySyncPayload;
 import com.branciho.citiesinlife.net.payload.MeetingInvitePayload;
 import com.branciho.citiesinlife.net.payload.ReactorSyncPayload;
@@ -73,6 +74,9 @@ public final class ClientCityCache {
      */
     private static CityHallPayload cityHall = CityHallPayload.none();
     private static int cityHallRevision;
+
+    private static HologramPayload hologram = HologramPayload.none();
+    private static int hologramRevision;
 
     /** A meeting invitation, waiting to be turned into a question on screen. */
     private static @Nullable MeetingInvitePayload pendingMeetingInvite;
@@ -219,6 +223,23 @@ public final class ClientCityCache {
         cityHallRevision++;
     }
 
+    /** Same guard as the city hall's: only a real change bumps the revision. */
+    public static void accept(HologramPayload payload) {
+        if (payload.equals(hologram)) {
+            return;
+        }
+        hologram = payload;
+        hologramRevision++;
+    }
+
+    public static HologramPayload hologram() {
+        return hologram;
+    }
+
+    public static int hologramRevision() {
+        return hologramRevision;
+    }
+
     public static CityHallPayload cityHall() {
         return cityHall;
     }
@@ -333,6 +354,7 @@ public final class ClientCityCache {
         radiation = 0;
         missileMap = null;
         cityHall = CityHallPayload.none();
+        hologram = HologramPayload.none();
         cityHallRevision++;
         pendingMeetingInvite = null;
     }

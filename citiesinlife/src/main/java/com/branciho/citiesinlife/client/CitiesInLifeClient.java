@@ -11,6 +11,8 @@ import com.branciho.citiesinlife.client.render.ServiceModel;
 import com.branciho.citiesinlife.client.render.ServiceRenderer;
 import com.branciho.citiesinlife.client.render.LeverArmModel;
 import com.branciho.citiesinlife.client.render.LeverRenderer;
+import com.branciho.citiesinlife.client.render.HologramModel;
+import com.branciho.citiesinlife.client.render.HologramRenderer;
 import com.branciho.citiesinlife.client.render.SirenModel;
 import com.branciho.citiesinlife.client.render.SirenRenderer;
 import com.branciho.citiesinlife.client.render.TouristModel;
@@ -83,6 +85,7 @@ public final class CitiesInLifeClient {
         event.registerLayerDefinition(LeverArmModel.LAYER, LeverArmModel::create);
         event.registerLayerDefinition(MissileModel.LAYER, MissileModel::create);
         event.registerLayerDefinition(SirenModel.LAYER, SirenModel::create);
+        event.registerLayerDefinition(HologramModel.LAYER, HologramModel::create);
     }
 
     @SubscribeEvent
@@ -104,6 +107,10 @@ public final class CitiesInLifeClient {
         // A lattice mast three and a half blocks tall with a turning horn cluster: no part
         // of it is expressible as a block model, so all of it is drawn here.
         event.registerBlockEntityRenderer(ModBlockEntities.SIREN.get(), SirenRenderer::new);
+        // A globe of light that turns and floats: translucent, full-bright, and not a
+        // shape a block model has any way of expressing.
+        event.registerBlockEntityRenderer(ModBlockEntities.HOLOGRAM_MAP.get(),
+                HologramRenderer::new);
         event.registerEntityRenderer(ModEntities.MISSILE.get(), MissileEntityRenderer::new);
         event.registerEntityRenderer(ModEntities.TOURIST.get(), TouristRenderer::new);
     }

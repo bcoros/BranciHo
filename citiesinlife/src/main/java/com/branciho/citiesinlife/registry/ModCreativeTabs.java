@@ -87,6 +87,7 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.NUCLEAR_MISSILE.get());
                         output.accept(ModItems.INTERCEPTOR_MISSILE.get());
                         output.accept(ModItems.SIREN.get());
+                        output.accept(ModItems.HOLOGRAM_MAP.get());
                         output.accept(ModItems.MEETING_BUTTON.get());
                         output.accept(ModItems.HUSH_BUTTON.get());
                     })

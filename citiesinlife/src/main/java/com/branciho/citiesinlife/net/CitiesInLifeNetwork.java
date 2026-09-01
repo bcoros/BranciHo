@@ -4,6 +4,7 @@ import com.branciho.citiesinlife.CitiesInLife;
 import com.branciho.citiesinlife.net.payload.ArmySyncPayload;
 import com.branciho.citiesinlife.net.payload.CityHallActionPayload;
 import com.branciho.citiesinlife.net.payload.CityHallPayload;
+import com.branciho.citiesinlife.net.payload.HologramPayload;
 import com.branciho.citiesinlife.net.payload.ClaimChunkPayload;
 import com.branciho.citiesinlife.net.payload.CitySyncPayload;
 import com.branciho.citiesinlife.net.payload.CallToArmsPayload;
@@ -14,6 +15,7 @@ import com.branciho.citiesinlife.net.payload.ModSettingsPayload;
 import com.branciho.citiesinlife.net.payload.PeaceOfferPayload;
 import com.branciho.citiesinlife.net.payload.RadiationPayload;
 import com.branciho.citiesinlife.net.payload.RequestCityHallPayload;
+import com.branciho.citiesinlife.net.payload.RequestHologramPayload;
 import com.branciho.citiesinlife.net.payload.SetSettingsPayload;
 import com.branciho.citiesinlife.net.payload.SetFlagPayload;
 import com.branciho.citiesinlife.net.payload.ConfirmDeleteCityPayload;
@@ -161,6 +163,10 @@ public final class CitiesInLifeNetwork {
                 (payload, context) -> context.enqueueWork(
                         () -> onServer(context, player -> ServerActions.cityHallAction(player, payload))));
 
+        registrar.playToServer(RequestHologramPayload.TYPE, RequestHologramPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(
+                        () -> onServer(context, ServerActions::syncHologram)));
+
         registrar.playToServer(MeetingReplyPayload.TYPE, MeetingReplyPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(
                         () -> onServer(context, player -> ServerActions.meetingReply(player, payload))));
@@ -222,6 +228,10 @@ public final class CitiesInLifeNetwork {
                         () -> ClientCityCache.accept(payload)));
 
         registrar.playToClient(CityHallPayload.TYPE, CityHallPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(
+                        () -> ClientCityCache.accept(payload)));
+
+        registrar.playToClient(HologramPayload.TYPE, HologramPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(
                         () -> ClientCityCache.accept(payload)));
 

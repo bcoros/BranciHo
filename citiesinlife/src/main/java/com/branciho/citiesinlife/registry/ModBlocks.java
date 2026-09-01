@@ -50,6 +50,7 @@ import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import com.branciho.citiesinlife.block.MissileBlock;
 import com.branciho.citiesinlife.block.CityHallButtonBlock;
+import com.branciho.citiesinlife.block.HologramMapBlock;
 import com.branciho.citiesinlife.block.SirenBlock;
 import com.branciho.citiesinlife.missile.MissileKind;
 
@@ -554,6 +555,22 @@ public final class ModBlocks {
                             .requiresCorrectToolForDrops()
                             .sound(SoundType.METAL)
                             .lightLevel(SirenBlock::lightFor)
+                            .noOcclusion()));
+
+    /**
+     * The projection table.
+     *
+     * <p>Its own light source, because a hologram that needed a torch beside it to be seen would
+     * not be a hologram.
+     */
+    public static final DeferredBlock<HologramMapBlock> HOLOGRAM_MAP =
+            BLOCKS.register("hologram_map",
+                    () -> new HologramMapBlock(BlockBehaviour.Properties.of()
+                            .mapColor(MapColor.COLOR_LIGHT_BLUE)
+                            .strength(3.5F, 8.0F)
+                            .requiresCorrectToolForDrops()
+                            .sound(SoundType.METAL)
+                            .lightLevel(state -> HologramMapBlock.light())
                             .noOcclusion()));
 
     /**

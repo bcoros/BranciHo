@@ -267,6 +267,9 @@ public final class ModItems {
     public static final DeferredItem<BlockItem> SIREN =
             ITEMS.registerSimpleBlockItem("siren", ModBlocks.SIREN);
 
+    public static final DeferredItem<BlockItem> HOLOGRAM_MAP =
+            ITEMS.registerSimpleBlockItem("hologram_map", ModBlocks.HOLOGRAM_MAP);
+
     public static final DeferredItem<BlockItem> MEETING_BUTTON =
             ITEMS.registerSimpleBlockItem("meeting_button", ModBlocks.MEETING_BUTTON);
 

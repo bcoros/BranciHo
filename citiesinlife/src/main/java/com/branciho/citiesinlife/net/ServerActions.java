@@ -12,6 +12,7 @@ import com.branciho.citiesinlife.city.Warfare;
 import com.branciho.citiesinlife.net.payload.CallToArmsPayload;
 import com.branciho.citiesinlife.net.payload.CityHallActionPayload;
 import com.branciho.citiesinlife.net.payload.CityHallPayload;
+import com.branciho.citiesinlife.net.payload.HologramPayload;
 import com.branciho.citiesinlife.net.payload.LaunchAllPayload;
 import com.branciho.citiesinlife.net.payload.MeetingReplyPayload;
 import com.branciho.citiesinlife.net.payload.ModSettingsPayload;
@@ -98,6 +99,7 @@ import org.jetbrains.annotations.Nullable;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -2626,6 +2628,50 @@ public final class ServerActions {
                 own.guards().size(),
                 Meeting.roll(own.id()),
                 own.ledger()));
+    }
+
+    /**
+     * Who is standing on this city's ground.
+     *
+     * <p>The filter is here and cannot be anywhere else. A payload carrying every player in the
+     * world for the client to sort through would be a wallhack that a modified client simply would
+     * not sort, so what leaves this method is already only the people the table is allowed to see.
+     *
+     * <p>Same gate as the rest of the hall: your city, and you standing inside it. A hologram table
+     * on somebody's front lawn shows nothing.
+     */
+    public static void syncHologram(ServerPlayer player) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        CityData data = CityData.get(server);
+        City own = data.cityOf(player.getUUID(), player.serverLevel().dimension());
+        if (own == null || !inCityHall(data, player, own)) {
+            CitiesInLifeNetwork.sendTo(player, HologramPayload.none());
+            return;
+        }
+
+        List<HologramPayload.Sighting> seen = new ArrayList<>();
+        for (ServerPlayer other : server.getPlayerList().getPlayers()) {
+            City over = Diplomacy.owner(server, other.serverLevel().dimension(),
+                    other.blockPosition());
+            if (over == null || !over.id().equals(own.id())) {
+                continue;
+            }
+            seen.add(new HologramPayload.Sighting(
+                    other.getGameProfile().getName(),
+                    other.getBlockX(), other.getBlockY(), other.getBlockZ(),
+                    other.getUUID().equals(own.owner())));
+            if (seen.size() >= HologramPayload.MAX_SEEN) {
+                break;
+            }
+        }
+        // Nearest first, so a crowded capital still puts whoever is next to you at the top.
+        seen.sort(Comparator.comparingDouble(sighting ->
+                player.distanceToSqr(sighting.x() + 0.5D, sighting.y() + 0.5D,
+                        sighting.z() + 0.5D)));
+        CitiesInLifeNetwork.sendTo(player, new HologramPayload(true, seen));
     }
 
     /**

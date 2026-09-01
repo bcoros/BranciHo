@@ -16,6 +16,7 @@ import com.branciho.citiesinlife.blockentity.ServiceSpawnerBlockEntity;
 import com.branciho.citiesinlife.blockentity.CoolingPortBlockEntity;
 import com.branciho.citiesinlife.blockentity.ReactorLeverBlockEntity;
 import com.branciho.citiesinlife.blockentity.SewageCollectorBlockEntity;
+import com.branciho.citiesinlife.blockentity.HologramMapBlockEntity;
 import com.branciho.citiesinlife.blockentity.SirenBlockEntity;
 import com.branciho.citiesinlife.blockentity.SteamEmitterBlockEntity;
 import com.branciho.citiesinlife.blockentity.UraniumStorageBlockEntity;
@@ -130,6 +131,12 @@ public final class ModBlockEntities {
             ALARM = BLOCK_ENTITIES.register("alarm",
                     () -> BlockEntityType.Builder
                             .of(AlarmBlockEntity::new, ModBlocks.ALARM.get())
+                            .build(null));
+
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<HologramMapBlockEntity>>
+            HOLOGRAM_MAP = BLOCK_ENTITIES.register("hologram_map",
+                    () -> BlockEntityType.Builder
+                            .of(HologramMapBlockEntity::new, ModBlocks.HOLOGRAM_MAP.get())
                             .build(null));
 
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<SirenBlockEntity>>

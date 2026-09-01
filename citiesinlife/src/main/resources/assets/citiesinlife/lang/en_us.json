@@ -733,5 +733,12 @@
   "message.citiesinlife.guards_full": "Your detail is full.",
   "message.citiesinlife.guards_none": "You have no bodyguards to dismiss.",
   "ledger.citiesinlife.guard_hired": "Hired a bodyguard: %s",
-  "ledger.citiesinlife.guard_dismissed": "Dismissed a bodyguard: %s"
+  "ledger.citiesinlife.guard_dismissed": "Dismissed a bodyguard: %s",
+  "block.citiesinlife.hologram_map": "Hologram Map",
+  "screen.citiesinlife.hologram": "Territory Projection",
+  "screen.citiesinlife.hologram_locked": "This table is not reading.",
+  "screen.citiesinlife.hologram_locked_hint": "It only works inside your own city hall.",
+  "screen.citiesinlife.hologram_count": "%s on your ground",
+  "screen.citiesinlife.hologram_empty": "Nobody is standing in your territory.",
+  "screen.citiesinlife.hologram_at": "%s, %s, %s"
 }
