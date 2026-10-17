@@ -7,6 +7,14 @@ on:
       - '.github/workflows/citiesinlife-build.yml'
   workflow_dispatch:
 
+# Only the newest push to a branch is worth building. A run already going is superseded the moment
+# another commit lands on the same branch, and this cancels it rather than paying for both - which
+# matters here because development happens in bursts of several commits a few minutes apart, and
+# every one of those bursts used to mean several full builds racing each other to be thrown away.
+concurrency:
+  group: cil-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     name: Compile mod jar
@@ -96,3 +104,7 @@ jobs:
           name: citiesinlife-jar
           path: citiesinlife/build/libs/*.jar
           if-no-files-found: warn
+          # These were piling up - one per push, a hundred and twenty-nine of them, and not one
+          # wanted again once the next build was green. Two weeks is long enough to go back and
+          # check a build, short enough that they stop accumulating for ever.
+          retention-days: 14
