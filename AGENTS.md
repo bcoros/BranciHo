@@ -2,6 +2,10 @@
 
 Notes for anyone — human or AI — picking this project up.
 
+> **Taking the project over? Read [`citiesinlife/REWORK.md`](citiesinlife/REWORK.md) first.** It has
+> every system, every decision the owner made, what is known to be broken, and the full rework they
+> asked for. [`citiesinlife/HISTORY.md`](citiesinlife/HISTORY.md) lists every commit.
+
 The mod lives in `citiesinlife/`. The loose `.md` files at the repo root are leftovers from a Git
 workshop in 2020 and have nothing to do with it.
 
@@ -52,8 +56,9 @@ by handing the player a pre-made structure to place, the feature is wrong, not t
   so a player who quits to the menu and opens another world inherits the last one's cache. See
   `ClientEvents.onLoggingOut`.
 - **Capacity comes from usable floor cells, not bounding volume.** A hollow tower and a solid cube of
-  the same size are not the same building. Housing quantises into whole dwellings because half an
-  apartment houses nobody.
+  the same size are not the same building. Every cell counts — housing used to quantise into whole
+  dwellings, and that was dropped because floor space the player added and got nothing for reads as
+  the mod ignoring what they built.
 
 ## Verifying changes
 
