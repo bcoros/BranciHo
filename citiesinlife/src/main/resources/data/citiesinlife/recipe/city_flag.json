@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "pattern": [
+    "WWW",
+    "SWW",
+    "S  "
+  ],
+  "key": {
+    "W": { "item": "minecraft:white_wool" },
+    "S": { "item": "minecraft:stick" }
+  },
+  "result": {
+    "id": "citiesinlife:city_flag",
+    "count": 1
+  }
+}

@@ -1,0 +1,109 @@
+{
+  "variants": {
+    "segment=0,facing=north": {
+      "model": "citiesinlife:block/grid_pylon_0"
+    },
+    "segment=0,facing=east": {
+      "model": "citiesinlife:block/grid_pylon_0",
+      "y": 90
+    },
+    "segment=0,facing=south": {
+      "model": "citiesinlife:block/grid_pylon_0",
+      "y": 180
+    },
+    "segment=0,facing=west": {
+      "model": "citiesinlife:block/grid_pylon_0",
+      "y": 270
+    },
+    "segment=1,facing=north": {
+      "model": "citiesinlife:block/grid_pylon_1"
+    },
+    "segment=1,facing=east": {
+      "model": "citiesinlife:block/grid_pylon_1",
+      "y": 90
+    },
+    "segment=1,facing=south": {
+      "model": "citiesinlife:block/grid_pylon_1",
+      "y": 180
+    },
+    "segment=1,facing=west": {
+      "model": "citiesinlife:block/grid_pylon_1",
+      "y": 270
+    },
+    "segment=2,facing=north": {
+      "model": "citiesinlife:block/grid_pylon_2"
+    },
+    "segment=2,facing=east": {
+      "model": "citiesinlife:block/grid_pylon_2",
+      "y": 90
+    },
+    "segment=2,facing=south": {
+      "model": "citiesinlife:block/grid_pylon_2",
+      "y": 180
+    },
+    "segment=2,facing=west": {
+      "model": "citiesinlife:block/grid_pylon_2",
+      "y": 270
+    },
+    "segment=3,facing=north": {
+      "model": "citiesinlife:block/grid_pylon_3"
+    },
+    "segment=3,facing=east": {
+      "model": "citiesinlife:block/grid_pylon_3",
+      "y": 90
+    },
+    "segment=3,facing=south": {
+      "model": "citiesinlife:block/grid_pylon_3",
+      "y": 180
+    },
+    "segment=3,facing=west": {
+      "model": "citiesinlife:block/grid_pylon_3",
+      "y": 270
+    },
+    "segment=4,facing=north": {
+      "model": "citiesinlife:block/grid_pylon_4"
+    },
+    "segment=4,facing=east": {
+      "model": "citiesinlife:block/grid_pylon_4",
+      "y": 90
+    },
+    "segment=4,facing=south": {
+      "model": "citiesinlife:block/grid_pylon_4",
+      "y": 180
+    },
+    "segment=4,facing=west": {
+      "model": "citiesinlife:block/grid_pylon_4",
+      "y": 270
+    },
+    "segment=5,facing=north": {
+      "model": "citiesinlife:block/grid_pylon_5"
+    },
+    "segment=5,facing=east": {
+      "model": "citiesinlife:block/grid_pylon_5",
+      "y": 90
+    },
+    "segment=5,facing=south": {
+      "model": "citiesinlife:block/grid_pylon_5",
+      "y": 180
+    },
+    "segment=5,facing=west": {
+      "model": "citiesinlife:block/grid_pylon_5",
+      "y": 270
+    },
+    "segment=6,facing=north": {
+      "model": "citiesinlife:block/grid_pylon_6"
+    },
+    "segment=6,facing=east": {
+      "model": "citiesinlife:block/grid_pylon_6",
+      "y": 90
+    },
+    "segment=6,facing=south": {
+      "model": "citiesinlife:block/grid_pylon_6",
+      "y": 180
+    },
+    "segment=6,facing=west": {
+      "model": "citiesinlife:block/grid_pylon_6",
+      "y": 270
+    }
+  }
+}

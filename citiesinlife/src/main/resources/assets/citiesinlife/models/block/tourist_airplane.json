@@ -1,0 +1,9 @@
+{
+  "parent": "minecraft:block/cube_bottom_top",
+  "textures": {
+    "particle": "citiesinlife:block/tourist_airplane_side",
+    "side": "citiesinlife:block/tourist_airplane_side",
+    "top": "citiesinlife:block/tourist_airplane_top",
+    "bottom": "citiesinlife:block/tourist_airplane_side"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "citiesinlife:block/solar_panel"
+    },
+    "facing=east": {
+      "model": "citiesinlife:block/solar_panel",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "citiesinlife:block/solar_panel",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "citiesinlife:block/solar_panel",
+      "y": 270
+    }
+  }
+}

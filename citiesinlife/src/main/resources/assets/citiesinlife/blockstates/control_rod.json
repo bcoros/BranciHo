@@ -1,0 +1,34 @@
+{
+  "variants": {
+    "insertion=0,waterlogged=true": {
+      "model": "citiesinlife:block/control_rod_0"
+    },
+    "insertion=0,waterlogged=false": {
+      "model": "citiesinlife:block/control_rod_0"
+    },
+    "insertion=1,waterlogged=true": {
+      "model": "citiesinlife:block/control_rod_1"
+    },
+    "insertion=1,waterlogged=false": {
+      "model": "citiesinlife:block/control_rod_1"
+    },
+    "insertion=2,waterlogged=true": {
+      "model": "citiesinlife:block/control_rod_2"
+    },
+    "insertion=2,waterlogged=false": {
+      "model": "citiesinlife:block/control_rod_2"
+    },
+    "insertion=3,waterlogged=true": {
+      "model": "citiesinlife:block/control_rod_3"
+    },
+    "insertion=3,waterlogged=false": {
+      "model": "citiesinlife:block/control_rod_3"
+    },
+    "insertion=4,waterlogged=true": {
+      "model": "citiesinlife:block/control_rod_4"
+    },
+    "insertion=4,waterlogged=false": {
+      "model": "citiesinlife:block/control_rod_4"
+    }
+  }
+}

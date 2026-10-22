@@ -1,0 +1,28 @@
+{
+  "variants": {
+    "axis=y,open=true": {
+      "model": "citiesinlife:block/valve_open"
+    },
+    "axis=y,open=false": {
+      "model": "citiesinlife:block/valve_shut"
+    },
+    "axis=x,open=true": {
+      "model": "citiesinlife:block/valve_open",
+      "x": 90,
+      "y": 90
+    },
+    "axis=x,open=false": {
+      "model": "citiesinlife:block/valve_shut",
+      "x": 90,
+      "y": 90
+    },
+    "axis=z,open=true": {
+      "model": "citiesinlife:block/valve_open",
+      "x": 90
+    },
+    "axis=z,open=false": {
+      "model": "citiesinlife:block/valve_shut",
+      "x": 90
+    }
+  }
+}

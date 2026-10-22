@@ -1,0 +1,9 @@
+{
+  "parent": "minecraft:block/cube_bottom_top",
+  "textures": {
+    "particle": "citiesinlife:block/uranium_storage_side",
+    "side": "citiesinlife:block/uranium_storage_side",
+    "top": "citiesinlife:block/uranium_storage_top",
+    "bottom": "citiesinlife:block/uranium_storage_side"
+  }
+}

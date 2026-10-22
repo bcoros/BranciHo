@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "facing=north": { "model": "citiesinlife:block/city_flag" },
+    "facing=east": { "model": "citiesinlife:block/city_flag", "y": 90 },
+    "facing=south": { "model": "citiesinlife:block/city_flag", "y": 180 },
+    "facing=west": { "model": "citiesinlife:block/city_flag", "y": 270 }
+  }
+}

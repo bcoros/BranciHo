@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "pattern": [
+    "BIB",
+    "ITI",
+    "BIB"
+  ],
+  "key": {
+    "B": {
+      "item": "minecraft:iron_block"
+    },
+    "I": {
+      "item": "minecraft:iron_ingot"
+    },
+    "T": {
+      "item": "citiesinlife:turbine"
+    }
+  },
+  "result": {
+    "id": "citiesinlife:nuclear_turbine",
+    "count": 1
+  }
+}

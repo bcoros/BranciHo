@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "citiesinlife:block/output_cooled_port"
+    }
+  }
+}

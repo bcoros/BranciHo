@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "powered=false": {
+      "model": "citiesinlife:block/hush_button"
+    },
+    "powered=true": {
+      "model": "citiesinlife:block/hush_button_pressed"
+    }
+  }
+}

@@ -1,0 +1,132 @@
+package com.branciho.citiesinlife.entity.ai;
+
+import com.branciho.citiesinlife.entity.CitizenEntity;
+import com.branciho.citiesinlife.road.Commute;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.entity.ai.goal.Goal;
+import net.minecraft.world.level.block.BedBlock;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BedPart;
+
+import java.util.EnumSet;
+
+/**
+ * Go home to bed.
+ *
+ * <p>The bed is not decoration: it is the reason the citizen exists at all. A residential building
+ * with no bed in it spawns nobody, so every citizen you can see is somebody's bed made visible, and
+ * at night they go back to it.
+ *
+ * <p>Anybody on a night shift is exempt, which is the entire point of having night shifts.
+ */
+public class CitizenSleepGoal extends Goal {
+
+    private static final double ARRIVED = 2.0D;
+    private static final int REPATH_INTERVAL = 80;
+
+    private final CitizenEntity citizen;
+
+    /** How long to wait after a route that could not arrive. Grows while it keeps failing. */
+    private final Routes.Patience patience = new Routes.Patience();
+    private int repathIn;
+
+    public CitizenSleepGoal(CitizenEntity citizen) {
+        this.citizen = citizen;
+        setFlags(EnumSet.of(Goal.Flag.MOVE, Goal.Flag.LOOK, Goal.Flag.JUMP));
+    }
+
+    @Override
+    public boolean canUse() {
+        BlockPos home = citizen.home();
+        // Under a curfew the clock stops mattering: this is what actually sends people home, at
+        // whatever hour the alert was declared.
+        if (home == null || !(citizen.curfew() || Shifts.sleepingHours(citizen.level()))) {
+            return false;
+        }
+        // ...and it outranks a night shift too, or every till worker in the city would carry on
+        // walking to work through an air raid.
+        if (!citizen.curfew() && Shifts.onShift(citizen.level(), citizen.nightShift())) {
+            return false;
+        }
+        return stillABed(home);
+    }
+
+    @Override
+    public boolean canContinueToUse() {
+        return canUse();
+    }
+
+    /**
+     * Whether the bed is still there.
+     *
+     * <p>Checked every tick rather than once, because somebody sleeping in a bed that has just been
+     * mined out from under them would otherwise lie in mid-air until dawn.
+     */
+    private boolean stillABed(BlockPos pos) {
+        if (!citizen.level().isLoaded(pos)) {
+            return false;
+        }
+        BlockState state = citizen.level().getBlockState(pos);
+        return state.getBlock() instanceof BedBlock
+                && state.getValue(BedBlock.PART) == BedPart.HEAD;
+    }
+
+    @Override
+    public void start() {
+        repathIn = 0;
+    }
+
+    @Override
+    public void tick() {
+        BlockPos home = citizen.home();
+        if (home == null) {
+            return;
+        }
+        if (citizen.isSleeping()) {
+            return;
+        }
+        if (citizen.blockPosition().distSqr(home) > ARRIVED * ARRIVED) {
+            if (Commute.driving(citizen)) {
+                return;
+            }
+            if (repathIn-- <= 0) {
+                repathIn = REPATH_INTERVAL;
+                if (Commute.tryDrive(citizen, home)) {
+                    return;
+                }
+                // The way back is the same journey as the way out, and has to be: a citizen who
+                // flew to work and then walked home would be walking the leg the flight existed
+                // to avoid, in the dark.
+                if (citizen.workAbroad() && Commute.tryFly(citizen, home)) {
+                    return;
+                }
+                if (citizen.workAbroad()) {
+                    citizen.getNavigation().stop();
+                    return;
+                }
+                // Same rule as the walk to work: a route that does not arrive is not walked.
+                // Standing outside a wall all night is the same bug in the dark.
+                if (Routes.walkTo(citizen, home.getX() + 0.5D, home.getY(),
+                        home.getZ() + 0.5D, 1.0D)) {
+                    patience.arrived();
+                } else {
+                    citizen.getNavigation().stop();
+                    repathIn = patience.backOff();
+                }
+            }
+            return;
+        }
+        citizen.getNavigation().stop();
+        citizen.setActivity(CitizenEntity.ACTIVITY_IDLE);
+        citizen.startSleeping(home);
+    }
+
+    @Override
+    public void stop() {
+        Commute.abandon(citizen);
+        if (citizen.isSleeping()) {
+            citizen.stopSleeping();
+        }
+        citizen.getNavigation().stop();
+    }
+}

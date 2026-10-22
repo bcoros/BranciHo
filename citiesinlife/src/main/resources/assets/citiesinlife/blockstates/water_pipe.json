@@ -1,0 +1,123 @@
+{
+  "multipart": [
+    {
+      "apply": {
+        "model": "citiesinlife:block/water_pipe_core"
+      }
+    },
+    {
+      "when": {
+        "north": "pipe"
+      },
+      "apply": {
+        "model": "citiesinlife:block/water_pipe_arm"
+      }
+    },
+    {
+      "when": {
+        "north": "leg"
+      },
+      "apply": {
+        "model": "citiesinlife:block/water_pipe_leg"
+      }
+    },
+    {
+      "when": {
+        "east": "pipe"
+      },
+      "apply": {
+        "model": "citiesinlife:block/water_pipe_arm",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "east": "leg"
+      },
+      "apply": {
+        "model": "citiesinlife:block/water_pipe_leg",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "south": "pipe"
+      },
+      "apply": {
+        "model": "citiesinlife:block/water_pipe_arm",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "south": "leg"
+      },
+      "apply": {
+        "model": "citiesinlife:block/water_pipe_leg",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "west": "pipe"
+      },
+      "apply": {
+        "model": "citiesinlife:block/water_pipe_arm",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "west": "leg"
+      },
+      "apply": {
+        "model": "citiesinlife:block/water_pipe_leg",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "up": "pipe"
+      },
+      "apply": {
+        "model": "citiesinlife:block/water_pipe_arm",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "up": "leg"
+      },
+      "apply": {
+        "model": "citiesinlife:block/water_pipe_leg",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "down": "pipe"
+      },
+      "apply": {
+        "model": "citiesinlife:block/water_pipe_arm",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "down": "leg"
+      },
+      "apply": {
+        "model": "citiesinlife:block/water_pipe_leg",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "leaking": "true"
+      },
+      "apply": {
+        "model": "citiesinlife:block/water_pipe_split"
+      }
+    }
+  ]
+}

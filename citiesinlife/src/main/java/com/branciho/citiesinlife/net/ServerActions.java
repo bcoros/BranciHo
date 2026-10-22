@@ -1,0 +1,3123 @@
+package com.branciho.citiesinlife.net;
+
+import com.branciho.citiesinlife.city.AlertLevel;
+import com.branciho.citiesinlife.city.Demolition;
+import com.branciho.citiesinlife.config.CitiesInLifeConfig;
+import com.branciho.citiesinlife.city.City;
+import com.branciho.citiesinlife.city.Meeting;
+import com.branciho.citiesinlife.city.CityData;
+import com.branciho.citiesinlife.city.Diplomacy;
+import com.branciho.citiesinlife.city.Pact;
+import com.branciho.citiesinlife.city.Relation;
+import com.branciho.citiesinlife.city.Warfare;
+import com.branciho.citiesinlife.net.payload.CallToArmsPayload;
+import com.branciho.citiesinlife.net.payload.CityHallActionPayload;
+import com.branciho.citiesinlife.net.payload.CityHallPayload;
+import com.branciho.citiesinlife.net.payload.EditStructurePayload;
+import com.branciho.citiesinlife.net.payload.EditorPayload;
+import com.branciho.citiesinlife.net.payload.HologramPayload;
+import com.branciho.citiesinlife.net.payload.OpenEditorPayload;
+import com.branciho.citiesinlife.net.payload.OpenHologramPayload;
+import com.branciho.citiesinlife.net.payload.OpenLaunchAllPayload;
+import com.branciho.citiesinlife.net.payload.LaunchAllPayload;
+import com.branciho.citiesinlife.net.payload.MeetingReplyPayload;
+import com.branciho.citiesinlife.net.payload.ModSettingsPayload;
+import com.branciho.citiesinlife.net.payload.PeaceOfferPayload;
+import com.branciho.citiesinlife.net.payload.SetSettingsPayload;
+import com.branciho.citiesinlife.net.payload.SetFlagPayload;
+import com.branciho.citiesinlife.net.payload.ClaimChunkPayload;
+import com.branciho.citiesinlife.net.payload.CitySyncPayload;
+import com.branciho.citiesinlife.net.payload.ConfirmDeleteCityPayload;
+import com.branciho.citiesinlife.net.payload.DeleteAreaPayload;
+import com.branciho.citiesinlife.net.payload.DiplomacyPayload;
+import com.branciho.citiesinlife.net.payload.ForeignLandPayload;
+import com.branciho.citiesinlife.net.payload.LinkPowerPayload;
+import com.branciho.citiesinlife.net.payload.LinkOutletPayload;
+import com.branciho.citiesinlife.net.payload.LinkWaterPayload;
+import com.branciho.citiesinlife.net.payload.ArmySyncPayload;
+import com.branciho.citiesinlife.net.payload.MarkPathPayload;
+import com.branciho.citiesinlife.net.payload.MarkRoadPayload;
+import com.branciho.citiesinlife.net.payload.MilitaryActionPayload;
+import com.branciho.citiesinlife.net.payload.NeighbourCitiesPayload;
+import com.branciho.citiesinlife.net.payload.PathSyncPayload;
+import com.branciho.citiesinlife.net.payload.RoadSyncPayload;
+import com.branciho.citiesinlife.net.payload.PowerLinesPayload;
+import com.branciho.citiesinlife.net.payload.RegisterStructurePayload;
+import com.branciho.citiesinlife.net.payload.SeizeStructurePayload;
+import com.branciho.citiesinlife.net.payload.StructureSyncPayload;
+import com.branciho.citiesinlife.net.payload.WaterLinesPayload;
+import com.branciho.citiesinlife.block.EndPipeBlock;
+import com.branciho.citiesinlife.blockentity.EndPipeBlockEntity;
+import com.branciho.citiesinlife.blockentity.ServiceSpawnerBlockEntity;
+import com.branciho.citiesinlife.entity.ServiceEntity;
+import com.branciho.citiesinlife.registry.ModEntities;
+import com.branciho.citiesinlife.path.PathNetwork;
+import com.branciho.citiesinlife.blockentity.TransportAirplaneBlockEntity;
+import com.branciho.citiesinlife.block.TransportAirplaneBlock;
+import com.branciho.citiesinlife.road.RoadNetwork;
+import com.branciho.citiesinlife.road.RoadTile;
+import com.branciho.citiesinlife.blockentity.CoolingPortBlockEntity;
+import com.branciho.citiesinlife.blockentity.UraniumStorageBlockEntity;
+import com.branciho.citiesinlife.block.ReactorLeverBlock;
+import com.branciho.citiesinlife.nuclear.CoolingPort;
+import com.branciho.citiesinlife.nuclear.Meltdown;
+import com.branciho.citiesinlife.nuclear.ReactorData;
+import com.branciho.citiesinlife.nuclear.ReactorFault;
+import com.branciho.citiesinlife.nuclear.ReactorLever;
+import com.branciho.citiesinlife.nuclear.ReactorReadout;
+import com.branciho.citiesinlife.nuclear.ReactorState;
+import com.branciho.citiesinlife.net.payload.OpenMonitorPayload;
+import com.branciho.citiesinlife.net.payload.ReactorSyncPayload;
+import com.branciho.citiesinlife.net.payload.RequestReactorPayload;
+import com.branciho.citiesinlife.nuclear.ReactorSurvey;
+import com.branciho.citiesinlife.plant.PlantSurvey;
+import com.branciho.citiesinlife.power.PowerBlock;
+import com.branciho.citiesinlife.power.PowerGrid;
+import com.branciho.citiesinlife.scan.StructureScanner;
+import com.branciho.citiesinlife.sim.CitizenDirector;
+import com.branciho.citiesinlife.sim.CitySimulation;
+import com.branciho.citiesinlife.sim.CreativeFunding;
+import com.branciho.citiesinlife.structure.Structure;
+import com.branciho.citiesinlife.structure.StructureType;
+import com.branciho.citiesinlife.upgrade.Upgradeable;
+import com.branciho.citiesinlife.net.payload.UpgradePayload;
+import com.branciho.citiesinlife.water.WaterBlock;
+import com.branciho.citiesinlife.water.WaterGrid;
+import com.branciho.citiesinlife.water.WaterRole;
+import net.minecraft.ChatFormatting;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.players.GameProfileCache;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Mth;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.Container;
+import net.minecraft.world.level.block.state.BlockState;
+import org.jetbrains.annotations.Nullable;
+
+import it.unimi.dsi.fastutil.longs.LongArrayList;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import com.branciho.citiesinlife.entity.MissileEntity;
+import com.branciho.citiesinlife.missile.MissileDirector;
+import com.branciho.citiesinlife.missile.MissileKind;
+import com.branciho.citiesinlife.missile.SiloSurvey;
+import com.branciho.citiesinlife.net.payload.LaunchMissilePayload;
+import com.branciho.citiesinlife.net.payload.MissileMapPayload;
+import net.minecraft.world.level.entity.EntityTypeTest;
+
+/**
+ * Everything a client can ask the server to do, and every reason it might be told no.
+ *
+ * <p>Nothing here trusts the packet beyond "which two corners" and "which type". Ownership, cost,
+ * overlap and capacity are all re-derived from server state, because a client that can be modified
+ * is a client that will be.
+ */
+public final class ServerActions {
+
+    /** How far from the player a selection corner may be, to stop remote edits across the world. */
+    private static final int MAX_REACH = 256;
+
+    /** How far around the player structures are sent for the overlay, in chunks. */
+    private static final int SYNC_RADIUS_CHUNKS = 8;
+
+    /** How far around the player pavement is sent for the overlay. */
+    private static final int PATH_SYNC_RADIUS = SYNC_RADIUS_CHUNKS * 16;
+
+    /** The chunk each player was last sent pavement for, so it is not re-sent every tick. */
+    private static final Map<UUID, Long> lastPathChunk = new HashMap<>();
+
+    /** The chunk each player was last sent road for. Same reasoning as pavement. */
+    private static final Map<UUID, Long> lastRoadChunk = new HashMap<>();
+
+    /** Half-made airport links, per player, waiting for their second click. */
+    private static final Map<UUID, BlockPos> pendingAirplaneLink = new HashMap<>();
+
+    /**
+     * How far around the player another city's land is sent for the map, in chunks.
+     *
+     * <p>Matched to what the map can actually draw plus a little slack. It was twice this, which
+     * shipped roughly five times as many chunks as could ever appear on screen.
+     */
+    private static final int FOREIGN_LAND_RADIUS = 12;
+
+    /**
+     * What declaring war costs the treasury.
+     *
+     * <p>Without a price, a declaration is a permission switch: declare, help yourself to a
+     * neighbour's town, stand down, repeat. It has to be a decision you can regret.
+     */
+    private static final long WAR_COST = 2_500L;
+
+    private static final int MIN_NAME_LENGTH = 2;
+    private static final int MAX_NAME_LENGTH = 32;
+
+    private ServerActions() {
+    }
+
+    // ------------------------------------------------------------- registering
+
+    public static void registerStructure(ServerPlayer player, RegisterStructurePayload payload) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        ServerLevel level = player.serverLevel();
+        CityData data = CityData.get(server);
+
+        BlockPos a = payload.pointA();
+        BlockPos b = payload.pointB();
+        if (tooFar(player, a) || tooFar(player, b)) {
+            reject(player, "too_far");
+            return;
+        }
+
+        BlockPos min = new BlockPos(
+                Math.min(a.getX(), b.getX()), Math.min(a.getY(), b.getY()), Math.min(a.getZ(), b.getZ()));
+        BlockPos max = new BlockPos(
+                Math.max(a.getX(), b.getX()), Math.max(a.getY(), b.getY()), Math.max(a.getZ(), b.getZ()));
+
+        String sizeProblem = StructureScanner.validate(min, max);
+        if (sizeProblem != null) {
+            reject(player, sizeProblem);
+            return;
+        }
+
+        StructureType type = StructureType.byId(payload.typeId(), null);
+        if (type == null) {
+            reject(player, "unknown_type");
+            return;
+        }
+
+        City city = data.cityOf(player.getUUID(), level.dimension());
+
+        // A city at war registers nothing, for the same reason it buys no land: whatever it is
+        // going to be holding at the end of this, it has to be holding already. Otherwise the
+        // answer to being invaded is to draw fresh boxes faster than the other side can knock them
+        // down - and now that buildings have health, that would be an infinite supply of them.
+        // Founding is exempt: you cannot be at war before you have a city.
+        if (city != null && atWar(data, city)) {
+            reject(player, "at_war_no_building");
+            return;
+        }
+
+        if (type == StructureType.CITY_CORE) {
+            if (city != null) {
+                reject(player, "already_have_city");
+                return;
+            }
+            city = foundCity(player, data, level, payload.cityName(), min, max);
+            if (city == null) {
+                return;
+            }
+        } else {
+            if (city == null) {
+                reject(player, "no_city");
+                return;
+            }
+            // Power plants are the one exception to owning the ground. A coal plant belongs at the
+            // edge of a river or out where the smoke is somebody else's problem, and claiming a
+            // corridor of chunks out to it before you can even mark the building would be a tax on
+            // building it in the sensible place. Windmills and reactors will want the same.
+            //
+            // "Not your land" is still not the same as "anybody's land", though. ownsGroundUnder was
+            // the only thing in this method that looked at territory at all, so exempting a plant
+            // from it outright would let one player plant an undeletable building in the middle of
+            // another player's city - undeletable because deleteArea only ever removes structures
+            // belonging to the caller's own city.
+            if (type.isPlant()) {
+                if (standsOnAnotherCity(data, city, level, min, max)) {
+                    reject(player, "another_city_land");
+                    return;
+                }
+            } else if (!ownsGroundUnder(data, city, min, max)) {
+                reject(player, "not_your_land");
+                return;
+            }
+        }
+
+        // A plant's box is re-read every twenty ticks to find its machinery, and a silo's is read
+        // the same way, so unlike an ordinary building neither can be arbitrarily large. Refused
+        // here rather than left to register and then quietly behave as though it were empty.
+        //
+        // The silo half of this was missing, and it is a nasty way to lose an afternoon: a roomy
+        // box drawn round a rocket registers, the survey above the limit walks nothing at all, and
+        // the map reports the silo as holding no missiles while one is plainly standing in it.
+        if (type.isPlant() || type == StructureType.MISSILE_SILO) {
+            long volume = (long) (max.getX() - min.getX() + 1)
+                    * (max.getY() - min.getY() + 1)
+                    * (max.getZ() - min.getZ() + 1);
+            if (volume > StructureScanner.MAX_SURVEY_VOLUME) {
+                reject(player, type == StructureType.MISSILE_SILO
+                        ? "silo_box_too_large" : "plant_box_too_large");
+                return;
+            }
+        }
+
+        // A plant is coal or wind, never both. Catching it here means the player is told when they
+        // draw the box, rather than finding out later from a boiler that quietly refuses to light.
+        if (type == StructureType.POWER_PLANT
+                && PlantSurvey.of(level, min, max).kind() == PlantSurvey.Kind.MIXED) {
+            reject(player, "mixed_generators");
+            return;
+        }
+
+        // A reactor box registers around thin air like every other structure type, and then tells
+        // you what it still needs.
+        //
+        // It used to be refused unless the finished reactor was already standing inside it, on the
+        // theory that a box which registers and sits inert looks like a broken feature. That was
+        // backwards: you cannot build a reactor without the box, because every reactor block reads
+        // its own status through the registration - so the refusal meant the plant could only be
+        // registered once it no longer needed to be, and until then the wand printed a build fault
+        // and the player had nothing to build against. The two structural refusals below stay,
+        // because neither is something the player fills in later.
+        ReactorFault stillNeeds = null;
+        if (type == StructureType.NUCLEAR_PLANT) {
+            ReactorSurvey survey = ReactorSurvey.of(level, min, max);
+            ReactorFault problem = survey.buildFault();
+            if (problem == ReactorFault.BOX_TOO_LARGE || problem == ReactorFault.MIXED_PLANT) {
+                player.sendSystemMessage(ReactorReadout.sentence(survey, problem));
+                return;
+            }
+            stillNeeds = problem;
+        }
+
+        Structure overlap = data.overlapping(level.dimension(), min, max);
+        if (overlap != null) {
+            player.sendSystemMessage(Component.translatable(
+                    "message.citiesinlife.overlaps", overlap.name()));
+            return;
+        }
+
+        StructureScanner.Measurement measured = StructureScanner.measure(level, min, max);
+
+        String name = defaultName(type, data.structuresOf(city).size() + 1);
+        Structure structure = Structure.create(city.id(), name, type, level.dimension(), min, max);
+        structure.setMeasurement(measured.usableCells());
+        structure.setMass(measured.blockMass());
+        structure.restore();
+        data.addStructure(city, structure);
+
+        // Bring the totals up to date now rather than at the next growth tick, so opening the city
+        // panel straight afterwards shows what just happened instead of the previous numbers.
+        CitySimulation.refresh(data, city);
+
+        if (!type.measured()) {
+            // A marker rather than a capacity: residents and jobs would both read zero and look
+            // broken, so say what the building is actually for instead. There are three of these
+            // now, and a power plant's message is no use for a park.
+            player.sendSystemMessage(Component.translatable(switch (type) {
+                case POWER_PLANT -> "message.citiesinlife.registered_plant";
+                case NUCLEAR_PLANT -> "message.citiesinlife.registered_reactor";
+                case PARK -> "message.citiesinlife.registered_park";
+                case MILITARY_BASE -> "message.citiesinlife.registered_base";
+                case MISSILE_SILO -> "message.citiesinlife.registered_silo";
+                default -> "message.citiesinlife.registered_marker";
+            }, name));
+            // The box is the thing you build against, so say what it is waiting for rather than
+            // leaving the player to punch a block they have not placed yet.
+            if (stillNeeds != null) {
+                player.sendSystemMessage(ReactorReadout.sentence(
+                        ReactorSurvey.of(level, min, max), stillNeeds));
+            }
+            sync(player);
+            return;
+        }
+
+        player.sendSystemMessage(Component.translatable(
+                "message.citiesinlife.registered",
+                name, structure.residents(), structure.jobs()));
+
+        // Say what is wrong rather than reporting nothing. An empty measurement means the box has
+        // no enclosed space in it, which is nearly always a roof or a wall that is not there yet.
+        if (structure.usableCells() == 0) {
+            player.sendSystemMessage(
+                    Component.translatable("message.citiesinlife.no_interior"));
+        }
+        sync(player);
+    }
+
+    /**
+     * Found a city around its first structure.
+     *
+     * <p>The chunks the city core sits on are granted rather than bought — a city that cannot afford
+     * the ground its own city hall stands on is not a situation worth modelling.
+     */
+    private static City foundCity(ServerPlayer player, CityData data, ServerLevel level,
+                                  String requestedName, BlockPos min, BlockPos max) {
+        String name = requestedName.trim();
+        if (name.length() < MIN_NAME_LENGTH || name.length() > MAX_NAME_LENGTH) {
+            reject(player, "bad_name");
+            return null;
+        }
+        if (data.nameTaken(name)) {
+            reject(player, "name_taken");
+            return null;
+        }
+
+        for (int x = min.getX() >> 4; x <= max.getX() >> 4; x++) {
+            for (int z = min.getZ() >> 4; z <= max.getZ() >> 4; z++) {
+                City owner = data.cityAtChunk(level.dimension(), ChunkPos.asLong(x, z));
+                if (owner != null) {
+                    reject(player, "chunk_owned");
+                    return null;
+                }
+            }
+        }
+
+        ChunkPos origin = new ChunkPos(min.getX() >> 4, min.getZ() >> 4);
+        City city = data.createCity(name, player.getUUID(), level.dimension(), origin);
+        for (int x = min.getX() >> 4; x <= max.getX() >> 4; x++) {
+            for (int z = min.getZ() >> 4; z <= max.getZ() >> 4; z++) {
+                data.claimChunk(city, ChunkPos.asLong(x, z));
+            }
+        }
+        city.note(level.getGameTime(), "founded", "");
+        player.sendSystemMessage(Component.translatable("message.citiesinlife.founded", name));
+        return city;
+    }
+
+    /**
+     * Whether any of the ground under this box belongs to a city other than the builder's.
+     *
+     * <p>Unclaimed ground is fine — that is the point of the power plant exemption. Somebody else's
+     * ground is not, and there is no other check anywhere that would catch it.
+     */
+    private static boolean standsOnAnotherCity(CityData data, City city, ServerLevel level,
+                                               BlockPos min, BlockPos max) {
+        for (int x = min.getX() >> 4; x <= max.getX() >> 4; x++) {
+            for (int z = min.getZ() >> 4; z <= max.getZ() >> 4; z++) {
+                City owner = data.cityAtChunk(level.dimension(), ChunkPos.asLong(x, z));
+                if (owner != null && !owner.id().equals(city.id())) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private static boolean ownsGroundUnder(CityData data, City city, BlockPos min, BlockPos max) {
+        for (int x = min.getX() >> 4; x <= max.getX() >> 4; x++) {
+            for (int z = min.getZ() >> 4; z <= max.getZ() >> 4; z++) {
+                if (!city.owns(ChunkPos.asLong(x, z))) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    private static String defaultName(StructureType type, int index) {
+        return switch (type) {
+            case CITY_CORE -> "City Hall";
+            case RESIDENTIAL -> "Residence " + index;
+            case COMMERCIAL -> "Shop " + index;
+            case BUSINESS -> "Office " + index;
+            case FACTORY -> "Factory " + index;
+            case POWER_PLANT -> "Power Plant " + index;
+            case NUCLEAR_PLANT -> "Nuclear Plant " + index;
+            case POLICE_STATION -> "Police Station " + index;
+            case FIRE_STATION -> "Fire Station " + index;
+            case HOSPITAL -> "Hospital " + index;
+            case PARK -> "Park " + index;
+            case GARBAGE_DEPOT -> "Depot " + index;
+            case MILITARY_BASE -> "Barracks " + index;
+            case MISSILE_SILO -> "Silo " + index;
+        };
+    }
+
+    // ---------------------------------------------------------------- deleting
+
+    /**
+     * Remove every registration of the player's own city that the box touches.
+     *
+     * <p>By area rather than by pointing at one: a registration has no blocks, so aiming at it with
+     * the crosshair means aiming at nothing, and it never worked reliably. Drawing a box is the same
+     * gesture that created the registration in the first place.
+     */
+    public static void deleteArea(ServerPlayer player, DeleteAreaPayload payload) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        ServerLevel level = player.serverLevel();
+        CityData data = CityData.get(server);
+        City city = data.cityOf(player.getUUID(), level.dimension());
+        if (city == null) {
+            reject(player, "no_city");
+            return;
+        }
+
+        BlockPos a = payload.pointA();
+        BlockPos b = payload.pointB();
+        if (tooFar(player, a) || tooFar(player, b)) {
+            reject(player, "too_far");
+            return;
+        }
+        BlockPos min = new BlockPos(
+                Math.min(a.getX(), b.getX()), Math.min(a.getY(), b.getY()), Math.min(a.getZ(), b.getZ()));
+        BlockPos max = new BlockPos(
+                Math.max(a.getX(), b.getX()), Math.max(a.getY(), b.getY()), Math.max(a.getZ(), b.getZ()));
+
+        final List<Structure> doomed = new ArrayList<>();
+        for (Structure structure : data.structuresOf(city)) {
+            if (structure.dimension().equals(level.dimension()) && structure.intersects(min, max)) {
+                doomed.add(structure);
+            }
+        }
+        if (doomed.isEmpty()) {
+            reject(player, "nothing_in_area");
+            return;
+        }
+
+        // A meltdown in progress is not something a menu button gets to call off. Meltdown.tick
+        // finds its reactor by structure id, so unregistering the plant mid-sequence used to end
+        // the whole thing silently: no explosion, no damage, and the same box registers again cold
+        // at forty degrees. That is the opposite of the promise the alarms have been making for the
+        // last minute and a half.
+        for (Structure structure : doomed) {
+            if (Meltdown.melting(server, structure.id())) {
+                reject(player, "reactor_melting_down");
+                return;
+            }
+        }
+
+        // The city hall is not just another registration: taking it away takes the city with it, so
+        // the box has to be answered for before anything happens.
+        boolean takesTheCity = false;
+        for (Structure structure : doomed) {
+            if (structure.type() == StructureType.CITY_CORE) {
+                takesTheCity = true;
+                break;
+            }
+        }
+        if (takesTheCity && !payload.confirmed()) {
+            CitiesInLifeNetwork.sendTo(player, new ConfirmDeleteCityPayload(
+                    a, b, city.name(), city.structures().size(),
+                    city.claimedChunks().size(), city.treasury()));
+            return;
+        }
+
+        if (takesTheCity) {
+            int removed = data.deleteCity(city);
+            player.sendSystemMessage(Component.translatable(
+                    "message.citiesinlife.city_deleted", city.name(), removed));
+            sync(player);
+            // Every other player's Neighbours list still has this city on it, with buttons that
+            // now do nothing. They are cheap to refresh and expensive to leave stale.
+            for (ServerPlayer other : server.getPlayerList().getPlayers()) {
+                if (!other.getUUID().equals(player.getUUID())) {
+                    syncNeighbours(other);
+                }
+            }
+            return;
+        }
+
+        for (Structure structure : doomed) {
+            data.removeStructure(structure.id());
+        }
+        CitySimulation.refresh(data, city);
+        player.sendSystemMessage(Component.translatable(
+                "message.citiesinlife.deleted_area", doomed.size()));
+        sync(player);
+    }
+
+    // ------------------------------------------------------------------ power
+
+    /**
+     * Run or cut a power line between two blocks.
+     *
+     * <p>Range is the shorter of the two ends' reaches, so a mast's long throw only counts when it is
+     * talking to another mast — which is what makes masts the thing you build a transmission run out
+     * of rather than an upgrade to everything.
+     */
+    public static void linkPower(ServerPlayer player, LinkPowerPayload payload) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        ServerLevel level = player.serverLevel();
+
+        BlockPos from = payload.from();
+        BlockPos to = payload.to();
+        if (tooFar(player, from) || tooFar(player, to)) {
+            reject(player, "too_far");
+            return;
+        }
+
+        // Cutting somebody's transmission line is griefing that leaves no trace and breaks no
+        // block, so it has to be refused here rather than by the block rules.
+        if (!Diplomacy.mayInterfere(server, player, from) || !Diplomacy.mayInterfere(server, player, to)) {
+            reject(player, "protected_land_tool");
+            return;
+        }
+
+        BlockState fromState = level.getBlockState(from);
+        BlockState toState = level.getBlockState(to);
+        if (!(fromState.getBlock() instanceof PowerBlock fromBlock)
+                || !(toState.getBlock() instanceof PowerBlock toBlock)) {
+            reject(player, "not_power_block");
+            return;
+        }
+
+        BlockPos fromNode = fromBlock.networkPos(level, from, fromState);
+        BlockPos toNode = toBlock.networkPos(level, to, toState);
+        if (fromNode.equals(toNode)) {
+            reject(player, "same_node");
+            return;
+        }
+
+        PowerGrid grid = PowerGrid.get(server);
+
+        if (payload.disconnect()) {
+            if (grid.unlink(level.dimension(), fromNode, toNode)) {
+                player.sendSystemMessage(Component.translatable("message.citiesinlife.line_removed"));
+                sync(player);
+            } else {
+                reject(player, "not_linked");
+            }
+            return;
+        }
+
+        int range = Math.min(fromBlock.linkRange(), toBlock.linkRange());
+        double distance = Math.sqrt(fromNode.distSqr(toNode));
+        if (distance > range) {
+            player.sendSystemMessage(Component.translatable(
+                    "message.citiesinlife.too_far_apart", (int) distance, range));
+            return;
+        }
+        if (grid.linked(level.dimension(), fromNode, toNode)) {
+            reject(player, "already_linked");
+            return;
+        }
+
+        grid.link(level.dimension(), fromNode, toNode);
+        player.sendSystemMessage(Component.translatable(
+                "message.citiesinlife.line_built", (int) distance));
+        sync(player);
+    }
+
+    // ------------------------------------------------------------------ water
+
+    /**
+     * Run or cut a pipe link between two blocks.
+     *
+     * <p>The rules about what may join what are the whole design of the water system, so they live
+     * here in one place rather than being spread across the blocks. In short: pumps talk to pumps,
+     * only the end pump reaches the pipework, and pipes are nobody's business but their own.
+     */
+    public static void linkWater(ServerPlayer player, LinkWaterPayload payload) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        ServerLevel level = player.serverLevel();
+
+        BlockPos from = payload.from();
+        BlockPos to = payload.to();
+        if (tooFar(player, from) || tooFar(player, to)) {
+            reject(player, "too_far");
+            return;
+        }
+        // Same reasoning as the power line: cutting a city's water off is an edit to that city, and
+        // it happens without a single block changing.
+        if (!Diplomacy.mayInterfere(server, player, from) || !Diplomacy.mayInterfere(server, player, to)) {
+            reject(player, "protected_land_tool");
+            return;
+        }
+
+        BlockState fromState = level.getBlockState(from);
+        BlockState toState = level.getBlockState(to);
+        if (!(fromState.getBlock() instanceof WaterBlock fromBlock)
+                || !(toState.getBlock() instanceof WaterBlock toBlock)) {
+            reject(player, "not_water_block");
+            return;
+        }
+
+        BlockPos fromNode = fromBlock.networkPos(level, from, fromState);
+        BlockPos toNode = toBlock.networkPos(level, to, toState);
+        if (fromNode.equals(toNode)) {
+            reject(player, "same_node");
+            return;
+        }
+
+        WaterGrid grid = WaterGrid.get(server);
+
+        if (payload.disconnect()) {
+            if (grid.unlink(level.dimension(), fromNode, toNode)) {
+                player.sendSystemMessage(Component.translatable("message.citiesinlife.pipe_removed"));
+                sync(player);
+            } else {
+                reject(player, "not_linked");
+            }
+            return;
+        }
+
+        String refusal = pairingProblem(fromBlock.waterRole(), toBlock.waterRole());
+        if (refusal != null) {
+            reject(player, refusal);
+            return;
+        }
+
+        int range = Math.min(fromBlock.linkRange(), toBlock.linkRange());
+        double distance = Math.sqrt(fromNode.distSqr(toNode));
+        if (distance > range) {
+            player.sendSystemMessage(Component.translatable(
+                    "message.citiesinlife.too_far_apart", (int) distance, range));
+            return;
+        }
+        if (grid.linked(level.dimension(), fromNode, toNode)) {
+            reject(player, "already_linked");
+            return;
+        }
+
+        // One starter pump per station. Checked when the link is drawn, because a second intake that
+        // silently counts for nothing is a bug the player has no way to see. The survey walks the
+        // pumps only - a station is the pump chain, not everything downstream of it - so a second
+        // station on its own river may still feed the same city, and its water adds to the first.
+        if (fromBlock.waterRole().isPump() && toBlock.waterRole().isPump()) {
+            WaterGrid.Survey fromSide = grid.surveyStation(level, fromNode);
+            if (!fromSide.reaches(toNode)) {
+                // Two separate stations about to become one. If joining them would put two intakes
+                // on the result, say so now. (A link inside one station is merely redundant.)
+                WaterGrid.Survey toSide = grid.surveyStation(level, toNode);
+                if (fromSide.sources() + toSide.sources() > 1) {
+                    reject(player, "two_sources");
+                    return;
+                }
+            }
+        }
+
+        grid.link(level.dimension(), fromNode, toNode);
+        player.sendSystemMessage(Component.translatable(
+                "message.citiesinlife.pipe_built", (int) distance));
+        sync(player);
+    }
+
+    /**
+     * Whether these two roles are allowed to be joined by hand, and why not if they are not.
+     *
+     * @return a message key, or null when the pair is fine
+     */
+    private static @Nullable String pairingProblem(WaterRole from, WaterRole to) {
+        if (from == WaterRole.SOURCE && to == WaterRole.SOURCE) {
+            return "two_sources";
+        }
+        if (from == WaterRole.CONDUIT && to == WaterRole.CONDUIT) {
+            return "pipes_self_join";
+        }
+        if (from == WaterRole.STORAGE && to == WaterRole.STORAGE) {
+            return "two_tanks";
+        }
+        if (from == WaterRole.SEWAGE && to == WaterRole.SEWAGE) {
+            return "two_collectors";
+        }
+        // A tank wired straight to a sewer is somebody about to drink their own drains. They can
+        // still do it the long way round, through pipes, and the tap will go brown to tell them.
+        if ((from == WaterRole.SEWAGE && to == WaterRole.STORAGE)
+                || (from == WaterRole.STORAGE && to == WaterRole.SEWAGE)) {
+            return "sewage_into_tank";
+        }
+        // Reactor ports get their rules written out rather than left to fall through, because this
+        // method FAILS OPEN: any pair it does not name is permitted. A role added without rules is
+        // silently linkable to everything, which is how you end up drinking reactor coolant.
+        if (from == WaterRole.PORT || to == WaterRole.PORT) {
+            WaterRole other = from == WaterRole.PORT ? to : from;
+            if (other == WaterRole.STORAGE || other == WaterRole.SEWAGE) {
+                return "port_into_supply";
+            }
+            // PORT to PORT is the one link the cooling loop actually needs. Which two ports is not
+            // decided here - the survey checks that the water input reached a cooled output, and
+            // says so by name if it did not. Roles alone cannot tell those apart.
+            return null;
+        }
+        if (from.isPump() && to.isPump()) {
+            return null;
+        }
+        // Anything else is a pump meeting the pipework, and only the end pump may do that.
+        boolean fromEnd = from == WaterRole.OUTLET;
+        boolean toEnd = to == WaterRole.OUTLET;
+        if (from.isPump() && !fromEnd) {
+            return "only_end_pump";
+        }
+        if (to.isPump() && !toEnd) {
+            return "only_end_pump";
+        }
+        return null;
+    }
+
+    // ---------------------------------------------------------------- claiming
+
+    public static void claimChunk(ServerPlayer player, ClaimChunkPayload payload) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        ServerLevel level = player.serverLevel();
+        CityData data = CityData.get(server);
+        City city = data.cityOf(player.getUUID(), level.dimension());
+        if (city == null) {
+            reject(player, "no_city");
+            return;
+        }
+
+        ChunkPos chunk = new ChunkPos(payload.chunkX(), payload.chunkZ());
+        long key = chunk.toLong();
+
+        if (!payload.claim()) {
+            if (!data.unclaimChunk(city, key)) {
+                reject(player, "cannot_unclaim");
+                return;
+            }
+            player.sendSystemMessage(Component.translatable(
+                    "message.citiesinlife.unclaimed", chunk.x, chunk.z));
+            sync(player);
+            return;
+        }
+
+        if (city.owns(key)) {
+            reject(player, "already_claimed");
+            return;
+        }
+        // A city at war buys no land. Whatever it is going to hold at the end of this, it has to
+        // take - otherwise the answer to being invaded is to buy a wall of chunks around yourself
+        // faster than the other side can walk across them.
+        if (atWar(data, city)) {
+            reject(player, "at_war_no_land");
+            return;
+        }
+        if (data.cityAtChunk(level.dimension(), key) != null) {
+            reject(player, "chunk_owned");
+            return;
+        }
+        // Somebody else's power plant is allowed to stand on unclaimed ground. Buying the ground out
+        // from under it would lock its owner out of their own machinery without touching a block.
+        if (data.foreignStructureInChunk(level.dimension(), key, city.id()) != null) {
+            reject(player, "chunk_has_their_building");
+            return;
+        }
+        if (!data.isAdjacentToClaim(city, chunk)) {
+            reject(player, "not_adjacent");
+            return;
+        }
+        long cost = city.nextClaimCost();
+        if (!city.withdraw(cost)) {
+            player.sendSystemMessage(Component.translatable("message.citiesinlife.cannot_afford", cost));
+            return;
+        }
+        data.claimChunk(city, key);
+        player.sendSystemMessage(Component.translatable(
+                "message.citiesinlife.claimed", chunk.x, chunk.z, cost));
+        sync(player);
+    }
+
+    /**
+     * Plumb an end pipe into something that holds buckets.
+     *
+     * <p>Its own gesture — sneak and left click with the Pipe Connect Tool — because the ordinary
+     * one is a right click, and right-clicking a chest opens the chest. Two clicks that mean
+     * different things are better than one click that sometimes means the wrong one.
+     */
+    public static void linkOutlet(ServerPlayer player, LinkOutletPayload payload) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        ServerLevel level = player.serverLevel();
+        BlockPos from = payload.from();
+        BlockPos to = payload.to();
+
+        if (tooFar(player, from) || tooFar(player, to)) {
+            reject(player, "too_far");
+            return;
+        }
+        if (!Diplomacy.mayInterfere(server, player, from) || !Diplomacy.mayInterfere(server, player, to)) {
+            reject(player, "protected_land_tool");
+            return;
+        }
+
+        // Either order. Which end is the tap is a fact about the world, not about the click.
+        BlockPos tapPos;
+        BlockPos containerPos;
+        if (level.getBlockState(from).getBlock() instanceof EndPipeBlock) {
+            tapPos = from;
+            containerPos = to;
+        } else if (level.getBlockState(to).getBlock() instanceof EndPipeBlock) {
+            tapPos = to;
+            containerPos = from;
+        } else {
+            reject(player, "no_end_pipe");
+            return;
+        }
+
+        if (!(level.getBlockEntity(tapPos) instanceof EndPipeBlockEntity tap)) {
+            reject(player, "no_end_pipe");
+            return;
+        }
+
+        // Naming the same tap twice means "unplumb this one".
+        if (tapPos.equals(containerPos)) {
+            if (tap.outlet() == null) {
+                reject(player, "outlet_not_linked");
+                return;
+            }
+            tap.setOutlet(null);
+            player.sendSystemMessage(Component.translatable("message.citiesinlife.outlet_unlinked"));
+            return;
+        }
+        if (!(level.getBlockEntity(containerPos) instanceof Container)) {
+            reject(player, "not_a_container");
+            return;
+        }
+        double distance = Math.sqrt(tapPos.distSqr(containerPos));
+        if (distance > EndPipeBlockEntity.LINK_RANGE) {
+            player.sendSystemMessage(Component.translatable("message.citiesinlife.too_far_apart",
+                    (int) distance, EndPipeBlockEntity.LINK_RANGE));
+            return;
+        }
+
+        tap.setOutlet(containerPos);
+        player.sendSystemMessage(Component.translatable("message.citiesinlife.outlet_linked"));
+    }
+
+    // ------------------------------------------------------------------ paths
+
+    /**
+     * Mark - or unmark - a box of ground as pavement.
+     *
+     * <p>Deliberately not tied to a city. Paths are not property: a road between two towns belongs
+     * to neither of them, and a player who wants to draw one should not have to buy the ground it
+     * crosses first. Nothing about a path grants or implies a claim, so there is nothing here worth
+     * stealing.
+     */
+    public static void markPath(ServerPlayer player, MarkPathPayload payload) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        BlockPos a = payload.pointA();
+        BlockPos b = payload.pointB();
+        if (tooFar(player, a) || tooFar(player, b)) {
+            reject(player, "too_far");
+            return;
+        }
+        BlockPos min = new BlockPos(
+                Math.min(a.getX(), b.getX()), Math.min(a.getY(), b.getY()), Math.min(a.getZ(), b.getZ()));
+        BlockPos max = new BlockPos(
+                Math.max(a.getX(), b.getX()), Math.max(a.getY(), b.getY()), Math.max(a.getZ(), b.getZ()));
+
+        // Marking pavement is an edit to how a city's people behave, so it answers to the same rule
+        // as breaking a block there - it simply never touches a block, so the block events miss it.
+        //
+        // Every chunk the box spans, not just its two corners. Testing the corners alone meant a box
+        // drawn wide around a city passed the check on the empty ground outside it and then wiped
+        // every street inside.
+        if (!mayEditWholeBox(server, player, min, max)) {
+            reject(player, "protected_land_tool");
+            return;
+        }
+
+        if (payload.remove()) {
+            // See PathNetwork.ERASE_HEIGHT_SLACK: you paint where you mean, you erase where you
+            // remember, and being a few blocks out in height is the ordinary case.
+            BlockPos[] widened = widenForErase(min, max, PathNetwork.ERASE_HEIGHT_SLACK);
+            min = widened[0];
+            max = widened[1];
+        }
+
+        int changed = PathNetwork.get(server).mark(
+                player.serverLevel().dimension(), min, max, payload.remove());
+        if (changed == 0) {
+            reject(player, payload.remove() ? "no_path_there" : "already_path");
+        } else {
+            player.sendSystemMessage(Component.translatable(payload.remove()
+                    ? "message.citiesinlife.path_cleared"
+                    : "message.citiesinlife.path_marked", changed));
+        }
+        syncPaths(player, true);
+    }
+
+    /**
+     * Whether the player may edit every chunk a box touches.
+     *
+     * <p>Chunk by chunk rather than block by block: territory is granted per chunk, so one probe per
+     * chunk is exact and a box the size of a city is still a handful of lookups.
+     */
+    private static boolean mayEditWholeBox(MinecraftServer server, ServerPlayer player,
+                                           BlockPos min, BlockPos max) {
+        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+        for (int x = min.getX() >> 4; x <= max.getX() >> 4; x++) {
+            for (int z = min.getZ() >> 4; z <= max.getZ() >> 4; z++) {
+                cursor.set(x << 4, min.getY(), z << 4);
+                if (!Diplomacy.mayInterfere(server, player, cursor)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Send the pavement around the player, but only when it can have changed.
+     *
+     * <p>Four thousand positions is thirty kilobytes, and pushing that at every player twice a
+     * second for scenery that does not move would be the most expensive thing this mod does. It only
+     * goes out when the player crosses into a new chunk or has just drawn some.
+     */
+    public static void syncPaths(ServerPlayer player, boolean force) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        long chunkKey = ChunkPos.asLong(player.chunkPosition().x, player.chunkPosition().z);
+        Long last = lastPathChunk.get(player.getUUID());
+        if (!force && last != null && last == chunkKey) {
+            return;
+        }
+        lastPathChunk.put(player.getUUID(), chunkKey);
+
+        LongArrayList near = PathNetwork.get(server).near(
+                player.serverLevel().dimension(), player.blockPosition(),
+                PATH_SYNC_RADIUS, PathSyncPayload.MAX_MARKED);
+        CitiesInLifeNetwork.sendTo(player, new PathSyncPayload(near.toLongArray()));
+    }
+
+    // ------------------------------------------------------------------ roads
+
+    /**
+     * Paint - or clear - a box of ground as road, with a direction of travel on it.
+     *
+     * <p>Answers to the same rule as pavement, for the same reason: it changes how a city's people
+     * behave without ever touching a block, so the block events miss it entirely and the check has
+     * to be made here, chunk by chunk across the whole box.
+     *
+     * <p>Unlike pavement a road is not neutral ground. It is still not property - a road between two
+     * towns belongs to neither - but a car will only follow one across someone else's border when it
+     * is marked as a highway, which is decided in {@link RoadNetwork} and not here.
+     */
+    public static void markRoad(ServerPlayer player, MarkRoadPayload payload) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        BlockPos a = payload.pointA();
+        BlockPos b = payload.pointB();
+        if (tooFar(player, a) || tooFar(player, b)) {
+            reject(player, "too_far");
+            return;
+        }
+        BlockPos min = new BlockPos(
+                Math.min(a.getX(), b.getX()), Math.min(a.getY(), b.getY()), Math.min(a.getZ(), b.getZ()));
+        BlockPos max = new BlockPos(
+                Math.max(a.getX(), b.getX()), Math.max(a.getY(), b.getY()), Math.max(a.getZ(), b.getZ()));
+
+        if (!mayEditWholeBox(server, player, min, max)) {
+            reject(player, "protected_land_tool");
+            return;
+        }
+
+        // Never trust the brush. A client can ask for any int; only the bits this mod understands
+        // are stored, and a paint with no kind at all is refused rather than written as a blank tile
+        // that the network could not tell from an empty one.
+        int flags = payload.flags() & RoadTile.ALL;
+        if (!payload.remove() && flags == 0) {
+            reject(player, "road_no_kind");
+            syncRoads(player, true);
+            return;
+        }
+
+        if (payload.remove()) {
+            BlockPos[] widened = widenForErase(min, max, RoadNetwork.ERASE_HEIGHT_SLACK);
+            min = widened[0];
+            max = widened[1];
+        }
+
+        int changed = RoadNetwork.get(server).mark(
+                player.serverLevel().dimension(), min, max, flags, payload.remove());
+        if (changed == 0) {
+            reject(player, payload.remove() ? "no_road_there" : "already_road");
+        } else {
+            player.sendSystemMessage(Component.translatable(payload.remove()
+                    ? "message.citiesinlife.road_cleared"
+                    : "message.citiesinlife.road_marked", changed));
+            if (!payload.remove()) {
+                warnAboutDirection(player, min, max, flags);
+            }
+        }
+        syncRoads(player, true);
+    }
+
+    /**
+     * A box for erasing: the one the player drew, given room in height if it was flat.
+     *
+     * <p>Returned as a two-element array rather than a small record, because it is used twice and
+     * nowhere else.
+     */
+    private static BlockPos[] widenForErase(BlockPos min, BlockPos max, int slack) {
+        if (min.getY() != max.getY()) {
+            return new BlockPos[]{min, max};
+        }
+        return new BlockPos[]{
+                new BlockPos(min.getX(), min.getY() - slack, min.getZ()),
+                new BlockPos(max.getX(), max.getY() + slack, max.getZ())};
+    }
+
+    /**
+     * Say something when a street has been painted running the wrong way.
+     *
+     * <p>The brush defaults to a two-way north-south street, so painting an east-west road without
+     * touching the direction buttons produces a road that is perfectly valid, drawn correctly on the
+     * overlay, and completely unusable by a car. Nothing about that is visible from standing on it,
+     * and the failure surfaces much later as "citizens ignore my roads".
+     *
+     * <p>Only for plain streets. A junction and a car park are passable every way by definition, so
+     * there is nothing to get wrong.
+     */
+    private static void warnAboutDirection(ServerPlayer player, BlockPos min, BlockPos max, int flags) {
+        if (RoadTile.is(flags, RoadTile.INTERSECTION) || RoadTile.is(flags, RoadTile.PARKING)) {
+            return;
+        }
+        int spanX = max.getX() - min.getX();
+        int spanZ = max.getZ() - min.getZ();
+        // Only when the box is clearly a street rather than a square patch.
+        if (Math.abs(spanX - spanZ) < 3) {
+            return;
+        }
+        boolean runsEastWest = spanX > spanZ;
+        boolean allowsEastWest = RoadTile.is(flags, RoadTile.EAST) || RoadTile.is(flags, RoadTile.WEST);
+        boolean allowsNorthSouth = RoadTile.is(flags, RoadTile.NORTH) || RoadTile.is(flags, RoadTile.SOUTH);
+        if (runsEastWest == allowsEastWest && runsEastWest != allowsNorthSouth) {
+            return;
+        }
+        if (runsEastWest ? allowsEastWest : allowsNorthSouth) {
+            return;
+        }
+        player.sendSystemMessage(Component.translatable(runsEastWest
+                ? "message.citiesinlife.road_wrong_way_ew"
+                : "message.citiesinlife.road_wrong_way_ns"));
+    }
+
+    /** Send the road around the player, on the same terms as pavement. */
+    public static void syncRoads(ServerPlayer player, boolean force) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        long chunkKey = ChunkPos.asLong(player.chunkPosition().x, player.chunkPosition().z);
+        Long last = lastRoadChunk.get(player.getUUID());
+        if (!force && last != null && last == chunkKey) {
+            return;
+        }
+        lastRoadChunk.put(player.getUUID(), chunkKey);
+
+        RoadNetwork roads = RoadNetwork.get(server);
+        LongArrayList near = roads.near(player.serverLevel().dimension(), player.blockPosition(),
+                PATH_SYNC_RADIUS, RoadSyncPayload.MAX_TILES);
+        CitiesInLifeNetwork.sendTo(player, new RoadSyncPayload(
+                near.toLongArray(), roads.flagsFor(player.serverLevel().dimension(), near)));
+    }
+
+    // -------------------------------------------------------------- airfields
+
+    /**
+     * One gesture: link a pair of airports, or fly between an already linked pair.
+     *
+     * <p>Which of the two it is depends on the state of the block clicked, not on a modifier key.
+     * See {@link TransportAirplaneBlock} for why there is no sneak in this - a sneaking player
+     * holding anything never reaches the block at all.
+     */
+    public static void useAirplane(ServerPlayer player, BlockPos pos) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        ServerLevel level = player.serverLevel();
+        if (!(level.getBlockEntity(pos) instanceof TransportAirplaneBlockEntity here)) {
+            return;
+        }
+
+        // An airport nobody is accountable for does nothing, the same as it spawns nobody.
+        if (CityData.get(server).airfieldOwner(level.dimension(), pos) == null) {
+            reject(player, "airplane_uncounted");
+            return;
+        }
+
+        BlockPos partner = here.partner();
+        if (partner != null) {
+            fly(player, level, partner);
+            return;
+        }
+
+        // Linking is an edit to somebody's build, so it answers to the same rule as breaking a
+        // block there.
+        if (!Diplomacy.mayInterfere(server, player, pos)) {
+            reject(player, "protected_land_tool");
+            return;
+        }
+
+        BlockPos pending = pendingAirplaneLink.get(player.getUUID());
+        if (pending == null) {
+            pendingAirplaneLink.put(player.getUUID(), pos);
+            player.displayClientMessage(
+                    Component.translatable("message.citiesinlife.airplane_link_started"), true);
+            return;
+        }
+        if (pending.equals(pos)) {
+            pendingAirplaneLink.remove(player.getUUID());
+            reject(player, "airplane_same_block");
+            return;
+        }
+        if (!(level.getBlockEntity(pending) instanceof TransportAirplaneBlockEntity other)) {
+            pendingAirplaneLink.remove(player.getUUID());
+            reject(player, "airplane_not_linkable");
+            return;
+        }
+
+        here.setPartner(pending);
+        other.setPartner(pos);
+        pendingAirplaneLink.remove(player.getUUID());
+        player.sendSystemMessage(Component.translatable("message.citiesinlife.airplane_linked"));
+    }
+
+    /**
+     * Put the player down at the far end.
+     *
+     * <p>Re-checked at the moment of use rather than trusted from when the link was made. Ground
+     * changes hands, and a pad built on land somebody has since claimed must not be a way in.
+     */
+    private static void fly(ServerPlayer player, ServerLevel level, BlockPos partner) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        if (!level.isLoaded(partner)
+                || !(level.getBlockState(partner).getBlock() instanceof TransportAirplaneBlock)) {
+            reject(player, "airplane_far_end_gone");
+            return;
+        }
+        if (!Diplomacy.mayInterfere(server, player, partner)) {
+            reject(player, "airplane_far_end_protected");
+            return;
+        }
+        BlockPos arrival = TransportAirplaneBlockEntity.landingSpot(level, partner);
+        if (arrival == null) {
+            reject(player, "airplane_no_room");
+            return;
+        }
+        // The six-argument ServerPlayer override, which is the one that tells the client it moved.
+        player.teleportTo(level, arrival.getX() + 0.5D, arrival.getY(), arrival.getZ() + 0.5D,
+                player.getYRot(), player.getXRot());
+    }
+
+    /**
+     * Turn this player's creative treasury off, or back on.
+     *
+     * <p>Answered on the action bar rather than in chat. It is a switch you flip while building and
+     * a line of chat for every press would be noise.
+     */
+    public static void toggleCreativeMoney(ServerPlayer player) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        boolean enabled = CityData.get(server).toggleCreativeMoney(player.getUUID());
+        CreativeFunding.sync(server);
+        sync(player);
+        player.displayClientMessage(Component.translatable(enabled
+                ? "hud.citiesinlife.creative_money_on"
+                : "hud.citiesinlife.creative_money_off"), true);
+    }
+
+    // ---------------------------------------------------------------- conquest
+
+    /**
+     * Take somebody else's building.
+     *
+     * <p>The only test is whether the chunk it stands in belongs to the taker, and that is a
+     * stronger rule than it sounds: a chunk with a foreign building on it cannot be bought, so the
+     * only way to be standing in one you own with somebody else's building in it is to have taken it
+     * with soldiers.
+     *
+     * <p>A city hall is never on the table. Taking one would delete a player's entire city from
+     * under them with a single click, and there is no version of that which is not a disaster.
+     */
+    public static void seizeStructure(ServerPlayer player, SeizeStructurePayload payload) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        ServerLevel level = player.serverLevel();
+        CityData data = CityData.get(server);
+
+        BlockPos a = payload.pointA();
+        BlockPos b = payload.pointB();
+        if (tooFar(player, a) || tooFar(player, b)) {
+            reject(player, "too_far");
+            return;
+        }
+        City city = data.cityOf(player.getUUID(), level.dimension());
+        if (city == null) {
+            reject(player, "no_city");
+            return;
+        }
+
+        BlockPos min = new BlockPos(
+                Math.min(a.getX(), b.getX()), Math.min(a.getY(), b.getY()), Math.min(a.getZ(), b.getZ()));
+        BlockPos max = new BlockPos(
+                Math.max(a.getX(), b.getX()), Math.max(a.getY(), b.getY()), Math.max(a.getZ(), b.getZ()));
+
+        Structure target = foreignStructureIn(data, level, city, min, max);
+        if (target == null) {
+            reject(player, "nothing_to_seize");
+            return;
+        }
+        if (target.type() == StructureType.CITY_CORE) {
+            reject(player, "cannot_seize_hall");
+            return;
+        }
+        if (!conquered(data, level, city, target)) {
+            reject(player, "not_conquered");
+            return;
+        }
+
+        StructureType type = payload.typeId().isEmpty()
+                ? target.type()
+                : StructureType.byId(payload.typeId(), null);
+        if (type == null || type == StructureType.CITY_CORE) {
+            reject(player, "unknown_type");
+            return;
+        }
+        // Seizing rewrites a building's type without running ANY of the checks registerStructure
+        // does - not the land test, not the mixed-generator test, and not the reactor's build
+        // validation. Rewriting a captured shed into a nuclear plant would therefore conjure one
+        // that never had to be a reactor at all. The city hall is already refused here for the
+        // same shape of reason.
+        if (type == StructureType.NUCLEAR_PLANT && target.type() != StructureType.NUCLEAR_PLANT) {
+            reject(player, "cannot_seize_into_reactor");
+            return;
+        }
+
+        if (Meltdown.melting(server, target.id())) {
+            reject(player, "reactor_melting_down");
+            return;
+        }
+
+        City loser = data.city(target.cityId());
+        data.removeStructure(target.id());
+
+        StructureScanner.Measurement measured =
+                StructureScanner.measure(level, target.min(), target.max());
+        String name = defaultName(type, data.structuresOf(city).size() + 1);
+        Structure taken = Structure.create(
+                city.id(), name, type, level.dimension(), target.min(), target.max());
+        taken.setMeasurement(measured.usableCells());
+        taken.setMass(measured.blockMass());
+        // A building you have just taken off somebody by force is not handed to you in mint
+        // condition, but it is a fresh registration and has no damage of its own to inherit.
+        taken.restore();
+        data.addStructure(city, taken);
+
+        CitySimulation.refresh(data, city);
+        if (loser != null) {
+            CitySimulation.refresh(data, loser);
+            tell(server, loser, "message.citiesinlife.building_lost", city.name());
+        }
+
+        player.sendSystemMessage(Component.translatable("message.citiesinlife.seized",
+                target.name(), type.displayName()));
+        sync(player);
+    }
+
+    /** A registered building inside this box that belongs to somebody else. */
+    private static @Nullable Structure foreignStructureIn(CityData data, ServerLevel level, City city,
+                                                          BlockPos min, BlockPos max) {
+        for (int x = min.getX() >> 4; x <= max.getX() >> 4; x++) {
+            for (int z = min.getZ() >> 4; z <= max.getZ() >> 4; z++) {
+                for (Structure structure : data.structuresInChunk(level.dimension(), ChunkPos.asLong(x, z))) {
+                    if (!structure.cityId().equals(city.id()) && structure.intersects(min, max)) {
+                        return structure;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Whether this city holds the ground the building stands on.
+     *
+     * <p>Judged by the middle of the building rather than by every chunk it touches. A tower that
+     * straddles a boundary would otherwise be untakeable until both sides of the street had fallen,
+     * which reads as the wand being broken rather than as a rule.
+     */
+    private static boolean conquered(CityData data, ServerLevel level, City city, Structure target) {
+        int x = (target.min().getX() + target.max().getX()) / 2;
+        int z = (target.min().getZ() + target.max().getZ()) / 2;
+        City here = data.cityAtChunk(level.dimension(), ChunkPos.asLong(x >> 4, z >> 4));
+        return here != null && here.id().equals(city.id());
+    }
+
+    // ---------------------------------------------------------------- military
+
+    /**
+     * Names for people the player has just paid for.
+     *
+     * <p>A list rather than "Soldier 1", "Soldier 2", because the Military Tool is the only screen
+     * in the mod where the player makes decisions about individuals — firing one, arming one,
+     * sending one on a course — and a numbered list makes every one of those decisions feel like
+     * moving a counter.
+     */
+    private static final String[] SOLDIER_NAMES = {
+        "Adams", "Bailey", "Cortez", "Dunn", "Eriksen", "Faro", "Gill", "Hoxha",
+        "Ivarsen", "Jelinek", "Kovac", "Lang", "Mireles", "Novak", "Osei", "Petrov",
+        "Quinn", "Rao", "Sokol", "Tamm", "Ustinov", "Varga", "Whyte", "Zeman"
+    };
+
+    /** Push the army roll to whoever is looking at it. */
+    public static void syncArmy(ServerPlayer player) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        City city = CityData.get(server).cityOf(player.getUUID(), player.level().dimension());
+        if (city == null) {
+            CitiesInLifeNetwork.sendTo(player, ArmySyncPayload.none());
+            return;
+        }
+
+        long now = player.level().getGameTime();
+        List<ArmySyncPayload.Entry> roll = new ArrayList<>();
+        for (City.Soldier soldier : city.army()) {
+            int secondsLeft = soldier.inTraining()
+                    ? (int) Math.max(0L, (soldier.trainingDoneAt() - now) / 20L)
+                    : 0;
+            roll.add(new ArmySyncPayload.Entry(soldier.id(), soldier.name(), soldier.training(),
+                    weaponName(soldier), secondsLeft));
+        }
+
+        CitiesInLifeNetwork.sendTo(player, new ArmySyncPayload(
+                hasBase(server, city, player.level().dimension()),
+                city.treasury(), City.HIRE_COST, City.TRAIN_COST, City.MAX_ARMY, roll));
+    }
+
+    /** What to print next to a soldier's name. Their own hands, if they have been given nothing. */
+    private static String weaponName(City.Soldier soldier) {
+        ItemStack held = ServiceSpawnerBlockEntity.weaponOf(soldier);
+        return held.isEmpty() ? "" : held.getHoverName().getString();
+    }
+
+    private static boolean hasBase(MinecraftServer server, City city, ResourceKey<Level> dimension) {
+        for (Structure structure : CityData.get(server).structuresOf(city)) {
+            if (structure.type() == StructureType.MILITARY_BASE
+                    && structure.dimension().equals(dimension)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Hire, dismiss, arm or train.
+     *
+     * <p>Every one of these re-checks the city, the base and the money server-side. The screen is a
+     * convenience; it is not the authority on whether the player can afford a soldier.
+     */
+    public static void militaryAction(ServerPlayer player, MilitaryActionPayload payload) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        CityData data = CityData.get(server);
+        ResourceKey<Level> dimension = player.level().dimension();
+        City city = data.cityOf(player.getUUID(), dimension);
+        if (city == null) {
+            reject(player, "no_city");
+            return;
+        }
+        if (!hasBase(server, city, dimension)) {
+            reject(player, "no_military_base");
+            return;
+        }
+
+        switch (payload.action()) {
+            case HIRE -> hire(player, data, city);
+            case DISMISS -> dismiss(player, data, city, payload.soldier());
+            case TRAIN -> train(player, data, city, payload.soldier());
+            case ARM -> arm(player, data, city, payload.soldier());
+        }
+        syncArmy(player);
+        sync(player);
+    }
+
+    private static void hire(ServerPlayer player, CityData data, City city) {
+        if (city.army().size() >= City.MAX_ARMY) {
+            reject(player, "army_full");
+            return;
+        }
+        if (!city.withdraw(City.HIRE_COST)) {
+            player.sendSystemMessage(
+                    Component.translatable("message.citiesinlife.cannot_afford", City.HIRE_COST));
+            return;
+        }
+        String name = SOLDIER_NAMES[player.level().random.nextInt(SOLDIER_NAMES.length)];
+        city.enlist(new City.Soldier(UUID.randomUUID(), name, 0, "", 0L));
+        data.setDirty();
+        player.sendSystemMessage(Component.translatable("message.citiesinlife.hired", name));
+    }
+
+    private static void dismiss(ServerPlayer player, CityData data, City city, UUID id) {
+        City.Soldier soldier = city.soldier(id);
+        if (soldier == null) {
+            return;
+        }
+        city.discharge(id);
+        data.setDirty();
+        // The body goes with the record. The barracks would sweep it up on its next pass anyway,
+        // but a soldier who keeps standing there after being fired reads as the button not working.
+        for (ServiceEntity body : soldiersOf(player, id)) {
+            body.discard();
+        }
+        player.sendSystemMessage(Component.translatable("message.citiesinlife.dismissed", soldier.name()));
+    }
+
+    private static void train(ServerPlayer player, CityData data, City city, UUID id) {
+        City.Soldier soldier = city.soldier(id);
+        if (soldier == null) {
+            return;
+        }
+        if (soldier.inTraining()) {
+            reject(player, "already_training");
+            return;
+        }
+        if (soldier.training() >= ServiceEntity.MAX_TRAINING) {
+            reject(player, "fully_trained");
+            return;
+        }
+        if (!city.withdraw(City.TRAIN_COST)) {
+            player.sendSystemMessage(
+                    Component.translatable("message.citiesinlife.cannot_afford", City.TRAIN_COST));
+            return;
+        }
+        city.replace(soldier.startingCourse(player.level().getGameTime() + City.TRAIN_TICKS));
+        data.setDirty();
+        player.sendSystemMessage(
+                Component.translatable("message.citiesinlife.training_started", soldier.name()));
+    }
+
+    /**
+     * Hand a soldier whatever the player is holding in their off hand.
+     *
+     * <p>The off hand rather than a slot in the screen, because the whole point of this is that the
+     * weapon might come from a mod this build has never heard of — anything that can be held can be
+     * handed over, and no inventory widget has to know what it is.
+     */
+    private static void arm(ServerPlayer player, CityData data, City city, UUID id) {
+        City.Soldier soldier = city.soldier(id);
+        if (soldier == null) {
+            return;
+        }
+        ItemStack offering = player.getOffhandItem();
+        if (offering.isEmpty()) {
+            reject(player, "nothing_to_give");
+            return;
+        }
+        ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(offering.getItem());
+        city.replace(soldier.withWeapon(itemId.toString()));
+        data.setDirty();
+
+        ItemStack given = offering.split(1);
+        for (ServiceEntity body : soldiersOf(player, id)) {
+            body.setItemSlot(EquipmentSlot.MAINHAND, given.copy());
+            body.setDropChance(EquipmentSlot.MAINHAND, 0.0F);
+        }
+        player.sendSystemMessage(Component.translatable("message.citiesinlife.armed",
+                soldier.name(), given.getHoverName()));
+    }
+
+    /** Every body currently standing about that belongs to one entry on the roll. */
+    private static List<ServiceEntity> soldiersOf(ServerPlayer player, UUID soldierId) {
+        return new ArrayList<>(player.serverLevel().getEntities(ModEntities.SERVICE.get(),
+                entity -> entity.isAlive() && soldierId.equals(entity.soldierId())));
+    }
+
+    /** Forget a player who has left, so this map does not grow for the life of the server. */
+    public static void forget(ServerPlayer player) {
+        lastPathChunk.remove(player.getUUID());
+        lastRoadChunk.remove(player.getUUID());
+        pendingAirplaneLink.remove(player.getUUID());
+        Meeting.forget(player.getUUID());
+    }
+
+    // ------------------------------------------------------------- diplomacy
+
+    /**
+     * Grant, revoke, declare war, or stand down.
+     *
+     * <p>Nothing here trusts the packet past "which city" and "which of four things". Whether the
+     * sender has any standing to do it is re-derived from server state, because a screen that can be
+     * modified is a screen that will be.
+     */
+    /**
+     * Adopt a new flag.
+     *
+     * <p>Every pole flying it repaints itself within ten seconds off the back of this; nothing here
+     * has to go looking for them.
+     */
+    public static void setFlag(ServerPlayer player, SetFlagPayload payload) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        CityData data = CityData.get(server);
+        City own = data.cityOf(player.getUUID(), player.serverLevel().dimension());
+        if (own == null) {
+            reject(player, "no_city");
+            return;
+        }
+        own.setFlag(payload.cells());
+        data.setDirty();
+        player.sendSystemMessage(Component.translatable(
+                "message.citiesinlife.flag_set", own.name()));
+        sync(player);
+        // Everybody else's Neighbours tab is showing the old colours.
+        for (ServerPlayer other : server.getPlayerList().getPlayers()) {
+            if (!other.getUUID().equals(player.getUUID())) {
+                syncNeighbours(other);
+            }
+        }
+    }
+
+    // ----------------------------------------------------------------- settings
+
+    /**
+     * Whether this player is the one person allowed to change the mod's settings.
+     *
+     * <p>The owner of the world and nobody else. In single player and in a world opened to LAN -
+     * which is what Essential's hosting is - that is {@code isSingleplayerOwner}; on a dedicated
+     * server there is no such person, so it falls to permission level four, which is the level the
+     * server console and the owner in ops.json have.
+     *
+     * <p>Decided here rather than on the client, because a client that decided for itself whether
+     * it was allowed to change the settings would be a client that could simply say yes.
+     */
+    private static boolean ownsTheWorld(MinecraftServer server, ServerPlayer player) {
+        return server.isSingleplayerOwner(player.getGameProfile()) || player.hasPermissions(4);
+    }
+
+    /** Send a player the current settings, and whether they may touch them. */
+    public static void syncSettings(ServerPlayer player) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        CitiesInLifeNetwork.sendTo(player, new ModSettingsPayload(
+                CitiesInLifeConfig.citizensPerCity(),
+                CitiesInLifeConfig.carsEnabled(),
+                CitiesInLifeConfig.carDistance(),
+                (int) Math.round(CitiesInLifeConfig.nuclearBlastScale() * 100.0D),
+                CitiesInLifeConfig.steamPlumePercent(),
+                CitiesInLifeConfig.opsIgnoreBorders(),
+                ownsTheWorld(server, player)));
+    }
+
+    /**
+     * Apply settings sent by the world's owner.
+     *
+     * <p>The whole reason this exists: the config is a SERVER config, and NeoForge will not open a
+     * SERVER config's screen on a client that is connected to a server - which a player in a world
+     * hosted through Essential is, even though it is their own world. The settings were reachable
+     * in single player and nowhere else. This is the same settings, over a packet, from inside the
+     * game.
+     */
+    public static void applySettings(ServerPlayer player, SetSettingsPayload payload) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        if (!ownsTheWorld(server, player)) {
+            reject(player, "not_world_owner");
+            return;
+        }
+        CitiesInLifeConfig.CITIZENS_PER_CITY.set(Mth.clamp(payload.citizensPerCity(), 0,
+                CitiesInLifeConfig.MAX_CITIZENS));
+        CitiesInLifeConfig.CARS_ENABLED.set(payload.carsEnabled());
+        CitiesInLifeConfig.CAR_DISTANCE.set(Mth.clamp(payload.carDistance(), 32, 512));
+        CitiesInLifeConfig.NUCLEAR_BLAST_SCALE.set(
+                Mth.clamp(payload.nuclearBlastPercent(), 25, 200) / 100.0D);
+        CitiesInLifeConfig.STEAM_PLUME.set(Mth.clamp(payload.steamPlumePercent(), 0, 100));
+        CitiesInLifeConfig.OPS_IGNORE_BORDERS.set(payload.opsIgnoreBorders());
+        CitiesInLifeConfig.SPEC.save();
+
+        player.sendSystemMessage(Component.translatable("message.citiesinlife.settings_saved"));
+        // Everybody's screen is showing the old numbers, and the citizen cap in particular takes
+        // effect on the next director tick whether or not they know it changed.
+        for (ServerPlayer everyone : server.getPlayerList().getPlayers()) {
+            syncSettings(everyone);
+        }
+    }
+
+    public static void diplomacy(ServerPlayer player, DiplomacyPayload payload) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        CityData data = CityData.get(server);
+        City own = data.cityOf(player.getUUID(), player.serverLevel().dimension());
+        if (own == null) {
+            reject(player, "no_city");
+            return;
+        }
+        City target = data.city(payload.targetCityId());
+        // A city in another dimension can neither be seen on this player's Neighbours list nor
+        // answer back, so a crafted packet naming one would write a war nobody could ever end.
+        if (target == null || target.id().equals(own.id())
+                || !target.dimension().equals(own.dimension())) {
+            reject(player, "unknown_city");
+            return;
+        }
+
+        boolean changed = switch (payload.action()) {
+            case DiplomacyPayload.ACTION_GRANT -> {
+                // Being at war and being welcome are not compatible, and letting somebody grant
+                // permission mid-war would read as a truce that the war rules then ignore.
+                if (Diplomacy.stance(own, target) == Relation.WAR) {
+                    reject(player, "at_war_cannot_grant");
+                    yield false;
+                }
+                if (own.grant(target.id())) {
+                    tell(server, target, "message.citiesinlife.granted_by", own.name());
+                    player.sendSystemMessage(Component.translatable(
+                            "message.citiesinlife.granted_to", target.name()));
+                    yield true;
+                }
+                yield false;
+            }
+            case DiplomacyPayload.ACTION_REVOKE -> {
+                if (own.revoke(target.id())) {
+                    tell(server, target, "message.citiesinlife.revoked_by", own.name());
+                    player.sendSystemMessage(Component.translatable(
+                            "message.citiesinlife.revoked_from", target.name()));
+                    yield true;
+                }
+                yield false;
+            }
+            case DiplomacyPayload.ACTION_DECLARE_WAR -> {
+                // A war cancels any welcome, both ways. Otherwise an attacker keeps the run of the
+                // place they granted themselves access to before declaring.
+                if (!own.canAfford(WAR_COST)) {
+                    player.sendSystemMessage(Component.translatable(
+                            "message.citiesinlife.war_too_expensive", WAR_COST));
+                    yield false;
+                }
+                own.revoke(target.id());
+                target.revoke(own.id());
+                if (own.declareWar(target.id(), server.overworld().getGameTime())) {
+                    long declaredAt = server.overworld().getGameTime();
+                    own.note(declaredAt, "war_declared", target.name());
+                    target.note(declaredAt, "war_declared", own.name());
+                    CityData.get(server).setDirty();
+                    own.withdraw(WAR_COST);
+                    tell(server, target, "message.citiesinlife.war_declared_on_you", own.name());
+                    player.sendSystemMessage(Component.translatable(
+                            "message.citiesinlife.war_declared", target.name()));
+                    announceWar(server, own, target);
+                    callAllies(server, data, own, target);
+                    yield true;
+                }
+                yield false;
+            }
+            case DiplomacyPayload.ACTION_MAKE_PEACE -> {
+                // An offer, not an act. Ending a war used to be one click by either side, which
+                // made the whole thing a formality - the side that was losing could simply stop it.
+                // Now the other city has to agree, and can refuse.
+                if (Diplomacy.stance(own, target) != Relation.WAR) {
+                    yield false;
+                }
+                // If they have already offered us one, this click is an acceptance. Two offers
+                // sitting on the table waiting for somebody to press a differently worded button
+                // would be a stalemate nobody chose.
+                if (target.offeringPeaceTo(own.id())) {
+                    yield signPeace(server, own, target, player);
+                }
+                if (!own.offerPeace(target.id())) {
+                    yield false;
+                }
+                player.sendSystemMessage(Component.translatable(
+                        "message.citiesinlife.peace_offered", target.name()));
+                tell(server, target, "message.citiesinlife.peace_offered_to_you", own.name());
+                ServerPlayer them = server.getPlayerList().getPlayer(target.owner());
+                if (them != null) {
+                    CitiesInLifeNetwork.sendTo(them,
+                            new PeaceOfferPayload(own.id(), own.name()));
+                }
+                yield true;
+            }
+            case DiplomacyPayload.ACTION_ACCEPT_PEACE -> {
+                if (!target.offeringPeaceTo(own.id())) {
+                    reject(player, "no_peace_offer");
+                    yield false;
+                }
+                yield signPeace(server, own, target, player);
+            }
+            case DiplomacyPayload.ACTION_DECLINE_PEACE -> {
+                if (!target.withdrawPeaceOffer(own.id())) {
+                    yield false;
+                }
+                player.sendSystemMessage(Component.translatable(
+                        "message.citiesinlife.peace_declined", target.name()));
+                tell(server, target, "message.citiesinlife.peace_declined_by", own.name());
+                yield true;
+            }
+            case DiplomacyPayload.ACTION_PACT_OFFER -> {
+                Pact pact = pactOf(payload.a());
+                if (pact == null) {
+                    yield false;
+                }
+                // A pact and a war are the same contradiction a grant and a war are. Offering
+                // somebody your electricity while shelling them is not a state worth modelling.
+                if (Diplomacy.stance(own, target) == Relation.WAR) {
+                    reject(player, "at_war_cannot_grant");
+                    yield false;
+                }
+                if (!own.setOffer(target.id(), pact, true)) {
+                    yield false;
+                }
+                if (Diplomacy.pactActive(own, target, pact)) {
+                    // The second click of the two. Both sides are told, because an agreement
+                    // coming into force is news to the one who proposed it as well.
+                    Component name = pact.displayName();
+                    player.sendSystemMessage(Component.translatable(
+                            "message.citiesinlife.pact_active", name, target.name()));
+                    tellComponent(server, target, "message.citiesinlife.pact_active",
+                            name, own.name());
+                } else {
+                    player.sendSystemMessage(Component.translatable(
+                            "message.citiesinlife.pact_offered", pact.displayName(),
+                            target.name()));
+                    tellComponent(server, target, "message.citiesinlife.pact_proposed",
+                            own.name(), pact.displayName());
+                }
+                yield true;
+            }
+            case DiplomacyPayload.ACTION_PACT_CANCEL -> {
+                Pact pact = pactOf(payload.a());
+                if (pact == null) {
+                    yield false;
+                }
+                boolean wasLive = Diplomacy.pactActive(own, target, pact);
+                if (!own.setOffer(target.id(), pact, false)) {
+                    yield false;
+                }
+                player.sendSystemMessage(Component.translatable(
+                        "message.citiesinlife.pact_ended", pact.displayName(), target.name()));
+                if (wasLive) {
+                    tellComponent(server, target, "message.citiesinlife.pact_ended_by",
+                            own.name(), pact.displayName());
+                }
+                yield true;
+            }
+            case DiplomacyPayload.ACTION_SET_PRICES -> {
+                own.setPrices(target.id(), payload.a(), payload.b());
+                player.sendSystemMessage(Component.translatable(
+                        "message.citiesinlife.prices_set", target.name(),
+                        own.powerPrice(target.id()), own.waterPrice(target.id())));
+                yield true;
+            }
+            case DiplomacyPayload.ACTION_JOIN_WAR -> {
+                // An ally answering a call to arms. Free, unlike declaring one yourself: the
+                // aggressor has already paid for this war, and charging their friends to show up
+                // would make an alliance something you cannot afford to honour.
+                if (Diplomacy.stance(own, target) == Relation.WAR) {
+                    yield false;
+                }
+                own.revoke(target.id());
+                target.revoke(own.id());
+                if (own.declareWar(target.id(), server.overworld().getGameTime())) {
+                    long declaredAt = server.overworld().getGameTime();
+                    own.note(declaredAt, "war_declared", target.name());
+                    target.note(declaredAt, "war_declared", own.name());
+                    CityData.get(server).setDirty();
+                    tell(server, target, "message.citiesinlife.war_declared_on_you", own.name());
+                    player.sendSystemMessage(Component.translatable(
+                            "message.citiesinlife.war_declared", target.name()));
+                    announceWar(server, own, target);
+                    yield true;
+                }
+                yield false;
+            }
+            default -> false;
+        };
+
+        if (changed) {
+            data.setDirty();
+            syncNeighbours(player);
+            // The other side's screens are looking at numbers that have just changed under them.
+            ServerPlayer other = server.getPlayerList().getPlayer(target.owner());
+            if (other != null) {
+                syncNeighbours(other);
+            }
+        }
+    }
+
+    /**
+     * Tell a player about any war they are in, as they arrive.
+     *
+     * <p>A declaration made while somebody was offline is otherwise silently dropped, which defeats
+     * the whole reason a declaration is announced at all. Derived from state rather than queued, so
+     * there is no message backlog to persist and nothing to go stale.
+     */
+    public static void greetWithWars(ServerPlayer player) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        CityData data = CityData.get(server);
+        for (City own : data.cities()) {
+            if (!own.owner().equals(player.getUUID())) {
+                continue;
+            }
+            for (City other : data.cities()) {
+                if (other.id().equals(own.id())) {
+                    continue;
+                }
+                if (Diplomacy.stance(own, other) == Relation.WAR) {
+                    player.sendSystemMessage(Component.translatable(
+                            "message.citiesinlife.still_at_war", own.name(), other.name()));
+                }
+            }
+        }
+    }
+
+    /**
+     * End the war, both ways, and clear anything left on the table.
+     *
+     * <p>Symmetric on purpose: a war exists while either side is hostile, so ending one has to
+     * clear both or the peace would be a peace only one of them was in.
+     */
+    private static boolean signPeace(MinecraftServer server, City own, City target,
+                                     ServerPlayer player) {
+        boolean ended = own.makePeace(target.id()) | target.makePeace(own.id());
+        if (!ended) {
+            return false;
+        }
+        own.withdrawPeaceOffer(target.id());
+        target.withdrawPeaceOffer(own.id());
+        long agreedAt = server.overworld().getGameTime();
+        own.note(agreedAt, "war_ended", target.name());
+        target.note(agreedAt, "war_ended", own.name());
+        // Neither the declaration nor the treaty marked the save dirty before this: the city
+        // simulation flips the flag every ten seconds anyway, so it only ever lost a war that was
+        // declared in the last few seconds before a quit. Now that the ledger writes here too,
+        // say so explicitly rather than relying on that.
+        CityData.get(server).setDirty();
+        tell(server, target, "message.citiesinlife.peace_agreed", own.name());
+        player.sendSystemMessage(Component.translatable(
+                "message.citiesinlife.peace_agreed", target.name()));
+        Component line = Component.translatable("message.citiesinlife.peace_announced",
+                own.name(), target.name()).withStyle(ChatFormatting.GREEN);
+        for (ServerPlayer everyone : server.getPlayerList().getPlayers()) {
+            everyone.sendSystemMessage(line);
+        }
+        return true;
+    }
+
+    /** Tell a city's owner something, if they happen to be online to hear it. */
+    private static void tell(MinecraftServer server, City city, String key, Object argument) {
+        ServerPlayer owner = server.getPlayerList().getPlayer(city.owner());
+        if (owner != null) {
+            owner.sendSystemMessage(Component.translatable(key, argument));
+        }
+    }
+
+    /** The same, for messages whose arguments are already Components. */
+    private static void tellComponent(MinecraftServer server, City city, String key,
+                                      Object... arguments) {
+        ServerPlayer owner = server.getPlayerList().getPlayer(city.owner());
+        if (owner != null) {
+            owner.sendSystemMessage(Component.translatable(key, arguments));
+        }
+    }
+
+    /** Which pacts the first city is holding its half of, towards the second. */
+    private static int pactMask(@Nullable City holder, @Nullable City towards) {
+        if (holder == null || towards == null) {
+            return 0;
+        }
+        int mask = 0;
+        for (Pact pact : Pact.values()) {
+            if (holder.offers(towards.id(), pact)) {
+                mask |= pact.bit();
+            }
+        }
+        return mask;
+    }
+
+    private static @Nullable Pact pactOf(int ordinal) {
+        Pact[] values = Pact.values();
+        return ordinal >= 0 && ordinal < values.length ? values[ordinal] : null;
+    }
+
+    /**
+     * Everybody hears about a war, whether or not it is theirs.
+     *
+     * <p>Told to the whole server rather than to the two sides, because a war is the one thing in
+     * this mod that changes what is safe to walk into. A player with no stake in it still wants to
+     * know which two cities have stopped being places you can visit.
+     */
+    private static void announceWar(MinecraftServer server, City aggressor, City defender) {
+        Component line = Component.translatable("message.citiesinlife.war_announced",
+                aggressor.name(), defender.name()).withStyle(ChatFormatting.RED);
+        for (ServerPlayer everyone : server.getPlayerList().getPlayers()) {
+            everyone.sendSystemMessage(line);
+        }
+    }
+
+    /**
+     * Ask the aggressor's allies whether they are coming.
+     *
+     * <p>An alliance commits nobody. What it buys is the question, and the question has to arrive
+     * with a way to answer it - so this is a message with a button on it rather than a line of text
+     * telling somebody to go and open a screen.
+     */
+    private static void callAllies(MinecraftServer server, CityData data, City aggressor,
+                                   City defender) {
+        for (City ally : data.cities()) {
+            if (ally.id().equals(aggressor.id()) || ally.id().equals(defender.id())) {
+                continue;
+            }
+            if (!Diplomacy.pactActive(aggressor, ally, Pact.ALLIANCE)) {
+                continue;
+            }
+            if (Diplomacy.stance(ally, defender) == Relation.WAR) {
+                continue;
+            }
+            ServerPlayer friend = server.getPlayerList().getPlayer(ally.owner());
+            if (friend != null) {
+                CitiesInLifeNetwork.sendTo(friend, new CallToArmsPayload(
+                        defender.id(), aggressor.name(), defender.name()));
+            }
+        }
+    }
+
+    /** The other cities in this dimension, and the land they hold near the player. */
+    public static void syncNeighbours(ServerPlayer player) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        CityData data = CityData.get(server);
+        City own = data.cityOf(player.getUUID(), player.serverLevel().dimension());
+        ChunkPos here = player.chunkPosition();
+
+        List<NeighbourCitiesPayload.Entry> entries = new ArrayList<>();
+        LongArrayList chunks = new LongArrayList();
+        List<Byte> stances = new ArrayList<>();
+
+        for (City city : data.cities()) {
+            if (!city.dimension().equals(player.serverLevel().dimension())) {
+                continue;
+            }
+            if (own != null && city.id().equals(own.id())) {
+                continue;
+            }
+            if (city.owner().equals(player.getUUID())) {
+                // Their own city in another dimension has already been skipped; this catches the
+                // case of a player who somehow owns two here.
+                continue;
+            }
+
+            Relation theirs = Diplomacy.stance(city, own);
+            Relation yours = Diplomacy.stance(own, city);
+
+            if (entries.size() < NeighbourCitiesPayload.MAX_CITIES) {
+                entries.add(new NeighbourCitiesPayload.Entry(
+                        city.id(),
+                        city.name(),
+                        nameOf(server, city.owner()),
+                        theirs.ordinal(),
+                        yours.ordinal(),
+                        city.claimedChunks().size(),
+                        distanceInChunks(here, city),
+                        pactMask(own, city),
+                        pactMask(city, own),
+                        own == null ? 0 : own.powerPrice(city.id()),
+                        own == null ? 0 : own.waterPrice(city.id()),
+                        city.powerPrice(own == null ? city.id() : own.id()),
+                        city.waterPrice(own == null ? city.id() : own.id()),
+                        city.flag(),
+                        own != null && own.offeringPeaceTo(city.id()),
+                        own != null && city.offeringPeaceTo(own.id()),
+                        own != null && Warfare.attacking(server, own, city)));
+            }
+
+            for (long chunkKey : city.claimedChunks()) {
+                if (chunks.size() >= ForeignLandPayload.MAX_CHUNKS) {
+                    break;
+                }
+                if (Math.abs(ChunkPos.getX(chunkKey) - here.x) > FOREIGN_LAND_RADIUS
+                        || Math.abs(ChunkPos.getZ(chunkKey) - here.z) > FOREIGN_LAND_RADIUS) {
+                    continue;
+                }
+                chunks.add(chunkKey);
+                stances.add((byte) theirs.ordinal());
+            }
+        }
+
+        byte[] packedStances = new byte[stances.size()];
+        for (int i = 0; i < packedStances.length; i++) {
+            packedStances[i] = stances.get(i);
+        }
+        CitiesInLifeNetwork.sendTo(player, new NeighbourCitiesPayload(entries));
+        CitiesInLifeNetwork.sendTo(player, new ForeignLandPayload(chunks.toLongArray(), packedStances));
+    }
+
+    /** How far the nearest bit of a city's territory is, in chunks; -1 if it holds none. */
+    private static int distanceInChunks(ChunkPos here, City city) {
+        int best = -1;
+        for (long chunkKey : city.claimedChunks()) {
+            int dx = ChunkPos.getX(chunkKey) - here.x;
+            int dz = ChunkPos.getZ(chunkKey) - here.z;
+            int distance = Math.max(Math.abs(dx), Math.abs(dz));
+            if (best < 0 || distance < best) {
+                best = distance;
+            }
+        }
+        return best;
+    }
+
+    private static String nameOf(MinecraftServer server, UUID playerId) {
+        ServerPlayer online = server.getPlayerList().getPlayer(playerId);
+        if (online != null) {
+            return online.getGameProfile().getName();
+        }
+        GameProfileCache cache = server.getProfileCache();
+        if (cache != null) {
+            return cache.get(playerId).map(profile -> profile.getName())
+                    .orElse("?");
+        }
+        return "?";
+    }
+
+    // ---------------------------------------------------------------- editor
+
+    /**
+     * The building editor: rename, re-measure, repair, and set capacity by hand.
+     *
+     * <p><b>Creative only</b>, and checked here rather than only on the key press. The client half
+     * of a permission check is a suggestion — anybody running a modified client can send the packet
+     * whenever they like — so survival mode is refused on arrival, not merely unbound.
+     *
+     * <p>Everything it can do is confined to buildings of the player's own city. There is no
+     * version of this that reaches a neighbour's tower, which is why war has no say in it.
+     */
+    public static void syncEditor(ServerPlayer player, boolean open) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        CityData data = CityData.get(server);
+        City own = data.cityOf(player.getUUID(), player.serverLevel().dimension());
+        if (!player.isCreative() || own == null) {
+            CitiesInLifeNetwork.sendTo(player, EditorPayload.none());
+            if (open) {
+                // Say why nothing opened. A key that silently does nothing reads as a broken key.
+                reject(player, own == null ? "editor_no_city" : "editor_survival");
+            }
+            return;
+        }
+        List<EditorPayload.Entry> buildings = new ArrayList<>();
+        for (Structure structure : data.structuresOf(own)) {
+            if (buildings.size() >= EditorPayload.MAX_BUILDINGS) {
+                break;
+            }
+            buildings.add(new EditorPayload.Entry(
+                    structure.id(),
+                    structure.name(),
+                    structure.type().id(),
+                    structure.min().getX(), structure.min().getY(), structure.min().getZ(),
+                    structure.usableCells(),
+                    structure.residents(),
+                    structure.jobs(),
+                    structure.residentOverride(),
+                    structure.jobOverride(),
+                    structure.healthOverride(),
+                    structure.health(),
+                    structure.maxHealth(),
+                    structure.boost(),
+                    structure.type().boostUnit()));
+        }
+        CitiesInLifeNetwork.sendTo(player, new EditorPayload(true, buildings));
+        if (open) {
+            CitiesInLifeNetwork.sendTo(player, OpenEditorPayload.INSTANCE);
+        }
+    }
+
+    /** Do one thing to one building, then send the list back so the screen shows the result. */
+    /**
+     * Most people the editor will put in one building at a time.
+     *
+     * <p>Not a balance figure — the city-wide cap is the real limit and this sits well under any
+     * sensible one. It is here so a malformed packet cannot ask for two billion citizens and have
+     * the server try.
+     */
+    private static final int MAX_HAND_SPAWN = 64;
+
+    public static void editStructure(ServerPlayer player, EditStructurePayload payload) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        ServerLevel level = player.serverLevel();
+        CityData data = CityData.get(server);
+        City own = data.cityOf(player.getUUID(), level.dimension());
+        if (!player.isCreative() || own == null) {
+            reject(player, own == null ? "editor_no_city" : "editor_survival");
+            return;
+        }
+        Structure structure = data.structure(payload.structureId());
+        // Yours, and in the world you are standing in. Both, because a city id alone would let a
+        // packet reach a building of yours in another dimension that you cannot see the result of.
+        if (structure == null || !own.structures().contains(structure.id())
+                || !structure.dimension().equals(level.dimension())) {
+            reject(player, "editor_gone");
+            return;
+        }
+        EditStructurePayload.Action action = EditStructurePayload.Action.byId(payload.action());
+        if (action == null) {
+            return;
+        }
+        switch (action) {
+            case RENAME -> structure.rename(payload.name());
+            case SET_RESIDENTS -> structure.setResidentOverride(payload.amount());
+            case SET_JOBS -> structure.setJobOverride(payload.amount());
+            case SET_HEALTH -> structure.setHealthOverride(payload.amount());
+            case SET_BOOST -> structure.setBoost(payload.amount());
+            case AUTOMATIC -> {
+                structure.setResidentOverride(-1);
+                structure.setJobOverride(-1);
+                structure.setHealthOverride(-1);
+                structure.setBoost(0);
+            }
+            case REMEASURE -> Demolition.recount(level, structure);
+            case REPAIR -> structure.restore();
+            case GOTO -> {
+                // The middle of the box horizontally and one block clear of the top, which lands you
+                // on the roof of a building rather than inside its ceiling. Creative only, so the
+                // drop at the far end is somebody else's problem.
+                double x = (structure.min().getX() + structure.max().getX()) / 2.0D + 0.5D;
+                double z = (structure.min().getZ() + structure.max().getZ()) / 2.0D + 0.5D;
+                player.teleportTo(level, x, structure.max().getY() + 1.0D, z,
+                        java.util.Set.of(), player.getYRot(), player.getXRot());
+                player.displayClientMessage(Component.translatable(
+                        "message.citiesinlife.editor_moved", structure.name()), true);
+            }
+            case SPAWN -> {
+                int wanted = Mth.clamp(payload.amount(), 1, MAX_HAND_SPAWN);
+                int made = CitizenDirector.spawnInto(level, own, structure, wanted);
+                // Say what actually happened rather than what was asked for. The city-wide cap
+                // trims anybody over it within the second, so spawning past it would produce
+                // people who visibly evaporate - and a button that lies about that is worse than
+                // one that refuses.
+                player.displayClientMessage(made >= wanted
+                        ? Component.translatable("message.citiesinlife.editor_spawned",
+                                made, structure.name())
+                        : Component.translatable("message.citiesinlife.editor_spawned_short",
+                                made, wanted, CitiesInLifeConfig.citizensPerCity()), false);
+            }
+        }
+        data.setDirty();
+        // Only for the actions that actually move a capacity figure. refresh() seeds a share of any
+        // new headroom into the population immediately so an edit has a visible consequence — which
+        // is right after setting a resident count and wrong after walking to a building. Calling it
+        // on every action would mean clicking Go To repeatedly grew the city.
+        switch (action) {
+            case SET_RESIDENTS, SET_JOBS, AUTOMATIC, REMEASURE -> CitySimulation.refresh(data, own);
+            // A boost changes what the city SUPPLIES rather than what it holds, and the panel reads
+            // those off the next utility tick, which is ten seconds away at worst.
+            default -> {
+            }
+        }
+        syncEditor(player, false);
+        sync(player);
+    }
+
+    // ---------------------------------------------------------------- syncing
+
+    /**
+     * Re-send only what is around the player: structures and power lines.
+     *
+     * <p>Separate from the full sync because this runs on a timer for every player. The city figures
+     * change rarely and cost a chunk array each time; what is in view changes constantly as you walk.
+     */
+    public static void syncSurroundings(ServerPlayer player) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        CitiesInLifeNetwork.sendTo(player,
+                new StructureSyncPayload(nearbyStructures(CityData.get(server), player)));
+        CitiesInLifeNetwork.sendTo(player, new PowerLinesPayload(nearbyLines(server, player)));
+        CitiesInLifeNetwork.sendTo(player, new WaterLinesPayload(nearbyWaterLines(server, player)));
+        syncPaths(player, false);
+        syncRoads(player, false);
+    }
+
+    /** Push the player's city and the structures around them. */
+    public static void sync(ServerPlayer player) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        ServerLevel level = player.serverLevel();
+        CityData data = CityData.get(server);
+        City city = data.cityOf(player.getUUID(), level.dimension());
+
+        CitiesInLifeNetwork.sendTo(player, city == null
+                ? CitySyncPayload.none()
+                : new CitySyncPayload(
+                        true,
+                        city.name(),
+                        city.treasury(),
+                        city.housing(),
+                        city.population(),
+                        city.jobs(),
+                        city.employed(),
+                        city.powerProduced(),
+                        city.powerNeeded(),
+                        city.waterSupplied(),
+                        city.waterNeeded(),
+                        city.waterTainted(),
+                        city.powerImported(),
+                        city.waterImported(),
+                        city.sewageHandled(),
+                        city.sewageProduced(),
+                        city.nextClaimCost(),
+                        city.refuse(),
+                        city.refuseTolerance(),
+                        city.creativeFunded(),
+                        city.flag(),
+                        city.claimedChunks().toLongArray()));
+
+        syncSettings(player);
+        CitiesInLifeNetwork.sendTo(player, new StructureSyncPayload(nearbyStructures(data, player)));
+        CitiesInLifeNetwork.sendTo(player, new PowerLinesPayload(nearbyLines(server, player)));
+        CitiesInLifeNetwork.sendTo(player, new WaterLinesPayload(nearbyWaterLines(server, player)));
+        syncPaths(player, true);
+        syncRoads(player, true);
+        syncNeighbours(player);
+    }
+
+    private static List<StructureSyncPayload.Entry> nearbyStructures(CityData data, ServerPlayer player) {
+        final List<StructureSyncPayload.Entry> entries = new ArrayList<>();
+        final List<UUID> seen = new ArrayList<>();
+        final ChunkPos centre = player.chunkPosition();
+
+        for (int dx = -SYNC_RADIUS_CHUNKS; dx <= SYNC_RADIUS_CHUNKS; dx++) {
+            for (int dz = -SYNC_RADIUS_CHUNKS; dz <= SYNC_RADIUS_CHUNKS; dz++) {
+                long key = ChunkPos.asLong(centre.x + dx, centre.z + dz);
+                for (Structure structure : data.structuresInChunk(player.serverLevel().dimension(), key)) {
+                    // One entry per structure however many chunks it spans.
+                    if (seen.contains(structure.id())) {
+                        continue;
+                    }
+                    if (entries.size() >= StructureSyncPayload.MAX_STRUCTURES) {
+                        return entries;
+                    }
+                    seen.add(structure.id());
+                    entries.add(new StructureSyncPayload.Entry(
+                            structure.id(),
+                            structure.name(),
+                            structure.type().id(),
+                            structure.min().getX(), structure.min().getY(), structure.min().getZ(),
+                            structure.max().getX(), structure.max().getY(), structure.max().getZ(),
+                            structure.usableCells(),
+                            structure.residents(),
+                            structure.jobs(),
+                            structure.health(),
+                            structure.maxHealth()));
+                }
+            }
+        }
+        return entries;
+    }
+
+    /**
+     * Power lines close enough to be worth drawing.
+     *
+     * <p>Filtered by distance to either end, because a line is worth seeing as soon as one of its
+     * poles is in view even if the other end is far off across the desert.
+     */
+    /** The same for water. Kept separate so the client can draw them only while the tool is held. */
+    private static List<long[]> nearbyWaterLines(MinecraftServer server, ServerPlayer player) {
+        final int radius = SYNC_RADIUS_CHUNKS * 16 + 64;
+        final BlockPos here = player.blockPosition();
+        final List<long[]> visible = new ArrayList<>();
+
+        for (long[] line : WaterGrid.get(server).allLines(player.serverLevel().dimension())) {
+            if (visible.size() >= WaterLinesPayload.MAX_LINES) {
+                break;
+            }
+            if (withinRadius(here, line[0], radius) || withinRadius(here, line[1], radius)) {
+                visible.add(line);
+            }
+        }
+        return visible;
+    }
+
+    private static List<long[]> nearbyLines(MinecraftServer server, ServerPlayer player) {
+        final int radius = SYNC_RADIUS_CHUNKS * 16 + 64;
+        final BlockPos here = player.blockPosition();
+        final List<long[]> visible = new ArrayList<>();
+
+        for (long[] line : PowerGrid.get(server).allLines(player.serverLevel().dimension())) {
+            if (visible.size() >= PowerLinesPayload.MAX_LINES) {
+                break;
+            }
+            if (withinRadius(here, line[0], radius) || withinRadius(here, line[1], radius)) {
+                visible.add(line);
+            }
+        }
+        return visible;
+    }
+
+    private static boolean withinRadius(BlockPos here, long packed, int radius) {
+        int dx = BlockPos.getX(packed) - here.getX();
+        int dz = BlockPos.getZ(packed) - here.getZ();
+        return Math.abs(dx) <= radius && Math.abs(dz) <= radius;
+    }
+
+    // ----------------------------------------------------------------- helpers
+
+    private static boolean tooFar(ServerPlayer player, BlockPos pos) {
+        return player.blockPosition().distSqr(pos) > (double) MAX_REACH * MAX_REACH;
+    }
+
+    // ---------------------------------------------------------- the control room
+
+    /**
+     * Answer a monitor with everything its screen shows.
+     *
+     * <p>Only on request, and only to the one player asking. A reactor's gauges move once every ten
+     * seconds, so pushing them at everybody would be a lot of traffic for numbers nobody is looking
+     * at — and the screen re-asks while it is open, which is what makes it live.
+     */
+    public static void sendReactor(ServerPlayer player, RequestReactorPayload payload) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        ServerLevel level = player.serverLevel();
+        BlockPos at = payload.monitor();
+        if (tooFar(player, at)) {
+            CitiesInLifeNetwork.sendTo(player, ReactorSyncPayload.none());
+            return;
+        }
+        Structure plant = CityData.get(server).structureAt(level.dimension(), at);
+        if (plant == null || plant.type() != StructureType.NUCLEAR_PLANT) {
+            CitiesInLifeNetwork.sendTo(player, ReactorSyncPayload.none());
+            return;
+        }
+
+        ReactorSurvey survey = ReactorSurvey.of(level, plant.min(), plant.max());
+        ReactorData data = ReactorData.get(server);
+        ReactorState state = data.of(plant.id());
+
+        int dial = ReactorLeverBlock.positionAt(level, survey.levers().get(ReactorLever.TURBINE));
+        int[] clog = new int[ReactorSyncPayload.PORTS];
+        int latched = 0;
+        for (CoolingPort port : CoolingPort.values()) {
+            BlockPos portAt = survey.ports().get(port);
+            if (portAt != null
+                    && level.getBlockEntity(portAt) instanceof CoolingPortBlockEntity cell) {
+                clog[port.ordinal()] = cell.clog();
+                if (cell.latched()) {
+                    latched++;
+                }
+            }
+        }
+        boolean plumbed = survey.buildFault() == null && survey.loopFault(level) == null;
+        int loop = plumbed ? Math.max(0, 100 - 25 * latched) : 0;
+
+        int rodBlocks = survey.fuelRodBlocks();
+        double capacity = (double) UraniumStorageBlockEntity.UNITS_PER_ITEM * Math.max(1, rodBlocks);
+        int fuelPercent = (int) Math.round(100.0D * state.fuel / capacity);
+
+        int[] history = new int[ReactorSyncPayload.TRACE];
+        for (int i = 0; i < history.length; i++) {
+            history[i] = state.history[i];
+        }
+
+        CitiesInLifeNetwork.sendTo(player, new ReactorSyncPayload(
+                true, plant.name(),
+                (int) Math.round(state.temperature),
+                (int) Math.round(Math.min(9999.0D, state.targetTemperature)),
+                (int) Math.round(state.pressure),
+                Math.max(0, Math.min(100, fuelPercent)),
+                minutesOfFuel(state, rodBlocks),
+                state.output, dial,
+                ReactorLeverBlock.positionAt(level, survey.levers().get(ReactorLever.COOLER)) > 0,
+                ReactorLeverBlock.positionAt(level, survey.levers().get(ReactorLever.HEAT)) > 0,
+                ReactorLeverBlock.positionAt(level, survey.levers().get(ReactorLever.PRESSURE)) > 0,
+                state.insertion, loop,
+                survey.turbines().size(), survey.columnHeight(), rodBlocks,
+                state.melting(), state.fault, state.faultCount, clog, history));
+    }
+
+    /** Ask the client to open the control room, then fill it in. */
+    public static void openMonitor(ServerPlayer player, BlockPos monitor) {
+        CitiesInLifeNetwork.sendTo(player, new OpenMonitorPayload(monitor));
+        sendReactor(player, new RequestReactorPayload(monitor));
+    }
+
+    /**
+     * Roughly how long the fuel lasts at the rate it is currently going.
+     *
+     * <p>Derived from this step's burn rather than from a nominal figure, so easing off the dial
+     * visibly buys time on the same screen that told you the fuel was low.
+     */
+    private static int minutesOfFuel(ReactorState state, int rodBlocks) {
+        if (rodBlocks <= 0 || state.fuel <= 0.0D) {
+            return 0;
+        }
+        double burnPerStep = 0.75D * rodBlocks * Math.max(0.02D, state.decay);
+        double steps = state.fuel / burnPerStep;
+        return (int) Math.round(steps * CitySimulation.INTERVAL_TICKS / 20.0D / 60.0D);
+    }
+
+    // --------------------------------------------------------------- upgrades
+
+    /**
+     * Buy a machine one level up, paid for out of the city's treasury.
+     *
+     * <p>The money comes from the city whose ground the machine stands on, not from the city the
+     * player happens to run. That matters on a shared server: upgrading somebody else's turbine
+     * out of their own treasury would be a very odd kind of gift.
+     */
+    public static void upgrade(ServerPlayer player, UpgradePayload payload) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        BlockPos pos = payload.pos();
+        if (tooFar(player, pos)) {
+            reject(player, "too_far");
+            return;
+        }
+        if (!Diplomacy.mayInterfere(server, player, pos)) {
+            reject(player, "protected_land_tool");
+            return;
+        }
+
+        ServerLevel level = player.serverLevel();
+        BlockState state = level.getBlockState(pos);
+        if (!(state.getBlock() instanceof Upgradeable machine)) {
+            reject(player, "not_upgradeable");
+            return;
+        }
+
+        int tier = machine.tierAt(level, pos, state);
+        if (tier >= machine.maxTier()) {
+            player.sendSystemMessage(Component.translatable(
+                    "message.citiesinlife.already_top_tier", tier + 1));
+            return;
+        }
+
+        CityData data = CityData.get(server);
+        City city = data.cityAtChunk(level.dimension(),
+                ChunkPos.asLong(pos.getX() >> 4, pos.getZ() >> 4));
+        if (city == null) {
+            reject(player, "upgrade_needs_city");
+            return;
+        }
+
+        long cost = machine.upgradeCost(tier);
+        if (!city.withdraw(cost)) {
+            player.sendSystemMessage(Component.translatable(
+                    "message.citiesinlife.upgrade_too_dear", cost, city.treasury()));
+            return;
+        }
+
+        if (!machine.upgrade(level, pos, state)) {
+            // Refund rather than swallow. A machine that took the money and did nothing would be
+            // indistinguishable from one that worked, right up until the numbers did not move.
+            city.deposit(cost);
+            reject(player, "upgrade_failed");
+            return;
+        }
+        data.setDirty();
+
+        player.sendSystemMessage(machine.describe(level, pos, level.getBlockState(pos)));
+        player.sendSystemMessage(Component.translatable("message.citiesinlife.upgrade_paid", cost));
+        sync(player);
+    }
+
+
+    // ------------------------------------------------------------ the missile map
+
+    /**
+     * How far out the strategic map is told about.
+     *
+     * <p>Far bigger than the land map's twelve chunks — a weapon whose whole point is reaching
+     * somewhere you are not is useless on a map that stops at the edge of your own city. Ninety-six
+     * chunks is fifteen hundred blocks in every direction, which is comfortably further than any
+     * missile will fly.
+     */
+    private static final int MISSILE_MAP_RADIUS = 96;
+
+    /**
+     * Everything the missile map draws, for one player who is looking at one.
+     *
+     * <p>Sent on request and only on request. It is a great deal more than the ordinary sync and
+     * nobody who is not looking at a missile map should be paying for it.
+     */
+    public static void syncMissileMap(ServerPlayer player) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        ServerLevel level = player.serverLevel();
+        CityData data = CityData.get(server);
+        City mine = data.cityOf(player.getUUID(), level.dimension());
+
+        List<MissileMapPayload.Silo> silos = new ArrayList<>();
+        List<MissileMapPayload.Land> land = new ArrayList<>();
+        List<MissileMapPayload.Place> places = new ArrayList<>();
+        List<MissileMapPayload.Track> tracks = new ArrayList<>();
+
+        ChunkPos here = player.chunkPosition();
+        for (City city : data.cities()) {
+            if (!city.dimension().equals(level.dimension())) {
+                continue;
+            }
+            byte relation = relationOf(mine, city);
+            long centreX = 0;
+            long centreZ = 0;
+            int counted = 0;
+            for (long chunkKey : city.claimedChunks()) {
+                centreX += ChunkPos.getX(chunkKey);
+                centreZ += ChunkPos.getZ(chunkKey);
+                counted++;
+                if (land.size() >= MissileMapPayload.MAX_LAND) {
+                    continue;
+                }
+                if (Math.abs(ChunkPos.getX(chunkKey) - here.x) > MISSILE_MAP_RADIUS
+                        || Math.abs(ChunkPos.getZ(chunkKey) - here.z) > MISSILE_MAP_RADIUS) {
+                    continue;
+                }
+                land.add(new MissileMapPayload.Land(chunkKey, relation));
+            }
+            // The middle of what they have claimed, which is a better answer to "where is that
+            // city" than the city hall - a city grows away from its hall and the hall stays put.
+            if (counted > 0 && places.size() < MissileMapPayload.MAX_PLACES) {
+                places.add(new MissileMapPayload.Place(city.name(),
+                        (int) (centreX / counted), (int) (centreZ / counted), relation));
+            }
+        }
+
+        if (mine != null) {
+            for (Structure structure : data.structuresOf(mine)) {
+                if (structure.type() != StructureType.MISSILE_SILO
+                        || !structure.dimension().equals(level.dimension())) {
+                    continue;
+                }
+                boolean loaded = level.isLoaded(structure.min());
+                SiloSurvey survey = loaded ? SiloSurvey.of(level, structure) : null;
+                // A box too big to survey is not an empty box, and saying "0" for it is a lie the
+                // player has no way to see through. Minus one is the panel's cue to say so.
+                boolean blind = survey != null && survey.tooLarge();
+                silos.add(new MissileMapPayload.Silo(
+                        structure.id(), structure.name(),
+                        (structure.min().getX() + structure.max().getX()) / 2,
+                        (structure.min().getZ() + structure.max().getZ()) / 2,
+                        blind ? -1 : survey == null ? 0 : survey.count(MissileKind.BALLISTIC),
+                        blind ? -1 : survey == null ? 0 : survey.count(MissileKind.NUCLEAR),
+                        blind ? -1 : survey == null ? 0 : survey.count(MissileKind.INTERCEPTOR),
+                        !loaded || MissileDirector.busy(structure.id())));
+                if (silos.size() >= MissileMapPayload.MAX_SILOS) {
+                    break;
+                }
+            }
+        }
+
+        for (MissileEntity rocket : level.getEntities(
+                EntityTypeTest.forClass(MissileEntity.class), rocket -> rocket.isAlive())) {
+            if (tracks.size() >= MissileMapPayload.MAX_TRACKS) {
+                break;
+            }
+            tracks.add(new MissileMapPayload.Track(
+                    (int) rocket.getX(), (int) rocket.getZ(),
+                    (int) rocket.target().x, (int) rocket.target().z,
+                    rocket.ticksToImpact() / 20,
+                    (byte) rocket.kind().ordinal(),
+                    mine != null && mine.id().equals(rocket.cityId())));
+        }
+
+        CitiesInLifeNetwork.sendTo(player,
+                new MissileMapPayload(silos, land, places, tracks));
+    }
+
+    /** How the viewer's city stands towards another, flattened to the byte the map draws with. */
+    private static byte relationOf(@Nullable City mine, City theirs) {
+        if (mine != null && mine.id().equals(theirs.id())) {
+            return MissileMapPayload.MINE;
+        }
+        return switch (Diplomacy.stance(theirs, mine)) {
+            case WAR -> MissileMapPayload.WAR;
+            case ALLIED -> MissileMapPayload.ALLIED;
+            case NEUTRAL -> MissileMapPayload.NEUTRAL;
+        };
+    }
+
+    /**
+     * Somebody has pressed launch.
+     *
+     * <p>Every rule lives in the director; this only turns the packet's strings back into things
+     * and reports whatever it says.
+     */
+    public static void launchMissile(ServerPlayer player, LaunchMissilePayload payload) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        MissileKind kind = MissileKind.byId(payload.kindId(), MissileKind.BALLISTIC);
+        String refusal = MissileDirector.launch(server, player, payload.siloId(),
+                payload.chunkX(), payload.chunkZ(), kind);
+        if (refusal != null) {
+            player.sendSystemMessage(Component.translatable(refusal));
+            return;
+        }
+        City firing = CityData.get(server).cityOf(player.getUUID(),
+                player.serverLevel().dimension());
+        if (firing != null) {
+            firing.note(player.level().getGameTime(), "missile_away",
+                    payload.chunkX() * 16 + ", " + payload.chunkZ() * 16);
+            CityData.get(server).setDirty();
+        }
+        player.sendSystemMessage(Component.translatable("message.citiesinlife.missile_away",
+                kind.displayName()));
+        syncMissileMap(player);
+    }
+
+    /**
+     * Empty every silo the city owns onto a city you are at war with.
+     *
+     * <p>The target is a <em>country</em>, not a square. Each silo then draws its own chunk out of
+     * that city's claimed ground, so a volley scatters across the whole place instead of dropping
+     * everything you own into one hole.
+     *
+     * <p>Each silo is put through exactly the same {@code launch} as the single-missile button, one
+     * at a time, and the refusals are collected rather than aborting the volley. That is the whole
+     * design: a city with four armed silos, one empty and one already opening should send four
+     * missiles and be told why the other two stayed shut — not refuse the lot because one of them
+     * was busy. Every war rule, every ownership check and every cost is enforced per silo by the
+     * director, so this button cannot fire anything the player could not have fired by hand.
+     */
+    public static void launchAll(ServerPlayer player, LaunchAllPayload payload) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        CityData data = CityData.get(server);
+        City own = data.cityOf(player.getUUID(), player.serverLevel().dimension());
+        if (own == null) {
+            reject(player, "no_city");
+            return;
+        }
+        if (!inCityHall(data, player, own)) {
+            reject(player, "not_in_city_hall");
+            return;
+        }
+        City struck = data.city(payload.cityId());
+        if (struck == null || struck.id().equals(own.id())) {
+            reject(player, "launch_all_no_target");
+            return;
+        }
+        // The one rule the whole button hangs off. A single launch checks this per shot; a volley
+        // checks it once, here, because there is no version of this where half of it is legal.
+        if (Diplomacy.stance(struck, own) != Relation.WAR) {
+            reject(player, "missile_not_at_war");
+            return;
+        }
+        List<Long> ground = new ArrayList<>();
+        for (long chunkKey : struck.claimedChunks()) {
+            ground.add(chunkKey);
+        }
+        if (ground.isEmpty()) {
+            reject(player, "launch_all_no_ground");
+            return;
+        }
+
+        MissileKind kind = MissileKind.byId(payload.kindId(), MissileKind.BALLISTIC);
+        RandomSource random = player.serverLevel().getRandom();
+        int away = 0;
+        int held = 0;
+        String firstRefusal = null;
+        for (Structure silo : data.structuresOf(own)) {
+            if (silo.type() != StructureType.MISSILE_SILO) {
+                continue;
+            }
+            // Each silo draws its own square. Aiming the whole volley at one chunk put every rocket
+            // you own in the same crater; scattering them is what makes eight missiles worth eight
+            // missiles, and it is what a strategic strike on a city actually looks like.
+            ChunkPos aim = new ChunkPos(ground.get(random.nextInt(ground.size())));
+            String refusal = MissileDirector.launch(server, player, silo.id(),
+                    aim.x, aim.z, kind);
+            if (refusal == null) {
+                away++;
+            } else {
+                held++;
+                if (firstRefusal == null) {
+                    firstRefusal = refusal;
+                }
+            }
+        }
+
+        if (away == 0) {
+            // Nothing flew. The single most useful thing to say is WHY the first silo said no,
+            // rather than a count of nothing happening.
+            player.sendSystemMessage(Component.translatable(
+                    firstRefusal == null ? "message.citiesinlife.no_silos" : firstRefusal));
+            return;
+        }
+        // One line for the whole volley, not one per rocket: eight identical entries would push
+        // everything else the city has ever done off the end of the ledger.
+        own.note(player.level().getGameTime(), "volley_away", struck.name());
+        data.setDirty();
+        player.sendSystemMessage(Component.translatable(
+                "message.citiesinlife.volley_away", away, kind.displayName(), held));
+        syncMissileMap(player);
+    }
+
+    /** The launch button in the hall: open the target list, gated exactly as the panel is. */
+    public static void openLaunchAll(ServerPlayer player) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        CityData data = CityData.get(server);
+        City own = data.cityOf(player.getUUID(), player.serverLevel().dimension());
+        if (own == null || !inCityHall(data, player, own)) {
+            reject(player, "not_in_city_hall");
+            return;
+        }
+        // The list itself is the neighbours data the client already keeps for the Neighbours tab,
+        // so this refreshes that and then says "open it" - no second copy of the same table.
+        syncNeighbours(player);
+        CitiesInLifeNetwork.sendTo(player, OpenLaunchAllPayload.INSTANCE);
+    }
+
+    /** Push what the City Hall panel shows: the gate, the alert, the room and the history. */
+    public static void syncCityHall(ServerPlayer player) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        CityData data = CityData.get(server);
+        City own = data.cityOf(player.getUUID(), player.serverLevel().dimension());
+        if (own == null) {
+            CitiesInLifeNetwork.sendTo(player, CityHallPayload.none());
+            return;
+        }
+        CitiesInLifeNetwork.sendTo(player, new CityHallPayload(
+                true,
+                inCityHall(data, player, own),
+                own.alertLevel().id(),
+                Meeting.running(own.id()),
+                own.hushed(),
+                own.guards().size(),
+                Meeting.roll(own.id()),
+                own.ledger()));
+    }
+
+    /**
+     * Who is standing on this city's ground.
+     *
+     * <p>The filter is here and cannot be anywhere else. A payload carrying every player in the
+     * world for the client to sort through would be a wallhack that a modified client simply would
+     * not sort, so what leaves this method is already only the people the table is allowed to see.
+     *
+     * <p>Same gate as the rest of the hall: your city, and you standing inside it. A hologram table
+     * on somebody's front lawn shows nothing.
+     */
+    /** Somebody clicked the table: tell their client to open it, then fill it in. */
+    public static void openHologram(ServerPlayer player) {
+        CitiesInLifeNetwork.sendTo(player, OpenHologramPayload.INSTANCE);
+        syncHologram(player);
+    }
+
+    public static void syncHologram(ServerPlayer player) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        CityData data = CityData.get(server);
+        City own = data.cityOf(player.getUUID(), player.serverLevel().dimension());
+        if (own == null || !inCityHall(data, player, own)) {
+            CitiesInLifeNetwork.sendTo(player, HologramPayload.none());
+            return;
+        }
+
+        List<HologramPayload.Sighting> seen = new ArrayList<>();
+        for (ServerPlayer other : server.getPlayerList().getPlayers()) {
+            City over = Diplomacy.owner(server, other.serverLevel().dimension(),
+                    other.blockPosition());
+            if (over == null || !over.id().equals(own.id())) {
+                continue;
+            }
+            seen.add(new HologramPayload.Sighting(
+                    other.getGameProfile().getName(),
+                    other.getBlockX(), other.getBlockY(), other.getBlockZ(),
+                    other.getUUID().equals(own.owner())));
+            if (seen.size() >= HologramPayload.MAX_SEEN) {
+                break;
+            }
+        }
+        // Nearest first, so a crowded capital still puts whoever is next to you at the top.
+        seen.sort(Comparator.comparingDouble(sighting ->
+                player.distanceToSqr(sighting.x() + 0.5D, sighting.y() + 0.5D,
+                        sighting.z() + 0.5D)));
+        CitiesInLifeNetwork.sendTo(player,
+                new HologramPayload(true, seen, own.claimedChunks().toLongArray()));
+    }
+
+    /**
+     * Every button on the City Hall panel, behind one gate.
+     *
+     * <p>The gate is here and not on the client. The panel greys its own buttons out when it is
+     * told it is not in the hall, but that is a courtesy to the player, not a security measure —
+     * this check is the one that counts, and it is re-asked on every press because a player can
+     * walk out of the building with the screen still open.
+     */
+    public static void cityHallAction(ServerPlayer player, CityHallActionPayload payload) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        CityData data = CityData.get(server);
+        City own = data.cityOf(player.getUUID(), player.serverLevel().dimension());
+        if (own == null) {
+            reject(player, "no_city");
+            return;
+        }
+        if (!inCityHall(data, player, own)) {
+            reject(player, "not_in_city_hall");
+            return;
+        }
+
+        switch (payload.action()) {
+            case "alert" -> declareAlert(player, data, own, payload.detail());
+            case "meeting_start" -> callMeeting(server, player, own);
+            case "meeting_end" -> shutMeeting(server, player, own);
+            case "address" -> address(server, player, data, own, payload.detail());
+            case "hush" -> hush(player, data, own, !own.hushed());
+            case "hire_guard" -> hireGuard(player, data, own);
+            case "dismiss_guard" -> dismissGuard(player, data, own);
+            default -> reject(player, "city_hall_unknown");
+        }
+        syncCityHall(player);
+    }
+
+    /** Yes or no to a meeting invitation. Not gated on the city hall — guests are anywhere. */
+    public static void meetingReply(ServerPlayer player, MeetingReplyPayload payload) {
+        MinecraftServer server = player.getServer();
+        if (server == null || !payload.joining()) {
+            return;
+        }
+        String refusal = Meeting.join(server, player, payload.cityId());
+        if (refusal != null) {
+            player.sendSystemMessage(Component.translatable(refusal));
+        }
+    }
+
+    /**
+     * Whether the player is standing inside their own city hall.
+     *
+     * <p>Both halves matter: it has to be a city core, and it has to be one of theirs. Standing in
+     * somebody else's city hall is a fine thing to do — you may well have been invited to a meeting
+     * in it — and must not hand you their buttons.
+     */
+    /**
+     * Whether this city is at war with anybody at all.
+     *
+     * <p>Asked through the stance table rather than by looking at the city's own war list, and that
+     * is the whole point: a war is held by whichever side declared it, so a city that was INVADED
+     * has an empty list of its own. Reading that list meant the aggressor was frozen out of buying
+     * land and drawing boxes while the defender - the one actually under fire, and the one with
+     * the most to gain from throwing up new buildings faster than they can be knocked down - was
+     * not restricted at all.
+     */
+    private static boolean atWar(CityData data, City city) {
+        for (City other : data.cities()) {
+            if (!other.id().equals(city.id())
+                    && Diplomacy.stance(other, city) == Relation.WAR) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean inCityHall(CityData data, ServerPlayer player, City own) {
+        Structure here = data.structureAt(player.level().dimension(), player.blockPosition());
+        return here != null
+                && here.type() == StructureType.CITY_CORE
+                && own.structures().contains(here.id());
+    }
+
+    private static void declareAlert(ServerPlayer player, CityData data, City own, String levelId) {
+        AlertLevel level = AlertLevel.byId(levelId, AlertLevel.PEACE);
+        if (!own.setAlertLevel(level)) {
+            return;
+        }
+        data.setDirty();
+        own.note(player.level().getGameTime(), "alert_" + level.id(), "");
+        player.sendSystemMessage(Component.translatable(
+                "message.citiesinlife.alert_set", own.name(), level.displayName()));
+    }
+
+    /**
+     * Mute, or unmute, every siren and alarm the city owns.
+     *
+     * <p>Public because the button block in the hall presses the same lever the panel does. There
+     * is deliberately no separate "silence just this one" — the thing being asked for is quiet, and
+     * a mute that left half the city sounding would not be it.
+     */
+    public static void hush(ServerPlayer player, CityData data, City own, boolean quiet) {
+        if (!own.setHushed(quiet)) {
+            return;
+        }
+        data.setDirty();
+        own.note(player.level().getGameTime(), quiet ? "hushed" : "unhushed", "");
+        player.sendSystemMessage(Component.translatable(quiet
+                ? "message.citiesinlife.hush_on"
+                : "message.citiesinlife.hush_off", own.name()));
+    }
+
+    /**
+     * Take on one more bodyguard.
+     *
+     * <p>Hired here rather than at the barracks on purpose: a bodyguard is a decision about your
+     * own person and the city hall is where you make those. The Service NPC Spawner standing in
+     * the hall puts them on their feet on its next pass, the same way the barracks does for the
+     * army — the roll is the truth and the body is its shadow.
+     */
+    /** What a bodyguard comes with. Better than fists, well short of the army's best. */
+    private static final String GUARD_WEAPON = "minecraft:iron_sword";
+
+    private static void hireGuard(ServerPlayer player, CityData data, City own) {
+        if (own.guards().size() >= City.MAX_GUARDS) {
+            reject(player, "guards_full");
+            return;
+        }
+        if (!own.withdraw(City.HIRE_GUARD_COST)) {
+            player.sendSystemMessage(Component.translatable(
+                    "message.citiesinlife.cannot_afford", City.HIRE_GUARD_COST));
+            return;
+        }
+        String name = SOLDIER_NAMES[player.level().random.nextInt(SOLDIER_NAMES.length)];
+        // Armed on hire, unlike a soldier. A soldier is issued a weapon at the barracks through the
+        // Military Tool, and a bodyguard has no equivalent - hiring one and being handed somebody
+        // who fights with their fists is not what the price implies.
+        own.engage(new City.Soldier(UUID.randomUUID(), name, 0, GUARD_WEAPON, 0L));
+        data.setDirty();
+        own.note(player.level().getGameTime(), "guard_hired", name);
+        player.sendSystemMessage(Component.translatable(
+                "message.citiesinlife.guard_hired", name, own.guards().size(), City.MAX_GUARDS));
+    }
+
+    /** Let the last one go. One button rather than a roll, because four is not a list. */
+    private static void dismissGuard(ServerPlayer player, CityData data, City own) {
+        if (own.guards().isEmpty()) {
+            reject(player, "guards_none");
+            return;
+        }
+        City.Soldier gone = own.guards().get(own.guards().size() - 1);
+        own.release(gone.id());
+        data.setDirty();
+        own.note(player.level().getGameTime(), "guard_dismissed", gone.name());
+        player.sendSystemMessage(Component.translatable(
+                "message.citiesinlife.guard_dismissed", gone.name()));
+    }
+
+    /**
+     * Open a meeting and invite everybody.
+     *
+     * <p>Public because the button block in the hall pulls the same lever the panel does. Both go
+     * through here rather than through {@link Meeting} directly, so the refusal messages and the
+     * announcement stay in one place.
+     */
+    public static void callMeeting(MinecraftServer server, ServerPlayer player, City own) {
+        String refusal = Meeting.open(server, player, own);
+        if (refusal != null) {
+            player.sendSystemMessage(Component.translatable(refusal));
+            return;
+        }
+        player.sendSystemMessage(Component.translatable(
+                "message.citiesinlife.meeting_opened", own.name()));
+    }
+
+    private static void shutMeeting(MinecraftServer server, ServerPlayer player, City own) {
+        if (!Meeting.close(server, own.id(), "message.citiesinlife.meeting_closed")) {
+            reject(player, "meeting_none");
+        }
+    }
+
+    /**
+     * Say something to everyone standing on your ground.
+     *
+     * <p>Sent twice on purpose: once over the hotbar where it cannot be missed, and once into chat
+     * where it can be read again. The overlay line is the one that gets noticed and the only one
+     * the mod has — it is wiped by the next overlay message a tick later — so the chat copy is what
+     * makes a public address survive long enough to act on.
+     */
+    private static void address(MinecraftServer server, ServerPlayer player, CityData data,
+                                City own, String message) {
+        String said = message.strip();
+        if (said.isEmpty()) {
+            reject(player, "address_empty");
+            return;
+        }
+        Component line = Component.translatable("message.citiesinlife.address", own.name(), said)
+                .withStyle(ChatFormatting.YELLOW);
+        int heard = 0;
+        for (ServerPlayer everyone : server.getPlayerList().getPlayers()) {
+            if (!onOurGround(data, everyone, own)) {
+                continue;
+            }
+            everyone.displayClientMessage(line, true);
+            everyone.sendSystemMessage(line);
+            heard++;
+        }
+        own.note(player.level().getGameTime(), "address", said);
+        data.setDirty();
+        player.sendSystemMessage(Component.translatable(
+                "message.citiesinlife.address_sent", heard));
+    }
+
+    /** Whether this player is standing on a chunk the given city has claimed. */
+    private static boolean onOurGround(CityData data, ServerPlayer who, City own) {
+        if (!who.level().dimension().equals(own.dimension())) {
+            return false;
+        }
+        City here = data.cityAtChunk(who.level().dimension(), who.chunkPosition().toLong());
+        return here != null && here.id().equals(own.id());
+    }
+
+    private static void reject(ServerPlayer player, String key) {
+        player.sendSystemMessage(Component.translatable("message.citiesinlife." + key));
+    }
+}

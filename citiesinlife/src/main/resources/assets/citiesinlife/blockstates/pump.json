@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "citiesinlife:block/pump"
+    },
+    "facing=east": {
+      "model": "citiesinlife:block/pump",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "citiesinlife:block/pump",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "citiesinlife:block/pump",
+      "y": 270
+    }
+  }
+}

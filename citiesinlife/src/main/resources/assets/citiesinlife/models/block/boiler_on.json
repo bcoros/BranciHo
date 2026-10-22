@@ -1,0 +1,9 @@
+{
+  "parent": "minecraft:block/orientable",
+  "textures": {
+    "particle": "citiesinlife:block/boiler_side",
+    "front": "citiesinlife:block/boiler_front_on",
+    "side": "citiesinlife:block/boiler_side",
+    "top": "citiesinlife:block/boiler_top"
+  }
+}

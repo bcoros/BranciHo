@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "citiesinlife:block/interceptor_missile"
+    },
+    "facing=east": {
+      "model": "citiesinlife:block/interceptor_missile",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "citiesinlife:block/interceptor_missile",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "citiesinlife:block/interceptor_missile",
+      "y": 270
+    }
+  }
+}

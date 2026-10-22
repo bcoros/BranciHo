@@ -1,0 +1,110 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "particle": "citiesinlife:block/register_counter_side",
+    "top": "citiesinlife:block/register_counter_top",
+    "side": "citiesinlife:block/register_counter_side",
+    "till": "citiesinlife:block/register_counter_till"
+  },
+  "elements": [
+    {
+      "name": "counter",
+      "from": [
+        0,
+        0,
+        0
+      ],
+      "to": [
+        16,
+        14,
+        16
+      ],
+      "faces": {
+        "north": {
+          "texture": "#side"
+        },
+        "south": {
+          "texture": "#side"
+        },
+        "east": {
+          "texture": "#side"
+        },
+        "west": {
+          "texture": "#side"
+        },
+        "up": {
+          "texture": "#top"
+        },
+        "down": {
+          "texture": "#side"
+        }
+      }
+    },
+    {
+      "name": "till",
+      "from": [
+        3,
+        14,
+        4
+      ],
+      "to": [
+        11,
+        19,
+        12
+      ],
+      "faces": {
+        "north": {
+          "texture": "#till"
+        },
+        "south": {
+          "texture": "#till"
+        },
+        "east": {
+          "texture": "#till"
+        },
+        "west": {
+          "texture": "#till"
+        },
+        "up": {
+          "texture": "#till"
+        },
+        "down": {
+          "texture": "#till"
+        }
+      }
+    },
+    {
+      "name": "display",
+      "from": [
+        4,
+        19,
+        6
+      ],
+      "to": [
+        10,
+        23,
+        8
+      ],
+      "faces": {
+        "north": {
+          "texture": "#till"
+        },
+        "south": {
+          "texture": "#till"
+        },
+        "east": {
+          "texture": "#side"
+        },
+        "west": {
+          "texture": "#side"
+        },
+        "up": {
+          "texture": "#side"
+        },
+        "down": {
+          "texture": "#side"
+        }
+      }
+    }
+  ]
+}

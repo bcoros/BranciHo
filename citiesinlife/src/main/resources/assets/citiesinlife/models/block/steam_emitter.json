@@ -1,0 +1,9 @@
+{
+  "parent": "minecraft:block/cube_bottom_top",
+  "textures": {
+    "particle": "citiesinlife:block/steam_emitter",
+    "side": "citiesinlife:block/steam_emitter",
+    "top": "citiesinlife:block/steam_emitter_top",
+    "bottom": "citiesinlife:block/steam_emitter"
+  }
+}

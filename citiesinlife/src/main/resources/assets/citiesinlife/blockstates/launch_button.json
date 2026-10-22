@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "powered=false": {
+      "model": "citiesinlife:block/launch_button"
+    },
+    "powered=true": {
+      "model": "citiesinlife:block/launch_button_pressed"
+    }
+  }
+}

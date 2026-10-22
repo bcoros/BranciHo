@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "CMC",
+    "CRC",
+    "CMC"
+  ],
+  "key": {
+    "C": {
+      "item": "citiesinlife:uranium_core"
+    },
+    "M": {
+      "item": "citiesinlife:ballistic_missile"
+    },
+    "R": {
+      "item": "minecraft:redstone_block"
+    }
+  },
+  "result": {
+    "id": "citiesinlife:nuclear_missile",
+    "count": 1
+  }
+}
