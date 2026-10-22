@@ -15,6 +15,20 @@ Read alongside it:
   `guide.citiesinlife.*` key). It is the most accurate player-facing description of how each system
   works today, and it was kept up to date with every change.
 
+### If you already talked to the owner about "Living Cities"
+
+The owner first asked about this rework in a PC chat that was pointed at the **old, deleted Living
+Cities project**. If that is you, these things you said were about the wrong codebase:
+
+- **The folder is `citiesinlife`**, on branch `claude/modrinth-custom-mod-install-lws8dm`. Not
+  `livingcities`.
+- **The cars are ours.** Cities In Life has its own `CarEntity`, plus a police car, fire truck and
+  ambulance. They are not from Immersive Vehicles or MTS. When the owner says the cars look bad and
+  do not go to work, they mean these.
+- **It is not 3,050 lines.** Cities In Life is about 47,000 lines in 298 files. A rework is many
+  milestones, not one.
+- **The shooting star picture has been sent.** It is described in §6.
+
 `README.md` in this folder is **stale**. It still describes Alpha 2.1 (floor counting, 16 cells per
 dwelling, uploading the jar through Modrinth). Do not trust it; rewrite it as part of the rework.
 
@@ -331,8 +345,24 @@ In October 2026 the owner asked for a **full rework of everything**, in their wo
 
 What they want, gathered from those messages:
 
-- **Cool effects and a cinematic look.** Their reference is **"the shooting star mode"** — they
-  promised a picture, and **no picture has arrived yet. Ask for it before designing effects.**
+- **Cool effects and a cinematic look.** Their reference is **"The Shooting Star"**. They sent a
+  picture of it; ask them to send it to you too, because it is not in the repo (it is probably
+  somebody else's image and the repo is public). It has three panels:
+  1. From above: a huge glowing yellow sphere sitting in a giant crater ringed with debris, with
+     long dark fissures running hundreds of blocks out across the land.
+  2. The impact: a black pillar banded with glowing orange rings driving down into a molten crater,
+     a white-hot core, glowing cracks, and a **glowing orange grid** of hexagons and circuit-like
+     lines spreading across the ground, with sparks in the air.
+  3. Space: a glowing **wireframe cube** floating over a black hole, a **warped grid** bending down
+     into it, a purple ring of light, rainbow light rays, stars, and a small sci-fi **HUD label in
+     target brackets** ("SOL-3").
+
+  The look: enormous scale, **emissive glow**, **glowing grid and line overlays drawn over the
+  world**, **holograms and wireframes**, particles, and sci-fi HUD labels. The previous session
+  suggested, without agreement yet: the Planner Wand selection as a glowing wireframe hologram with
+  a grid sweeping across the building as it scans; missile impacts and meltdowns as a molten crater
+  with glowing cracks spreading out; the city view and hologram map as glowing grid overlays with
+  target-bracket labels on buildings. Confirm the direction with the owner before building it.
 - New **models and textures** for items and blocks.
 - **NPCs and cars reworked** — looks *and* behaviour. GeckoLib animation is approved.
 - **Every system** reworked and fixed, with the utilities' connection to buildings first among them.
